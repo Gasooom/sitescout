@@ -8,8 +8,16 @@ license-files = ["LICENSE"]
 authors = [{ name = "Abualgasim Ibrahim" }]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "geopandas>=1.1.4",
+    "numpy>=2.5.3",
+    "osmium>=4.3.1",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
     "pydantic>=2.13.5",
+    "pyproj>=3.8.0",
     "pyyaml>=6.0.3",
+    "rasterio>=1.5.1",
+    "shapely>=2.1.2",
 ]
 
 [dependency-groups]
@@ -23,8 +31,9 @@ requires = ["uv_build>=0.12.0,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.uv]
-# The repository sits in a OneDrive-synced folder. On Windows uv hard-links package files
-# from its cache into .venv by default; copying keeps OneDrive away from the cache files.
+# Copy package files into .venv instead of hard-linking them from uv's cache (the Windows
+# default), so .venv never shares files with the cache. Added under D-003; kept unchanged
+# after the repository moved to a local folder, to avoid changing install behaviour.
 link-mode = "copy"
 
 [tool.ruff]

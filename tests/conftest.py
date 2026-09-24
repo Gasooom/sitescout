@@ -1,4 +1,5 @@
-"""Shared fixtures: fresh copies of the real config files, and an empty temporary directory."""
+"""Shared fixtures: fresh copies of the real config files, temporary directories and the
+SYNTHETIC ingestion configuration."""
 
 import tempfile
 from collections.abc import Iterator
@@ -31,3 +32,20 @@ def settings_data() -> dict[str, Any]:
 def weights_data() -> dict[str, Any]:
     """A fresh copy of config/weights.yaml."""
     return read_yaml(WEIGHTS_FILE)
+
+
+@pytest.fixture
+def config(settings_data, weights_data):
+    """The real configuration, with boundary counts matching the SYNTHETIC districts."""
+    from synthetic import synthetic_config
+
+    return synthetic_config(settings_data, weights_data)
+
+
+@pytest.fixture
+def dirs(temp_dir):
+    """Empty raw/, processed/ and work/ directories for one SYNTHETIC pipeline run."""
+    paths = {name: temp_dir / name for name in ("raw", "processed", "work")}
+    for path in paths.values():
+        path.mkdir()
+    return paths

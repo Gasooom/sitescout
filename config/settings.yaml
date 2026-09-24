@@ -22,17 +22,34 @@ crs:
   storage: "EPSG:4326"
   metric: "EPSG:32735"
 
-# SPEC §2
+# SPEC §2. Each `download` block was verified on 2026-09-24 (docs/data_sources.md, D-016).
+# versioning: fixed   = the URL names one release; a changed file on re-download is an error.
+# versioning: rolling = the URL is replaced upstream over time; each change is logged and the
+#                       new SHA-256 and upstream timestamp are recorded.
 sources:
   osm:
     provider: Geofabrik
     extract: rwanda-latest.osm.pbf
+    download:
+      url: https://download.geofabrik.de/africa/rwanda-latest.osm.pbf
+      versioning: rolling
+      licence: ODbL-1.0
+      licence_url: https://www.openstreetmap.org/copyright
+      credit: "© OpenStreetMap contributors"
   population:
     provider: WorldPop
     year: 2025
     resolution_m: 100
     constrained: true
     release: R2025A
+    # Retrieved fact: the "100 m" grid is 3 arc-seconds in EPSG:4326 (WorldPop metadata).
+    pixel_size_arcsec: 3
+    download:
+      url: https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2025/RWA/v1/100m/constrained/rwa_pop_2025_CN_100m_R2025A_v1.tif
+      versioning: fixed
+      licence: CC-BY-4.0
+      licence_url: https://hub.worldpop.org/data/licence.txt
+      credit: "WorldPop, University of Southampton (2025). Constrained population estimates, R2025A v1. DOI 10.5258/SOTON/WP00839"
   elevation:
     provider: Copernicus DEM
     product: GLO-30
@@ -42,22 +59,75 @@ sources:
     iso3: RWA
     master_level: ADM2
     derived_levels: [ADM1, ADM0]
+    # Retrieved facts (geoBoundaries API admUnitCount); a different count stops ingestion.
+    expected_units:
+      ADM2: 30
+      ADM1: 5
+    # Pinned to geoBoundaries commit 9469f09. ADM1 is used only to assign each district to
+    # a province by overlap; ADM1 and ADM0 geometry is always dissolved from ADM2.
+    downloads:
+      ADM2:
+        url: https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/RWA/ADM2/geoBoundaries-RWA-ADM2.geojson
+        versioning: fixed
+        licence: CC-BY-4.0
+        licence_url: https://creativecommons.org/licenses/by/4.0/
+        credit: "geoBoundaries (Runfola et al. 2020), gbOpen RWA ADM2; source: Open Data Rwanda (NISR)"
+      ADM1:
+        url: https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/RWA/ADM1/geoBoundaries-RWA-ADM1.geojson
+        versioning: fixed
+        licence: CC-BY-4.0
+        licence_url: https://creativecommons.org/licenses/by/4.0/
+        credit: "geoBoundaries (Runfola et al. 2020), gbOpen RWA ADM1; source: The Rwanda Geo Portal"
   grid_cross_check:
     provider: energydata.info
     dataset: Rwanda transmission network
     data_year: 2009
     use: cross_check_only
+    download:
+      url: https://datacatalogfiles.worldbank.org/ddh-published/0042268/1/DR0052867/rwanda-electricity-transmission-network.zip
+      versioning: fixed
+      licence: CC-BY-4.0
+      licence_url: https://creativecommons.org/licenses/by/4.0/
+      credit: "World Bank Group, Rwanda Electricity Transmission Network, via energydata.info"
   osm_tags:
     charging_station: "amenity=charging_station"
     fuel_station_sockets: "socket:*"
     grid: "power=*"
     water: "natural=water"
     protected_area: "boundary=protected_area"
+    # Milestone 1 extraction scope (D-019). Roads keep every highway value: the drivable
+    # classes are decided in M2. POIs are a broad superset of tagged places, not host types:
+    # host classification is decided in M2 (candidates.host_osm_tags).
+    roads: "highway=*"
+    pois:
+      - "amenity=*"
+      - "shop=*"
+      - "tourism=*"
+      - "office=*"
+      - "industrial=*"
+      - "landuse=industrial"
+      - "landuse=commercial"
+      - "landuse=retail"
+      - "building=warehouse"
+      - "building=industrial"
+      - "building=commercial"
+      - "building=retail"
+      - "man_made=works"
   charger_csv:
     columns: [name, lat, lon, source_url, date_retrieved, operator_public_name]
     provenance_only_columns: [operator_public_name]
   charger_match_radius_m:
-    pending: "SPEC §2 combines the manual CSV with OSM chargers but gives no radius for matching duplicates. Decide in M1."
+    pending: "SPEC §2 combines the manual CSV with OSM chargers but gives no radius for matching duplicates; M1 ingests both without combining them. Decide in M3."
+
+# Milestone 1 ingestion checks (not from SPEC; D-018).
+ingest:
+  # Rwanda envelope in EPSG:4326: the union of the geoBoundaries ADM2 extent and the
+  # Geofabrik extract box (both retrieved 2026-09-24), rounded outward to 0.01 degrees.
+  rwanda_bbox:
+    min_lon: 28.85
+    min_lat: -2.85
+    max_lon: 30.91
+    max_lat: -1.03
 
 # SPEC §3
 candidates:

@@ -135,6 +135,7 @@ OpenFraction = Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0
 BonusPoints = Annotated[int, Strict(), Field(ge=0, le=100)]
 RelativePath = Annotated[str, Strict(), Field(min_length=1), AfterValidator(_check_relative_path)]
 EpsgCode = Annotated[str, Strict(), Field(pattern=r"^EPSG:\d+$")]
+HttpsUrl = Annotated[str, Strict(), Field(pattern=r"^https://[^\s]+$")]
 OsmTag = Annotated[str, Strict(), Field(pattern=r"^[a-z_]+(:[a-z_]+)*(=([a-z_]+|\*)|:\*)$")]
 OsmValue = Annotated[str, Strict(), Field(pattern=r"^[a-z_]+$")]
 Texts = Annotated[tuple[Text, ...], Field(min_length=1), AfterValidator(_no_duplicates)]
@@ -193,9 +194,26 @@ class CrsSettings(_Model):
     metric: EpsgCode
 
 
+class Download(_Model):
+    """Where a public source file is downloaded from, and the credit its licence requires."""
+
+    url: HttpsUrl
+    versioning: Literal["fixed", "rolling"]
+    licence: Text
+    licence_url: HttpsUrl
+    credit: Text
+
+
 class OsmSource(_Model):
     provider: Text
     extract: Text
+    download: Download
+
+    @model_validator(mode="after")
+    def _url_names_the_extract(self) -> Self:
+        if PurePosixPath(self.download.url).name != self.extract:
+            raise ValueError("download.url must end with the configured extract file name")
+        return self
 
 
 class PopulationSource(_Model):
@@ -204,6 +222,8 @@ class PopulationSource(_Model):
     resolution_m: Metres
     constrained: Flag
     release: Text
+    pixel_size_arcsec: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0)]
+    download: Download
 
 
 class ElevationSource(_Model):
@@ -212,11 +232,25 @@ class ElevationSource(_Model):
     status: Literal["deferred"]
 
 
+class BoundaryUnitCounts(_Model):
+    ADM2: Count
+    ADM1: Count
+
+
+class BoundaryDownloads(_Model):
+    """ADM2 is the master geometry; ADM1 only names the province each district belongs to."""
+
+    ADM2: Download
+    ADM1: Download
+
+
 class BoundarySource(_Model):
     provider: Text
     iso3: Annotated[str, Strict(), Field(pattern=r"^[A-Z]{3}$")]
     master_level: Literal["ADM2"]
     derived_levels: Annotated[tuple[Literal["ADM1", "ADM0"], ...], AfterValidator(_no_duplicates)]
+    expected_units: BoundaryUnitCounts
+    downloads: BoundaryDownloads
 
 
 class GridCrossCheckSource(_Model):
@@ -224,6 +258,7 @@ class GridCrossCheckSource(_Model):
     dataset: Text
     data_year: Count
     use: Literal["cross_check_only"]
+    download: Download
 
 
 class OsmTags(_Model):
@@ -232,6 +267,8 @@ class OsmTags(_Model):
     grid: OsmTag
     water: OsmTag
     protected_area: OsmTag
+    roads: OsmTag
+    pois: Annotated[tuple[OsmTag, ...], Field(min_length=1), AfterValidator(_no_duplicates)]
 
 
 class ChargerCsv(_Model):
@@ -255,6 +292,31 @@ class SourceSettings(_Model):
     osm_tags: OsmTags
     charger_csv: ChargerCsv
     charger_match_radius_m: Metres | Pending
+
+
+class BoundingBox(_Model):
+    """A longitude/latitude envelope in EPSG:4326."""
+
+    min_lon: Annotated[float, BeforeValidator(_reject_non_numbers), Field(ge=-180, le=180)]
+    min_lat: Annotated[float, BeforeValidator(_reject_non_numbers), Field(ge=-90, le=90)]
+    max_lon: Annotated[float, BeforeValidator(_reject_non_numbers), Field(ge=-180, le=180)]
+    max_lat: Annotated[float, BeforeValidator(_reject_non_numbers), Field(ge=-90, le=90)]
+
+    @model_validator(mode="after")
+    def _ordered(self) -> Self:
+        if self.min_lon >= self.max_lon or self.min_lat >= self.max_lat:
+            raise ValueError("min_lon/min_lat must be smaller than max_lon/max_lat")
+        return self
+
+    def as_tuple(self) -> tuple[float, float, float, float]:
+        """(min_lon, min_lat, max_lon, max_lat), the order shapely and geopandas use."""
+        return (self.min_lon, self.min_lat, self.max_lon, self.max_lat)
+
+
+class IngestSettings(_Model):
+    """Milestone 1 ingestion checks that SPEC.md does not define (docs/decisions.md D-018)."""
+
+    rwanda_bbox: BoundingBox
 
 
 class TargetCount(_Model):
@@ -397,6 +459,7 @@ class Settings(_Model):
     logging: LoggingSettings
     crs: CrsSettings
     sources: SourceSettings
+    ingest: IngestSettings
     candidates: CandidateSettings
     features: FeatureSettings
     scoring: ScoringSettings

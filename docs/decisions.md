@@ -130,26 +130,145 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Copying SPEC §1's context paragraph.
 - **Reason:** Approved on 2026-09-24.
 
+## D-016: Source locations, versioning and raw manifests
+
+- **Date:** 2026-09-24 (Milestone 1)
+- **Decision:**
+  - Each download's URL, licence, licence URL and required credit live in `config/settings.yaml` (`sources.*.download`), verified on 2026-09-24 and pinned by `tests/test_config.py`.
+  - Each source is `fixed` (the URL names one release: WorldPop R2025A, geoBoundaries at commit `9469f09`, the World Bank zip) or `rolling` (Geofabrik `rwanda-latest`).
+  - `fetch` writes `data/raw/<source_id>/source.json`: URL, resolved URL, size, SHA-256, `Last-Modified`, `ETag`, licence, credit and the UTC retrieval time. A present file that matches its manifest is not downloaded again.
+  - On a re-download, a changed `fixed` source raises `SourceChangedError` and the recorded file is kept; a changed `rolling` source is logged at WARNING with both hashes and replaces the old file. The OSM data timestamp comes from the PBF header.
+  - Retrieval times are metadata. They are copied into layer metadata but never affect layer content, and layer metadata has no processing timestamp.
+  - Downloads use the standard library (`urllib`), with a User-Agent that names the project.
+- **Alternatives:** URLs as constants in code; downloading on every run; the `requests` package; recording only the file name.
+- **Reason:** Resolves the Milestone 1 question about `rwanda-latest.osm.pbf` changing over time. SPEC §2 requires every source to be verified or reported, and CLAUDE.md requires reproducible, idempotent pipelines. Pinning a commit for geoBoundaries turns "current" into a fixed release.
+
+## D-017: Dependencies for Milestone 1
+
+- **Date:** 2026-09-24
+- **Decision:** Runtime dependencies added, each for a named Milestone 1 problem:
+  - **geopandas** (1.1.4): reading GeoJSON and shapefiles, reprojection, writing and reading GeoParquet.
+  - **shapely** (2.1.2): geometry validity, types, bounds, dissolving districts into provinces and country.
+  - **pyproj** (3.8.0): parsing and comparing CRS, refusing non-metric CRS, geodesic reference distances in tests.
+  - **pyarrow** (25.0.1): the Parquet engine behind GeoParquet.
+  - **rasterio** (1.5.1): reading and validating the WorldPop GeoTIFF (CRS, grid, nodata, pixel values).
+  - **osmium** (pyosmium 4.3.1): reading the OSM PBF, building line and area geometries, filtering by tag in C++ (D-001: pyrosm has no Windows wheels).
+  - **numpy** and **pandas**: used directly for raster statistics and table checks; both were already installed with geopandas and rasterio.
+  
+  pyogrio, the GeoJSON and shapefile reader, comes with geopandas.
+- **Alternatives:** pyrosm (no Windows wheels); fiona (pyogrio is geopandas' default reader); GDAL command-line tools (not installable from wheels).
+- **Reason:** CLAUDE.md: a new dependency must solve a named problem. All were resolved in D-001 as installable from wheels on Windows with Python 3.12. On the development machine, uv's first install of pyarrow failed several times because another process (probably a file scanner) locked files while they were being copied. Retrying `uv sync` fixed it; `uv add --no-sync` then `uv sync` avoids rolling back `pyproject.toml` if that happens again.
+
+## D-018: Coordinate checks and the Rwanda envelope
+
+- **Date:** 2026-09-24
+- **Decision:**
+  - `ingest.rwanda_bbox` (28.85 to 30.91 E, 2.85 to 1.03 S) is the union of the geoBoundaries ADM2 extent and the Geofabrik extract box, rounded outward to 0.01°. Boundaries, the population raster, transmission lines and CSV chargers must lie inside it; OSM features must touch it (OSM keeps ways that cross the border).
+  - Every coordinate is also checked to be finite and within longitude/latitude range, which catches swapped or projected coordinates.
+  - `sitescout.crs` holds the CRS helpers. Metric helpers accept only data in the storage CRS and refuse a metric CRS that is not projected in metres, so a distance can never be taken in degrees.
+  - EPSG:32735 stays the metric CRS. Measured against WGS 84 geodesic distances, its scale error over Rwanda is +0.016% at the western border (28.86 E), +0.093% at 29.9 E and +0.199% at the eastern border (30.9 E), about 20 m per 10 km. A test holds it below 0.25%.
+- **Alternatives:** A buffer around the country in metres (a number without a source); EPSG:32736 for the east (two metric CRS in one pipeline); a custom transverse Mercator centred on Rwanda (not what CLAUDE.md names).
+- **Reason:** Resolves the Milestone 1 question about UTM zones 35 and 36: the distortion is small, measured and documented. The envelope values come from retrieved sources, not from a chosen tolerance.
+
+## D-019: OSM extraction scope
+
+- **Date:** 2026-09-24
+- **Decision:**
+  - Layers are selected by `sources.osm_tags` in settings.yaml. `roads: "highway=*"` keeps every highway value, because the drivable classes are pending until M2. `pois` is a broad superset of tagged places (`amenity`, `shop`, `tourism`, `office`, `industrial` with any value, plus industrial, commercial and retail land use and buildings, and `man_made=works`). It is not a list of host types; host classification is pending until M2 (`candidates.host_osm_tags`).
+  - The PBF is read in two passes: one C++ key filter for "any value" selectors and one tag filter for exact key=value selectors. This keeps the 1.45 million plain buildings out of Python (a single pass through them took 44 s, the two filtered passes about 4 s each).
+  - Nodes become points. Ways become lines for roads; for other layers, closed ways and multipolygon or boundary relations become areas. `power=line`, `minor_line` and `cable` ways stay lines even when closed, following the OSM convention; other closed `power` ways are areas.
+  - Only the tags each layer needs are copied, as columns. `name`, `brand` and `operator` are never read (D-012). `socket:*` tags are kept as a JSON column for backtest leakage removal.
+- **Alternatives:** Only the six host types' tags (would decide M2's pending parameter now); every tag as JSON (carries names and brands into processed data); pyrosm.
+- **Reason:** SPEC §2 lists the OSM information SiteScout needs; the milestone brief forbids inventing host categories. A superset keeps M2's decision open without re-reading the PBF.
+
+## D-020: OSM geometry problems are counted, never hidden
+
+- **Date:** 2026-09-24
+- **Decision:**
+  - Invalid OSM areas are made valid with `shapely.make_valid`, keeping only polygonal parts, and flagged with `geometry_repaired = True`. The count goes into the layer metadata and the log. An area with nothing polygonal left is dropped and counted.
+  - Areas libosmium cannot assemble, geometries it cannot build (missing node locations, invalid rings), open ways in area-only layers and non-area relations are counted per layer and logged.
+  - Features wholly outside the Rwanda envelope are dropped and counted: on 2026-09-24, 253 power towers and portals (in Burundi, down to 3.37 S) and 1 water area. They come into the extract as nodes of cross-border ways and members of cross-border relations. Features that cross the envelope are kept whole, never clipped.
+  - Boundaries, the population raster and the transmission lines are never repaired: a problem there stops that source.
+- **Alternatives:** Dropping invalid areas silently; failing the whole OSM source on one invalid area; clipping every layer to the country outline.
+- **Reason:** CLAUDE.md and the milestone brief: never repair important source problems silently. Crowd-sourced areas are sometimes invalid, and dropping a lake or a park would be worse than an explicit, flagged repair. On 2026-09-24 no area needed a repair.
+
+## D-021: Provinces from ADM2 by majority overlap
+
+- **Date:** 2026-09-24
+- **Decision:**
+  - geoBoundaries ADM2 has no province field. Each district is assigned the gbOpen ADM1 province it overlaps most, measured in EPSG:32735. The overlap must be a strict majority (more than 50%) of the district's area, and every province must receive a district, or ingestion stops.
+  - From ADM1 only the name and ISO 3166-2 code (`shapeISO`, RW-01 to RW-05) are used. Province and country geometry is dissolved from ADM2, so every edge matches.
+  - On 2026-09-24 the smallest overlap share was 99.12%. It is stored per district (`province_overlap_share`).
+  - geoBoundaries ADM0 is not downloaded.
+- **Alternatives:** A hand-typed district-to-province table (data written into code); ADM1 geometry (edges would not match ADM2); taking the province of each district's centroid (no measure of doubt).
+- **Reason:** Resolves the Milestone 1 question about deriving ADM1. CLAUDE.md: ADM2 is the master; derive ADM1 and ADM0 from it.
+
+## D-022: Processed data contract
+
+- **Date:** 2026-09-24
+- **Decision:**
+  - Vector layers are GeoParquet 1.1.0 (zstd) in EPSG:4326, with a declared schema per layer in `sitescout/ingest/layers.py`: column names, types, required columns, geometry types, the id column and sort order.
+  - `write_layer` validates before and after normalising types and order, writes to a temporary file and moves it into place. `read_layer` validates again and compares the row count and content fingerprint with the metadata file. Later stages read layers only through `read_layer`.
+  - Each layer's `.meta.json` records its schema, sources, row count, geometry types, bounds, extraction statistics and a content fingerprint (SHA-256 over the columns in order and the geometry as WKB).
+  - The WorldPop raster stays a GeoTIFF, copied byte for byte after validation, with its grid, nodata, statistics and limitations in `.meta.json`.
+  - A missing source gets a metadata file with `status: missing` and no data file; reading it raises `SourceMissingError`.
+- **Alternatives:** Converting the raster to points or polygons; clipping the raster to the ADM2 outline (changes edge pixels WorldPop published); GeoPackage; validating only on write.
+- **Reason:** Resolves the Milestone 1 question that CLAUDE.md's "all sources in GeoParquet" does not fit rasters: vectors go to GeoParquet, the raster keeps its representation. CLAUDE.md: validate schemas between stages; pipelines are idempotent. Two runs on the same raw files give byte-identical files (tested).
+
+## D-023: The manual charger list
+
+- **Date:** 2026-09-24
+- **Decision:**
+  - `data/manual/chargers.csv` is checked strictly: exact header, required values, numeric coordinates inside the Rwanda envelope, http(s) URLs, real `YYYY-MM-DD` dates and no duplicate coordinates. Every problem is reported with its line number, and nothing is dropped or corrected.
+  - `name` and `operator_public_name` stay in the CSV for provenance and are not carried into `chargers_manual`. The CSV line number (`source_row`) keeps the link back to them.
+  - `charger_id` is derived from the coordinates rounded to 1e-6 degrees, so ids do not depend on row order.
+  - A missing file is reported as `missing`, with no records created and any stale output removed. On 2026-09-24 the file does not exist.
+- **Alternatives:** Keeping names in the processed layer and filtering them at export (a later stage could leak them); synthetic placeholder chargers (forbidden).
+- **Reason:** SPEC §2: `operator_public_name` is never exported or shown. CLAUDE.md: no company names in outputs; unknown stays unknown.
+
+## D-024: `charger_match_radius_m` stays pending until Milestone 3
+
+- **Date:** 2026-09-24
+- **Decision:** `sources.charger_match_radius_m` stays `pending`. Its reason now says to decide it in M3.
+- **Alternatives:** Reusing SPEC's 1 km backtest hit radius (SPEC §7) or the 300 m candidate deduplication radius (SPEC §3).
+- **Reason:** SPEC gives no value and no method for it. The two SPEC radii serve other purposes, and using either would be an invented default. Milestone 1 ingests the CSV and OSM chargers as separate layers and never combines them. The radius is first needed when the set of existing chargers is built for the charging-gap features and the backtest ground truth, in M3. The CSV does not exist yet, so the positional differences between the sources cannot yet be measured either.
+
+## D-025: A failing source stops alone
+
+- **Date:** 2026-09-24
+- **Decision:** `scripts/ingest.py` runs fetch, process and validate for each source. A source that fails is reported with its exact error, its stale outputs from earlier runs are removed, and the other sources continue. Nothing is substituted. The exit code is 1 when any source failed and 0 when every source is ok or reported missing. Transmission lines get ids from the SHA-256 of their geometry; the source's `SOURCES` (which names utilities) and `PROJECT_NM` columns are not carried over.
+- **Alternatives:** Stopping the whole run at the first failure; keeping old outputs after a failure.
+- **Reason:** SPEC §2: stop and report rather than substitute. Keeping an old output after its source failed would let a later stage read data that no longer matches the raw files.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
 
-### Milestone 1
+### Resolved in Milestone 1
 
-- CLAUDE.md says Milestone 1 is done when "all sources [are] in GeoParquet", but WorldPop and the elevation model are rasters. Proposal: vector data goes to GeoParquet, rasters stay as clipped GeoTIFF files, and derived tables such as H3 demand nodes go to GeoParquet.
-- As far as known, geoBoundaries ADM2 features carry no province code, so deriving ADM1 from ADM2 needs a district-to-province assignment.
-- `rwanda-latest.osm.pbf` changes over time. Proposal: record each download's OSM timestamp and SHA-256.
-- Do fuel stations tagged `socket:*` count as existing chargers in production mode? SPEC mentions them only for removal in backtest mode.
-- The radius for matching manual CSV chargers to OSM chargers (`charger_match_radius_m`, pending).
-- EPSG:32735 is UTM zone 35S. The part of Rwanda east of 30°E, including most of Kigali, lies in zone 36; the distance distortion there is to be measured and documented with the distance helpers.
+- Rasters and "all sources in GeoParquet": D-022. Vectors go to GeoParquet. The raster stays a GeoTIFF, unclipped: the M0 proposal to clip it was dropped because clipping to the ADM2 outline would change edge pixels that WorldPop published.
+- Deriving ADM1 from ADM2 without a province code: D-021.
+- `rwanda-latest.osm.pbf` changing over time: D-016.
+- The distortion of EPSG:32735 east of 30°E: D-018 (at most +0.199%).
+- `charger_match_radius_m`: still pending, moved to M3 (D-024).
 
 ### Milestone 2
 
+- `boundary=protected_area` misses Nyungwe and Volcanoes National Parks, which OSM tags `boundary=national_park` (checked on the 2026-09-23 extract). SPEC §2 names only `boundary=protected_area`. Should the candidate filter also use `boundary=national_park`? That would be a change to the SPEC tag list, so it needs Gasim's decision.
+- `osm_protected_areas` also holds cross-border areas that only touch Rwanda. The candidate filter should test against the area geometry, so this matters only for reporting.
+- Which OSM tags identify each host type (`candidates.host_osm_tags`, pending) and which road classes are drivable (`candidates.drivable_road_classes`, pending). `osm_pois` and `osm_roads` hold the superset these choices select from (D-019).
 - `dist_town_m` assigns the profile, while CLAUDE.md says it is never scored. Proposed reading: never a weighted input, but allowed for assigning the profile.
 - Deduplication keeps an industrial site over a hotel, yet the hotel's bonus is 5 points and the industrial site's is 0.
 - SPEC §3 says a site without a host cannot be investigated, but keeps corridor points without a host. Should those be eligible for the 30?
 - If generation gives fewer than 200 or more than 400 candidates, the run stops with an error until a rule is decided.
 - Fuel stations tagged `socket:*` stay candidates in backtest mode; only their charger-related attributes are removed.
+
+### Milestone 3
+
+- The radius for matching manual CSV chargers to OSM chargers (`charger_match_radius_m`, pending; D-024).
+- Do fuel stations tagged `socket:*` count as existing chargers in production mode? SPEC mentions them only for removal in backtest mode. On the 2026-09-23 extract no fuel station has a `socket:*` tag, but the rule is still needed.
+- Two OSM `power` values are not power types (`150kWh`, `11 kWh`). `features.grid_osm_tags` (pending) should list the values that count, so these are ignored rather than repaired.
+- The backtest ground truth is small. OSM maps 7 charging stations, and `data/manual/chargers.csv` does not exist yet. SPEC §7 expects "a few dozen". Until the CSV is filled, the M5 backtest has 7 known chargers at most, and its confidence intervals will be very wide.
 
 ### Milestone 4
 

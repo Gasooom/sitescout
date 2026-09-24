@@ -4,7 +4,7 @@
 
 SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
 
-> **Status:** Milestone 0 (repository setup and architecture) is complete; Milestone 1 has not started. The pipeline has not produced any results yet.
+> **Status:** Milestone 1 (data ingestion) is implemented and awaiting review. The pipeline ingests and validates the public sources; it has not produced any candidates, scores or results yet.
 
 ## What it answers
 
@@ -55,12 +55,13 @@ Requires [uv](https://docs.astral.sh/uv/), which installs Python 3.12 if needed.
 ```bash
 uv sync
 uv run python scripts/check_config.py
+uv run python scripts/ingest.py all
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest -q
 ```
 
-`check_config.py` validates `config/settings.yaml` and `config/weights.yaml` and lists every parameter that is still pending because the specification does not define it.
+`check_config.py` validates `config/settings.yaml` and `config/weights.yaml` and lists every parameter that is still pending because the specification does not define it. `ingest.py all` downloads the public sources into `data/raw/`, builds the validated layers in `data/processed/` and checks them again; see [docs/data_sources.md](docs/data_sources.md).
 
 ## Repository layout
 
@@ -78,7 +79,7 @@ data/      local data, never committed (raw, manual, processed, export)
 | # | Milestone | Status |
 |---|---|---|
 | 0 | Repository setup and architecture | done |
-| 1 | Data ingestion and geospatial pipeline | not started |
+| 1 | Data ingestion and geospatial pipeline | in review |
 | 2 | Candidate generation | not started |
 | 3 | Feature engineering | not started |
 | 4 | Scoring and confidence | not started |
@@ -88,6 +89,13 @@ data/      local data, never committed (raw, manual, processed, export)
 | 8 | Export and front end | not started |
 | 9 | Stretch (optional) | not started |
 | 10 | Packaging and demo | not started |
+
+## Data credits
+
+- Map data © OpenStreetMap contributors, available under the [Open Database License](https://www.openstreetmap.org/copyright).
+- Population: WorldPop, University of Southampton (2025), constrained estimates R2025A v1, DOI 10.5258/SOTON/WP00839, [CC BY 4.0](https://hub.worldpop.org/data/licence.txt).
+- Boundaries: geoBoundaries (Runfola et al. 2020), gbOpen Rwanda ADM2 and ADM1, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Transmission network (grid-evidence cross-check): World Bank Group via energydata.info, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## Licence
 

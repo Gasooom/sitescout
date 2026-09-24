@@ -137,6 +137,77 @@ EXPECTED_SETTINGS = {
     "export.boundary_geojson_max_kb": 300,
 }
 
+# Milestone 1 values that SPEC.md does not set: verified source locations, licences and
+# credits (D-016), retrieved facts (D-016, D-018) and the extraction scope (D-019).
+# Changing one needs a change here and a docs/decisions.md entry.
+_CC_BY = "https://creativecommons.org/licenses/by/4.0/"
+_GB = "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/RWA"
+EXPECTED_M1_SETTINGS = {
+    "sources.osm.download.url": "https://download.geofabrik.de/africa/rwanda-latest.osm.pbf",
+    "sources.osm.download.versioning": "rolling",
+    "sources.osm.download.licence": "ODbL-1.0",
+    "sources.osm.download.licence_url": "https://www.openstreetmap.org/copyright",
+    "sources.osm.download.credit": "© OpenStreetMap contributors",
+    "sources.population.pixel_size_arcsec": 3,
+    "sources.population.download.url": (
+        "https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2025/RWA/v1/100m/"
+        "constrained/rwa_pop_2025_CN_100m_R2025A_v1.tif"
+    ),
+    "sources.population.download.versioning": "fixed",
+    "sources.population.download.licence": "CC-BY-4.0",
+    "sources.population.download.licence_url": "https://hub.worldpop.org/data/licence.txt",
+    "sources.population.download.credit": (
+        "WorldPop, University of Southampton (2025). Constrained population estimates, "
+        "R2025A v1. DOI 10.5258/SOTON/WP00839"
+    ),
+    "sources.boundaries.expected_units.ADM2": 30,
+    "sources.boundaries.expected_units.ADM1": 5,
+    "sources.boundaries.downloads.ADM2.url": f"{_GB}/ADM2/geoBoundaries-RWA-ADM2.geojson",
+    "sources.boundaries.downloads.ADM2.versioning": "fixed",
+    "sources.boundaries.downloads.ADM2.licence": "CC-BY-4.0",
+    "sources.boundaries.downloads.ADM2.licence_url": _CC_BY,
+    "sources.boundaries.downloads.ADM2.credit": (
+        "geoBoundaries (Runfola et al. 2020), gbOpen RWA ADM2; source: Open Data Rwanda (NISR)"
+    ),
+    "sources.boundaries.downloads.ADM1.url": f"{_GB}/ADM1/geoBoundaries-RWA-ADM1.geojson",
+    "sources.boundaries.downloads.ADM1.versioning": "fixed",
+    "sources.boundaries.downloads.ADM1.licence": "CC-BY-4.0",
+    "sources.boundaries.downloads.ADM1.licence_url": _CC_BY,
+    "sources.boundaries.downloads.ADM1.credit": (
+        "geoBoundaries (Runfola et al. 2020), gbOpen RWA ADM1; source: The Rwanda Geo Portal"
+    ),
+    "sources.grid_cross_check.download.url": (
+        "https://datacatalogfiles.worldbank.org/ddh-published/0042268/1/DR0052867/"
+        "rwanda-electricity-transmission-network.zip"
+    ),
+    "sources.grid_cross_check.download.versioning": "fixed",
+    "sources.grid_cross_check.download.licence": "CC-BY-4.0",
+    "sources.grid_cross_check.download.licence_url": _CC_BY,
+    "sources.grid_cross_check.download.credit": (
+        "World Bank Group, Rwanda Electricity Transmission Network, via energydata.info"
+    ),
+    "sources.osm_tags.roads": "highway=*",
+    "sources.osm_tags.pois": [
+        "amenity=*",
+        "shop=*",
+        "tourism=*",
+        "office=*",
+        "industrial=*",
+        "landuse=industrial",
+        "landuse=commercial",
+        "landuse=retail",
+        "building=warehouse",
+        "building=industrial",
+        "building=commercial",
+        "building=retail",
+        "man_made=works",
+    ],
+    "ingest.rwanda_bbox.min_lon": 28.85,
+    "ingest.rwanda_bbox.min_lat": -2.85,
+    "ingest.rwanda_bbox.max_lon": 30.91,
+    "ingest.rwanda_bbox.max_lat": -1.03,
+}
+
 
 # --- The real files ----------------------------------------------------------------------
 
@@ -148,7 +219,10 @@ def test_real_config_files_load():
 
 
 def test_settings_match_spec():
-    assert flatten(load_config().snapshot()["settings"]) == EXPECTED_SETTINGS
+    assert flatten(load_config().snapshot()["settings"]) == {
+        **EXPECTED_SETTINGS,
+        **EXPECTED_M1_SETTINGS,
+    }
 
 
 def test_pending_parameters_are_exactly_the_documented_list():

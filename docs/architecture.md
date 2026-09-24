@@ -16,14 +16,52 @@ SiteScout is a batch pipeline in Python that writes one JSON export, plus a fron
 | Export | §10 | M8 | `sitescout/export.py` | `data/export/sitescout.json` |
 | Front end | §10 | M8 | `app/` | renders the export |
 
-After Milestone 0 only `sitescout/config.py` and `sitescout/logging_setup.py` exist. Every other module is created in its own milestone.
+After Milestone 1, `sitescout/config.py`, `sitescout/logging_setup.py`, `sitescout/crs.py` and the `sitescout/ingest/` package exist. Every other module is created in its own milestone.
 
 ```text
-public sources -> data/raw/ -> ingest -> data/processed/ (GeoParquet, EPSG:4326)
+public sources -> data/raw/ -> ingest -> data/processed/ (GeoParquet in EPSG:4326, one GeoTIFF)
   -> candidates -> features -> scoring + confidence -> evaluation -> reports/evaluation.md
   -> network selection -> evidence + briefs -> export -> data/export/sitescout.json
   -> app/ (display only)
 ```
+
+## Milestone 1: ingestion
+
+```text
+config/settings.yaml (URLs, licences, tags, envelope)
+        |
+  fetch (network)          data/raw/<source_id>/<file> + source.json (SHA-256, retrieval time)
+        |
+  process (offline)        source checks -> clean / normalise -> CRS check -> layer checks
+        |
+  data/processed/<layer>.parquet | population_worldpop.tif  +  <layer>.meta.json
+        |
+  validate / read_layer    the same checks again, plus the content fingerprint
+```
+
+| Module | Responsibility |
+|---|---|
+| `sitescout/crs.py` | Parse and compare CRS; reproject to storage; project to the metric CRS for distances, lengths and areas; refuse anything that would measure in degrees |
+| `ingest/acquire.py` | Download each configured source into `data/raw/<source_id>/` with a manifest; reuse present files; fixed sources must not change, rolling changes are logged (D-016) |
+| `ingest/metadata.py` | Raw manifests, deterministic JSON, atomic writes, content fingerprints |
+| `ingest/schema.py` | Layer schemas and table checks: columns, types, required values, duplicate ids, empty tables |
+| `ingest/geometry.py` | Geometry checks: missing, empty, invalid, wrong type, out-of-range or outside-Rwanda coordinates; the one explicit repair for OSM areas |
+| `ingest/layers.py` | The schema of every processed vector layer; `write_layer` and `read_layer`, which validate on both sides |
+| `ingest/boundaries.py` | geoBoundaries ADM2 (master), province assignment, dissolved provinces and country |
+| `ingest/raster.py` | WorldPop GeoTIFF checks and the byte-identical processed copy |
+| `ingest/osm.py` | pyosmium extraction of roads, POIs, charging stations, power, water and protected areas |
+| `ingest/grid.py` | energydata.info transmission lines (grid-evidence cross-check) |
+| `ingest/chargers.py` | The hand-filled charger CSV, or a `missing` record when it does not exist |
+| `ingest/pipeline.py` | Runs fetch, process and validate per source; a failing source stops alone (D-025) |
+| `scripts/ingest.py` | Parses arguments and calls `ingest/pipeline.py` |
+
+Stage contracts in Milestone 1:
+
+- **Deterministic.** Processing reads only `data/raw/` and config. Rows are sorted by id, column types are fixed by the schema, and metadata has no processing timestamp, so the same raw files give byte-identical outputs. Retrieval times live in the raw manifests (D-016).
+- **Idempotent.** Outputs are replaced atomically, never appended to. A present raw file is not downloaded again. A source that fails, or becomes missing, leaves no stale output.
+- **Validated between stages.** Each processed layer is checked when it is written and again when it is read (D-022). Later stages read processed data only through `read_layer` and `read_population`.
+- **Nothing hidden.** Skipped, dropped or repaired features are counted in the layer metadata and logged (D-020). A missing source is `missing`, never an empty stand-in.
+- **CRS.** Stored in EPSG:4326. Lengths and areas in the layers (`area_km2`, `length_km`, `province_overlap_share`) are computed in EPSG:32735 (D-018).
 
 ## Rules every stage follows
 
@@ -54,9 +92,9 @@ public sources -> data/raw/ -> ingest -> data/processed/ (GeoParquet, EPSG:4326)
 
 ```text
 config/                 settings.yaml, weights.yaml
-src/sitescout/          config.py, logging_setup.py (later: one module per stage)
-scripts/                check_config.py (later: one entry point per stage)
-tests/                  pytest suite; synthetic fixtures, if any, go in tests/fixtures/
+src/sitescout/          config.py, logging_setup.py, crs.py, ingest/ (later: one module per stage)
+scripts/                check_config.py, ingest.py (later: one entry point per stage)
+tests/                  pytest suite; SYNTHETIC fixtures are built at test time by tests/synthetic.py
 docs/                   SPEC.md, architecture.md, decisions.md, data_sources.md
 data/                   raw/, manual/, processed/, export/ (gitignored, created by the pipeline)
 reports/                evaluation.md and site briefs (from Milestone 5)

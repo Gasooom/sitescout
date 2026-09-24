@@ -81,7 +81,13 @@ def test_no_committable_file_is_larger_than_5_mb():
     "path",
     [
         "data/raw/rwanda-latest.osm.pbf",
+        "data/raw/osm/rwanda-latest.osm.pbf",
+        "data/raw/osm/source.json",
+        "data/raw/worldpop/rwa_pop_2025_CN_100m_R2025A_v1.tif",
         "data/processed/candidates.parquet",
+        "data/processed/osm_roads.parquet",
+        "data/processed/admin_districts.meta.json",
+        "data/processed/population_worldpop.tif",
         "data/manual/chargers.csv",
         "data/export/sitescout.json",
         ".venv/pyvenv.cfg",
@@ -93,6 +99,26 @@ def test_no_committable_file_is_larger_than_5_mb():
 def test_data_environments_and_secrets_are_ignored(path):
     result = subprocess.run([_git(), "check-ignore", "-q", "--no-index", path], cwd=PROJECT_ROOT)
     assert result.returncode == 0, f"{path} is not ignored by .gitignore"
+
+
+def test_every_local_data_file_is_ignored_and_none_is_tracked():
+    """Whatever the pipeline has written under data/ must stay out of git."""
+    data = PROJECT_ROOT / "data"
+    files = [_relative(p) for p in data.rglob("*") if p.is_file()] if data.is_dir() else []
+    if files:
+        # NUL-separated bytes: text-mode pipes on Windows would turn "\n" into "\r\n".
+        result = subprocess.run(
+            [_git(), "check-ignore", "--no-index", "--stdin", "-z"],
+            cwd=PROJECT_ROOT,
+            input="\0".join(files).encode("utf-8"),
+            capture_output=True,
+        )
+        ignored = {name for name in result.stdout.decode("utf-8").split("\0") if name}
+        assert sorted(set(files) - ignored) == []
+    tracked = subprocess.run(
+        [_git(), "ls-files", "--", "data"], cwd=PROJECT_ROOT, capture_output=True, text=True
+    )
+    assert tracked.stdout == ""
 
 
 def test_no_dataset_files_outside_test_fixtures():
