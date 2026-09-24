@@ -10,6 +10,7 @@ bounds checks can pass; the features do not describe anything real. Names are pr
 from __future__ import annotations
 
 import io
+import json
 import zipfile
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -235,6 +236,7 @@ def osm_pbf(path: Path) -> Path:
     ways.append((108, ring(90, 30.02, -2.01), {"natural": "water", "water": "lake"}))
     ways.append((109, ring(110, 30.03, -2.01), {}))  # outer ring of relation 301
     ways.append((111, ring(120, 30.04, -2.01), {}))  # outer ring of relation 302
+    ways.append((114, ring(150, 30.05, -2.01), {"boundary": "national_park", "protect_class": "2"}))
     nodes.update({130: (30.06, -2.01), 131: (30.07, -2.02)})
     ways.append((112, [130, 131], {"amenity": "parking"}))  # open way: POIs take nodes/areas
     # A self-intersecting "bow-tie" ring tagged as water.
@@ -321,3 +323,154 @@ def install_all_raw(config: Config, raw_dir: Path, work: Path) -> None:
     install_raw(config, raw_dir, "worldpop", population_tif(work / "pop.tif").read_bytes())
     install_raw(config, raw_dir, "grid_transmission", transmission_zip(work))
     install_raw(config, raw_dir, "osm", osm_pbf(work / "synthetic.osm.pbf").read_bytes())
+
+
+# --- Candidate generation (Milestone 2) ---------------------------------------------------------
+# A SYNTHETIC world of two districts crossed by one straight trunk road along 1.95 S.
+# Along the trunk, corridor points fall about 5, 15, 25, 35, 45 and 55 km from its west end.
+
+TRUNK = shapely.LineString([(30.00, -1.95), (30.50, -1.95)])
+WATER_BOX = shapely.box(30.40, -1.96, 30.41, -1.94)  # covers the 5th corridor point
+PARK_BOX = shapely.box(30.48, -1.97, 30.52, -1.93)  # covers the 6th corridor point
+MALL_BOX = shapely.box(30.07, -1.903, 30.072, -1.902)
+INDUSTRIAL_BOX = shapely.box(30.30, -1.954, 30.305, -1.946)  # straddles the trunk
+
+_POI_TAGS = (
+    "amenity",
+    "shop",
+    "tourism",
+    "office",
+    "industrial",
+    "landuse",
+    "building",
+    "man_made",
+)
+
+
+def _poi(feature_id: str, geometry: shapely.Geometry, **tags: str) -> dict[str, Any]:
+    osm_type, osm_id = feature_id.split("/")
+    sockets = {k.replace("__", ":"): v for k, v in tags.items() if k.startswith("socket")}
+    row: dict[str, Any] = {"feature_id": feature_id, "osm_type": osm_type, "osm_id": int(osm_id)}
+    row.update({key: tags.get(key) for key in _POI_TAGS})
+    row["socket_tags"] = json.dumps(sockets, sort_keys=True) if sockets else None
+    row["geometry_repaired"] = False
+    polygonal = geometry.geom_type == "Polygon"
+    row["geometry"] = shapely.MultiPolygon([geometry]) if polygonal else geometry
+    return row
+
+
+def candidate_pois() -> list[dict[str, Any]]:
+    """SYNTHETIC POIs: hosts, non-hosts and chargers."""
+    point = shapely.Point
+    return [
+        _poi("node/10", point(30.080, -1.9010), amenity="fuel"),
+        _poi("node/11", point(30.081, -1.9012), tourism="hotel"),  # 115 m from node/10
+        _poi("node/12", point(30.020, -1.9010), shop="supermarket"),
+        _poi("node/13", point(30.030, -1.9010), amenity="restaurant"),  # never a host
+        _poi("node/14", point(30.021, -1.9010), amenity="charging_station", socket__type2="2"),
+        _poi("node/15", point(30.050, -1.9005), amenity="fuel", socket__type2="1"),
+        _poi("way/16", MALL_BOX, shop="mall"),
+        _poi("node/17", point(30.350, -2.0490), tourism="hotel"),  # only a track nearby
+        _poi("way/18", INDUSTRIAL_BOX, landuse="industrial"),
+        _poi("node/19", point(30.600, -1.9500), amenity="fuel"),  # outside the country
+        _poi("node/20", point(30.137, -1.9535), amenity="fuel"),  # 390 m off the trunk
+    ]
+
+
+def _road(osm_id: int, highway: str, line: shapely.LineString) -> dict[str, Any]:
+    return {
+        "feature_id": f"way/{osm_id}",
+        "osm_type": "way",
+        "osm_id": osm_id,
+        "highway": highway,
+        "ref": None,
+        "surface": None,
+        "access": None,
+        "motor_vehicle": None,
+        "geometry": line,
+    }
+
+
+def candidate_roads() -> list[dict[str, Any]]:
+    return [
+        _road(1, "trunk", TRUNK),
+        _road(2, "residential", shapely.LineString([(30.00, -1.90), (30.10, -1.90)])),
+        _road(3, "track", shapely.LineString([(30.30, -2.05), (30.40, -2.05)])),
+    ]
+
+
+def write_candidate_world(
+    processed: Path,
+    settings: Any,
+    *,
+    pois: list[dict[str, Any]] | None = None,
+    roads: list[dict[str, Any]] | None = None,
+) -> None:
+    """Write the SYNTHETIC M1 layers candidate generation reads into ``processed``."""
+    from sitescout.ingest.layers import LAYERS, empty_frame, write_layer
+
+    def frame(rows: list[dict[str, Any]], name: str) -> gpd.GeoDataFrame:
+        if not rows:
+            return empty_frame(LAYERS[name], "EPSG:4326")
+        return gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:4326")
+
+    districts = [
+        {
+            "district_id": "SYN-D1",
+            "district_name": "SYNTHETIC District 1",
+            "province_code": "RW-91",
+            "province_name": "SYNTHETIC West Province",
+            "province_overlap_share": 1.0,
+            "area_km2": 1.0,
+            "geometry": shapely.MultiPolygon([shapely.box(29.95, -2.10, 30.25, -1.80)]),
+        },
+        {
+            "district_id": "SYN-D2",
+            "district_name": "SYNTHETIC District 2",
+            "province_code": "RW-92",
+            "province_name": "SYNTHETIC East Province",
+            "province_overlap_share": 1.0,
+            "area_km2": 1.0,
+            "geometry": shapely.MultiPolygon([shapely.box(30.25, -2.10, 30.55, -1.80)]),
+        },
+    ]
+    country = [
+        {
+            "country_iso3": "RWA",
+            "district_count": 2,
+            "province_count": 2,
+            "area_km2": 2.0,
+            "geometry": shapely.MultiPolygon([shapely.box(29.95, -2.10, 30.55, -1.80)]),
+        }
+    ]
+    water = [
+        {
+            "feature_id": "way/40",
+            "osm_type": "way",
+            "osm_id": 40,
+            "water": "lake",
+            "geometry_repaired": False,
+            "geometry": shapely.MultiPolygon([WATER_BOX]),
+        }
+    ]
+    parks = [
+        {
+            "feature_id": "relation/50",
+            "osm_type": "relation",
+            "osm_id": 50,
+            "boundary": "national_park",
+            "protect_class": "2",
+            "geometry_repaired": False,
+            "geometry": shapely.MultiPolygon([PARK_BOX]),
+        }
+    ]
+    layers = {
+        "admin_districts": districts,
+        "admin_country": country,
+        "osm_pois": candidate_pois() if pois is None else pois,
+        "osm_roads": candidate_roads() if roads is None else roads,
+        "osm_water": water,
+        "osm_protected_areas": parks,
+    }
+    for name, rows in layers.items():
+        write_layer(frame(rows, name), LAYERS[name], processed, settings, sources=[])

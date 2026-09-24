@@ -16,7 +16,7 @@ SiteScout is a batch pipeline in Python that writes one JSON export, plus a fron
 | Export | §10 | M8 | `sitescout/export.py` | `data/export/sitescout.json` |
 | Front end | §10 | M8 | `app/` | renders the export |
 
-After Milestone 1, `sitescout/config.py`, `sitescout/logging_setup.py`, `sitescout/crs.py` and the `sitescout/ingest/` package exist. Every other module is created in its own milestone.
+After Milestone 2, `sitescout/config.py`, `sitescout/logging_setup.py`, `sitescout/crs.py`, the `sitescout/ingest/` package and `sitescout/candidates.py` exist. Every other module is created in its own milestone.
 
 ```text
 public sources -> data/raw/ -> ingest -> data/processed/ (GeoParquet in EPSG:4326, one GeoTIFF)
@@ -63,6 +63,27 @@ Stage contracts in Milestone 1:
 - **Nothing hidden.** Skipped, dropped or repaired features are counted in the layer metadata and logged (D-020). A missing source is `missing`, never an empty stand-in.
 - **CRS.** Stored in EPSG:4326. Lengths and areas in the layers (`area_km2`, `length_km`, `province_overlap_share`) are computed in EPSG:32735 (D-018).
 
+## Milestone 2: candidate generation
+
+```text
+data/processed/ (admin_districts, admin_country, osm_pois, osm_roads, osm_water,
+                 osm_protected_areas; each read through read_layer)
+  -> hosts (host_osm_tags, priority)          -> corridor points (trunk/primary, 10 km)
+  -> snap corridor points to hosts (2 km)     -> deduplicate (300 m, host priority)
+  -> filters (500 m drivable road, water, protected areas incl. national parks)
+  -> district and province                    -> 595 eligible candidates
+  -> budget (D-031): ADM2 quotas (largest remainder) + priority-ordered spacing -> 300
+  -> data/processed/candidates_eligible.parquet (all, with `selected`)
+     data/processed/candidates.parquet (the 300), or a stop with CandidateBudgetError
+```
+
+| Module | Responsibility |
+|---|---|
+| `sitescout/candidates.py` | Every step above (D-029, D-031). Metric work in EPSG:32735 through `sitescout.crs`; output in EPSG:4326 through `write_layer`. |
+| `scripts/candidates.py` | Loads the config and calls `run_candidates`; exit code 1 when generation stops |
+
+Candidate generation reads processed layers only, uses no randomness and never reads the existing chargers. The same processed layers give byte-identical output (tested). The `candidates` schema lives with the other layer schemas in `ingest/layers.py`, so later stages read it through `read_layer`.
+
 ## Rules every stage follows
 
 - **Configuration.** Stages receive a loaded `Config` object. They never read `config/` files or environment variables themselves.
@@ -92,8 +113,8 @@ Stage contracts in Milestone 1:
 
 ```text
 config/                 settings.yaml, weights.yaml
-src/sitescout/          config.py, logging_setup.py, crs.py, ingest/ (later: one module per stage)
-scripts/                check_config.py, ingest.py (later: one entry point per stage)
+src/sitescout/          config.py, logging_setup.py, crs.py, ingest/, candidates.py (later: one module per stage)
+scripts/                check_config.py, ingest.py, candidates.py (later: one entry point per stage)
 tests/                  pytest suite; SYNTHETIC fixtures are built at test time by tests/synthetic.py
 docs/                   SPEC.md, architecture.md, decisions.md, data_sources.md
 data/                   raw/, manual/, processed/, export/ (gitignored, created by the pipeline)

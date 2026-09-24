@@ -11,7 +11,7 @@ data file, so later stages see "unknown", never an empty layer standing in for r
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -188,7 +188,9 @@ OSM_WATER = _osm(
 
 OSM_PROTECTED_AREAS = _osm(
     "osm_protected_areas",
-    "OSM boundary=protected_area areas (SPEC §2; WDPA is not used).",
+    "OSM boundary=protected_area and boundary=national_park areas (SPEC §2, D-026; WDPA is "
+    "not used).",
+    Column("boundary", "string", True, "OSM boundary value: protected_area or national_park."),
     Column("protect_class", "string", False, "OSM protect_class tag."),
     _REPAIRED,
     types={MULTIPOLYGON},
@@ -226,6 +228,64 @@ CHARGERS_MANUAL = LayerSchema(
     sort_by=("charger_id",),
 )
 
+CANDIDATES = LayerSchema(
+    name="candidates",
+    description="Candidate charging sites generated in code from OSM hosts and trunk/primary "
+    "road corridors (SPEC §3, Milestone 2). Generic labels only; no business names.",
+    id_column="candidate_id",
+    columns=(
+        Column(
+            "candidate_id",
+            "string",
+            True,
+            "'cand-' + first 12 hex of SHA-256 of the host's OSM id, or of 'lat,lon' for a "
+            "corridor point without a host.",
+        ),
+        Column("lat", "float64", True, "Latitude, EPSG:4326."),
+        Column("lon", "float64", True, "Longitude, EPSG:4326."),
+        Column("host_name", "string", True, "Generic label: host type and district."),
+        Column(
+            "host_type",
+            "string",
+            True,
+            "fuel, mall, supermarket, logistics, industrial, hotel or none.",
+        ),
+        Column("host_osm_id", "string", False, "OSM id of the host as type/id; null if none."),
+        Column("origin", "string", True, "host, corridor_snapped or corridor."),
+        Column("merged_count", "int64", True, "Candidates within 300 m merged into this one."),
+        Column("district_id", "string", True, "admin_districts.district_id."),
+        Column("district", "string", True, "District name."),
+        Column("province_code", "string", True, "ISO 3166-2 province code."),
+        Column("province", "string", True, "Province name."),
+        Column("nearest_road_class", "string", True, "highway value of the nearest drivable road."),
+        Column(
+            "dist_road_m",
+            "float64",
+            True,
+            "Distance to the nearest drivable road, metres, EPSG:32735.",
+        ),
+        Column(
+            "profile",
+            "string",
+            False,
+            "urban or corridor; null until the profile rule is decided (pending, D-030).",
+        ),
+    ),
+    geometry_types=frozenset({POINT}),
+    sort_by=("candidate_id",),
+)
+
+CANDIDATES_ELIGIBLE = replace(
+    CANDIDATES,
+    name="candidates_eligible",
+    description="Every eligible candidate before the candidate budget (SPEC §3 rules, D-029), "
+    "with the budget's choice in `selected` (D-031). Kept so the full universe stays auditable.",
+    columns=(
+        *CANDIDATES.columns,
+        Column("selected", "bool", True, "True if the candidate budget kept it (D-031)."),
+    ),
+)
+
 LAYERS: dict[str, LayerSchema] = {
     schema.name: schema
     for schema in (
@@ -240,6 +300,8 @@ LAYERS: dict[str, LayerSchema] = {
         OSM_PROTECTED_AREAS,
         GRID_TRANSMISSION,
         CHARGERS_MANUAL,
+        CANDIDATES,
+        CANDIDATES_ELIGIBLE,
     )
 }
 

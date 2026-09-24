@@ -95,6 +95,9 @@ sources:
     grid: "power=*"
     water: "natural=water"
     protected_area: "boundary=protected_area"
+    # SPEC §3 excludes protected areas; OSM also tags national parks (Nyungwe, Volcanoes)
+    # boundary=national_park, with an IUCN protect_class. Same rule, same source (D-026).
+    national_park: "boundary=national_park"
     # Milestone 1 extraction scope (D-019). Roads keep every highway value: the drivable
     # classes are decided in M2. POIs are a broad superset of tagged places, not host types:
     # host classification is decided in M2 (candidates.host_osm_tags).
@@ -134,6 +137,11 @@ candidates:
   target_count:
     min: 200
     max: 400
+  # Candidate budget (D-031, decided by Gasim on 2026-09-24): the eligible candidates are
+  # reduced to exactly this many by ADM2 district quotas and priority-ordered spacing. It
+  # must lie within target_count.
+  budget:
+    size: 300
   host_types: [fuel, mall, supermarket, logistics, industrial, hotel]
   dedup:
     radius_m: 300
@@ -145,15 +153,38 @@ candidates:
   filters:
     max_road_distance_m: 500
     exclude_areas: [water, protected_area]
+  # Decided 2026-09-24 (D-027). Standard OSM tags per host type; each must fall inside the
+  # M1 POI extraction scope (sources.osm_tags.pois). No restaurants.
   host_osm_tags:
-    pending: "SPEC §3 names the host types but not the OSM tags that identify them. Decide in M2."
+    fuel: ["amenity=fuel"]
+    mall: ["shop=mall"]
+    supermarket: ["shop=supermarket"]
+    logistics: ["building=warehouse", "industrial=depot", "industrial=intermodal_freight_terminal"]
+    industrial: ["landuse=industrial", "man_made=works"]
+    hotel: ["tourism=hotel"]
+  # Decided 2026-09-24 (D-028): OSM highway values for car roads; tracks, paths and footways
+  # are not drivable here.
   drivable_road_classes:
-    pending: "SPEC §3 drops points more than 500 m from a drivable road but does not list the road classes. Decide in M2."
+    - motorway
+    - motorway_link
+    - trunk
+    - trunk_link
+    - primary
+    - primary_link
+    - secondary
+    - secondary_link
+    - tertiary
+    - tertiary_link
+    - unclassified
+    - residential
+    - living_street
+    - service
+    - road
   profile:
     town_radius_m:
-      pending: "SPEC §3 says the urban radius around a town or city centre lives in config but gives no value. Decide in M2."
+      pending: "SPEC §3 says the urban radius around a town or city centre lives in config but gives no value. Deferred from M2 on 2026-09-24 (D-030): profile is first used in scoring. Decide in M4."
     kigali_radius_m:
-      pending: "SPEC §3 says the urban radius is larger for Kigali but gives no value. Decide in M2."
+      pending: "SPEC §3 says the urban radius is larger for Kigali but gives no value. Deferred from M2 on 2026-09-24 (D-030). Decide in M4."
 
 # SPEC §4
 features:
@@ -162,7 +193,7 @@ features:
   charger_count_radii_m: [10000, 25000]
   reported_only: [dist_town_m, dist_kigali_cbd_m, elevation, slope]
   town_centres:
-    pending: "SPEC §3 and §4 use a town or city centre (profile rule, dist_town_m) without saying which places count. Decide in M2."
+    pending: "SPEC §3 and §4 use a town or city centre (profile rule, dist_town_m) without saying which places count. Deferred from M2 on 2026-09-24 (D-030). Decide in M4."
   kigali_cbd:
     pending: "SPEC §4 uses the Kigali CBD for dist_kigali_cbd_m without defining its location. Decide in M3."
   poi_types:

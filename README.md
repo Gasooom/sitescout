@@ -4,7 +4,7 @@
 
 SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
 
-> **Status:** Milestone 1 (data ingestion) is implemented and awaiting review. The pipeline ingests and validates the public sources; it has not produced any candidates, scores or results yet.
+> **Status:** Milestone 1 (data ingestion) is complete. Milestone 2 (candidate generation) is implemented and in review: the specification's rules give 595 eligible candidates from current OpenStreetMap data, and a deterministic budget selects 300 of them by district quota and spacing. No candidates, scores or results have been published.
 
 ## What it answers
 
@@ -56,6 +56,7 @@ Requires [uv](https://docs.astral.sh/uv/), which installs Python 3.12 if needed.
 uv sync
 uv run python scripts/check_config.py
 uv run python scripts/ingest.py all
+uv run python scripts/candidates.py
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest -q
@@ -79,8 +80,8 @@ data/      local data, never committed (raw, manual, processed, export)
 | # | Milestone | Status |
 |---|---|---|
 | 0 | Repository setup and architecture | done |
-| 1 | Data ingestion and geospatial pipeline | in review |
-| 2 | Candidate generation | not started |
+| 1 | Data ingestion and geospatial pipeline | done |
+| 2 | Candidate generation | in review |
 | 3 | Feature engineering | not started |
 | 4 | Scoring and confidence | not started |
 | 5 | Evaluation | not started |

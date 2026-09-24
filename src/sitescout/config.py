@@ -267,6 +267,7 @@ class OsmTags(_Model):
     grid: OsmTag
     water: OsmTag
     protected_area: OsmTag
+    national_park: OsmTag
     roads: OsmTag
     pois: Annotated[tuple[OsmTag, ...], Field(min_length=1), AfterValidator(_no_duplicates)]
 
@@ -319,6 +320,12 @@ class IngestSettings(_Model):
     rwanda_bbox: BoundingBox
 
 
+class CandidateBudget(_Model):
+    """How many candidates the budget stage selects from the eligible ones (D-031)."""
+
+    size: Count
+
+
 class TargetCount(_Model):
     min: Count
     max: Count
@@ -362,20 +369,63 @@ class ProfileRule(_Model):
         return self
 
 
+OsmTagList = Annotated[tuple[OsmTag, ...], Field(min_length=1), AfterValidator(_no_duplicates)]
+
+
+class HostOsmTags(_Model):
+    """The OSM tags that identify each SPEC §3 host type (D-027)."""
+
+    fuel: OsmTagList
+    mall: OsmTagList
+    supermarket: OsmTagList
+    logistics: OsmTagList
+    industrial: OsmTagList
+    hotel: OsmTagList
+
+    @model_validator(mode="after")
+    def _each_tag_names_one_host_type(self) -> Self:
+        seen: dict[str, str] = {}
+        for host_type in type(self).model_fields:
+            for tag in getattr(self, host_type):
+                if tag in seen:
+                    raise ValueError(f"{tag!r} is listed for both {seen[tag]} and {host_type}")
+                seen[tag] = host_type
+        return self
+
+
 class CandidateSettings(_Model):
     target_count: TargetCount
+    budget: CandidateBudget
     host_types: Annotated[tuple[HostType, ...], Field(min_length=1), AfterValidator(_no_duplicates)]
     dedup: DedupSettings
     corridor: CorridorSettings
     filters: CandidateFilters
-    host_osm_tags: Pending
-    drivable_road_classes: Pending
+    host_osm_tags: HostOsmTags
+    drivable_road_classes: Annotated[
+        tuple[OsmValue, ...], Field(min_length=1), AfterValidator(_no_duplicates)
+    ]
     profile: ProfileRule
 
     @model_validator(mode="after")
     def _priority_lists_every_host_type(self) -> Self:
         if set(self.dedup.host_priority) != {*self.host_types, "none"}:
             raise ValueError("dedup.host_priority must list every host type and 'none' once")
+        return self
+
+    @model_validator(mode="after")
+    def _budget_within_target(self) -> Self:
+        target, size = self.target_count, self.budget.size
+        if not target.min <= size <= target.max:
+            raise ValueError(
+                f"budget.size {size} must lie within target_count {target.min}-{target.max}"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _corridor_roads_are_drivable(self) -> Self:
+        missing = set(self.corridor.road_classes) - set(self.drivable_road_classes)
+        if missing:
+            raise ValueError(f"corridor road classes {sorted(missing)} are not drivable classes")
         return self
 
 
@@ -695,6 +745,24 @@ def _check_across_files(settings: Settings, weights: Weights) -> None:
             "The host-type bonus table in weights.yaml must cover exactly the host types in "
             "settings.yaml, plus 'none'"
         )
+    if set(HostOsmTags.model_fields) != set(settings.candidates.host_types):
+        raise ConfigError("candidates.host_osm_tags must cover exactly candidates.host_types")
+    uncovered = [
+        tag
+        for host_type in HostOsmTags.model_fields
+        for tag in getattr(settings.candidates.host_osm_tags, host_type)
+        if not _within_extraction_scope(tag, settings.sources.osm_tags.pois)
+    ]
+    if uncovered:
+        raise ConfigError(
+            f"Host tags {uncovered} are not extracted into osm_pois (sources.osm_tags.pois)"
+        )
+
+
+def _within_extraction_scope(tag: str, scope: tuple[str, ...]) -> bool:
+    """True if an OSM ``key=value`` tag is selected by one of the ``scope`` selectors."""
+    key, _, value = tag.partition("=")
+    return f"{key}=*" in scope or f"{key}={value}" in scope
 
 
 def _find_pending(model: BaseModel, prefix: str) -> dict[str, str]:

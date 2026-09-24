@@ -240,6 +240,72 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Stopping the whole run at the first failure; keeping old outputs after a failure.
 - **Reason:** SPEC §2: stop and report rather than substitute. Keeping an old output after its source failed would let a later stage read data that no longer matches the raw files.
 
+## D-026: National parks are protected areas
+
+- **Date:** 2026-09-24 (Milestone 2)
+- **Decision:** `osm_protected_areas` selects `boundary=national_park` as well as `boundary=protected_area` (`sources.osm_tags.national_park`), with a `boundary` column recording which tag each area has. The candidate filter's protected-area exclusion therefore covers Nyungwe and Volcanoes National Parks. Features tagged only `leisure=nature_reserve` are not added.
+- **Alternatives:** Keeping `boundary=protected_area` only; adding every `leisure=nature_reserve`; WDPA (its terms forbid redistribution, SPEC §2).
+- **Reason:** SPEC §3's rule is to drop candidates "inside water or protected areas", and SPEC §2 names OpenStreetMap as the protected-area source. In OSM, `boundary=national_park` is an alternative tag for the same category: both Rwandan national parks carry `protect_class` 2 and 4, the IUCN protected-area categories that `boundary=protected_area` uses. Including them applies the existing rule to the existing source; it adds no new rule and does not change SPEC.md. In the 2026-09-23 extract, the two parks cover 1,028.7 km² (Nyungwe) and 159.5 km² (Volcanoes) inside Rwanda, and a trunk road runs through Nyungwe. `leisure=nature_reserve` alone is a different OSM concept with no protect_class, covering about 0.1 km² inside Rwanda, so it is left out. Resolves the Milestone 1 open question.
+
+## D-027: OSM tags for each host type
+
+- **Date:** 2026-09-24 (Milestone 2, chosen by Gasim from the options presented)
+- **Decision:** `candidates.host_osm_tags`:
+  - fuel: `amenity=fuel`
+  - mall: `shop=mall`
+  - supermarket: `shop=supermarket`
+  - logistics: `building=warehouse`, `industrial=depot`, `industrial=intermodal_freight_terminal`
+  - industrial: `landuse=industrial`, `man_made=works`
+  - hotel: `tourism=hotel`
+
+  A POI matching several host types takes the highest in `dedup.host_priority`. Config checks that every tag appears under one host type only and falls inside the M1 POI extraction scope. Restaurants, charging stations and other amenities are never hosts.
+- **Alternatives:** Adding `building=industrial` (449 individual buildings, which gives more candidates still); adding motels, guest houses, department stores or convenience shops.
+- **Reason:** SPEC §3 names the six host types but not their tags. These are the standard OSM tags for each type. On the 2026-09-23 extract they select 689 hosts: fuel 173, hotel 280, industrial 137, supermarket 80, mall 14, logistics 5. 17 of them lie outside Rwanda.
+
+## D-028: Drivable road classes
+
+- **Date:** 2026-09-24 (Milestone 2, chosen by Gasim)
+- **Decision:** `candidates.drivable_road_classes` are the OSM car-road values: motorway, trunk, primary, secondary and tertiary (with their `_link` roads), unclassified, residential, living_street, service and road. Tracks, paths, footways, steps, pedestrian ways, cycleways and roads under construction are not drivable. Config checks that the corridor road classes are drivable.
+- **Alternatives:** Adding `highway=track` (3,076 km of mostly unpaved rural tracks).
+- **Reason:** SPEC §3 drops points more than 500 m from a drivable road without listing the classes. A charging site needs access by car.
+
+## D-029: Candidate generation method
+
+- **Date:** 2026-09-24 (Milestone 2)
+- **Decision:** `sitescout/candidates.py` follows SPEC §3 in order: hosts, corridor points, snapping, deduplication, filters. Where SPEC is silent:
+  - **Host location:** a node's own point, or for an area a point on its surface (computed in EPSG:32735, so it is inside the area). Hosts outside the Rwanda outline (`admin_country`) are left out before snapping, so no candidate can move abroad.
+  - **Corridor points:** the trunk and primary network is clipped to Rwanda, noded and merged into chains between junctions. Points sit at 5 km, 15 km, 25 km, … along each chain (half a spacing from each junction), so consecutive points are 10 km apart along a chain and across a junction. A chain shorter than 5 km gets no point. Dual carriageways give near-duplicate points, which deduplication merges.
+  - **Snapping:** to the nearest host within 2 km, of any host type; ties go to the lower OSM id. The candidate then sits at the host's point.
+  - **Deduplication:** greedy and not transitive. Candidates are taken in host-priority order (SPEC §3), then host before snapped corridor point, then candidate id; each is kept unless a kept candidate lies within 300 m. `merged_count` records how many it absorbed. A clustering alternative would collapse a street of hotels 250 m apart into one candidate.
+  - **Filters** run after deduplication, as SPEC §3 orders them. The number of candidates absorbed by a candidate that was later filtered out is recorded (`merged_into_dropped`; 0 on real data).
+  - **Output:** `candidate_id` is derived from the host's OSM id, or from the coordinates of a corridor point without a host. `host_name` is a generic label with the district, e.g. "Fuel station, Gasabo" (D-012); the sector name in D-012's example is not in any ingested source. District and province come from `admin_districts`; a point on a shared edge takes the lowest district id. No randomness is used.
+  - Existing chargers are not read, so no candidate is dropped for being near one (CLAUDE.md).
+- **Alternatives:** Points from each chain's start (0 km, 10 km, …); spreading points evenly per chain; clustering deduplication; filtering before deduplication.
+- **Reason:** Each choice keeps SPEC §3's numbers (10 km, 2 km, 300 m, 500 m) and order, is deterministic and is tested.
+
+## D-030: The count stops the run; the profile is deferred to M4
+
+- **Date:** 2026-09-24 (Milestone 2, chosen by Gasim)
+- **Decision:**
+  - When the number of candidates is outside `candidates.target_count` (200 to 400), the run logs the full breakdown, removes any old candidates layer, writes nothing and exits with CandidateCountError. Since D-031 this check applies to the budget's selection, and the budget itself stops the run when too few candidates are eligible.
+  - The profile rule's parameters (`candidates.profile.town_radius_m`, `candidates.profile.kigali_radius_m`, `features.town_centres`) stay pending and move to M4, where the profile is first used for scoring. Until then `profile` is null in the candidates layer.
+- **Alternatives:** Keeping all candidates and warning; a selection rule chosen by the implementer; radii and town centres proposed without a source.
+- **Reason:** SPEC §3's own rules give 595 candidates on the 2026-09-23 extract. SPEC and CLAUDE.md require 200 to 400 but give no rule for choosing among them. Limiting hosts to those within 2 km of a trunk or primary road still gave about 511 in an exploratory run. CLAUDE.md: flag an inconsistency in the specification rather than force the numbers. The profile radii have no value in SPEC, and inventing them is not allowed.
+
+## D-031: Candidate budget: 300 of the eligible candidates, by district quota and spacing
+
+- **Date:** 2026-09-24 (Milestone 2, specified and approved by Gasim)
+- **Decision:** After every SPEC §3 step (generation, snapping, deduplication, road, water and protected-area filters), a budget stage selects exactly `candidates.budget.size` = 300 candidates. Config checks that the budget lies within `target_count` (200 to 400).
+  1. **Quotas.** The 300 seats are shared among the ADM2 districts in proportion to each district's eligible candidates: floor(300 × n / N) each, with the seats left over going to the largest remainders and equal remainders to the lower `district_id`. The arithmetic is exact integers. The allocation unit (ADM2) is fixed, not a parameter.
+  2. **Order within a district:** host priority (SPEC §3), then origin (host, corridor_snapped, corridor), then `candidate_id`.
+  3. **Spacing.** For each district, the district's own pairwise distances (EPSG:32735) are tried from largest to smallest. The first radius at which greedy spacing keeps at least the quota is used; greedy spacing walks the order and keeps a candidate unless an already-kept one is within the radius. If that keeps more than the quota, the first ones in order are taken. No binary search over a continuous range is used.
+  4. Fewer eligible candidates than the budget stops the run with CandidateBudgetError and writes nothing.
+  5. `candidates_eligible` keeps every eligible candidate with a `selected` flag; `candidates` holds the 300. Both metadata files record the eligible and selected counts, the target, each district's quota, selected count and radius, and the method.
+
+  Spacing is not enforced across district borders. Hostless candidates are kept; no host requirement is added. The budget reads no chargers, population, demand, grid evidence, feature or score, and uses no randomness. That it can incidentally remove candidates near existing chargers is accepted.
+- **Alternatives:** Loosening the 200 to 400 range, removing hotels or corridor points, or corridor points on trunk roads only (all rejected by Gasim); a 5 km or 10 km grid round-robin (in a simulation the City of Kigali fell from 23% of candidates to 6% or 4%); district quotas with pure priority inside each district (no spread within a district); random sampling.
+- **Reason:** SPEC §3's rules give 595 eligible candidates on the 2026-09-23 extract, and SPEC and CLAUDE.md require 200 to 400. 300 sits well inside the range. Proportional district quotas keep the eligible universe's geographic distribution; spacing spreads each district's candidates; host priority decides when candidates compete, as in deduplication. The 595 remain auditable. SPEC.md is not changed.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -251,17 +317,14 @@ These need a decision before or during the milestone named. None has a default.
 - `rwanda-latest.osm.pbf` changing over time: D-016.
 - The distortion of EPSG:32735 east of 30°E: D-018 (at most +0.199%).
 - `charger_match_radius_m`: still pending, moved to M3 (D-024).
+- National parks tagged `boundary=national_park`: D-026 (Milestone 2).
 
 ### Milestone 2
 
-- `boundary=protected_area` misses Nyungwe and Volcanoes National Parks, which OSM tags `boundary=national_park` (checked on the 2026-09-23 extract). SPEC §2 names only `boundary=protected_area`. Should the candidate filter also use `boundary=national_park`? That would be a change to the SPEC tag list, so it needs Gasim's decision.
-- `osm_protected_areas` also holds cross-border areas that only touch Rwanda. The candidate filter should test against the area geometry, so this matters only for reporting.
-- Which OSM tags identify each host type (`candidates.host_osm_tags`, pending) and which road classes are drivable (`candidates.drivable_road_classes`, pending). `osm_pois` and `osm_roads` hold the superset these choices select from (D-019).
-- `dist_town_m` assigns the profile, while CLAUDE.md says it is never scored. Proposed reading: never a weighted input, but allowed for assigning the profile.
-- Deduplication keeps an industrial site over a hotel, yet the hotel's bonus is 5 points and the industrial site's is 0.
-- SPEC §3 says a site without a host cannot be investigated, but keeps corridor points without a host. Should those be eligible for the 30?
-- If generation gives fewer than 200 or more than 400 candidates, the run stops with an error until a rule is decided.
-- Fuel stations tagged `socket:*` stay candidates in backtest mode; only their charger-related attributes are removed.
+- Resolved: the candidate count. SPEC §3's rules give 595 eligible candidates, above the 200 to 400 target; the candidate budget selects 300 (D-031).
+- Deduplication keeps an industrial site over a hotel (SPEC §3 order), yet the hotel's bonus is 5 points and the industrial site's is 0. The SPEC order is implemented as written.
+- Fuel stations tagged `socket:*` stay candidates in backtest mode; only their charger-related attributes are removed. No fuel station carries a `socket:*` tag on the 2026-09-23 extract.
+- Resolved in Milestone 2: national parks (D-026), host tags (D-027), drivable classes (D-028). `osm_protected_areas` also holds cross-border areas that only touch Rwanda; the filter tests the area geometry, so they matter only where they overlap Rwanda.
 
 ### Milestone 3
 
@@ -272,6 +335,8 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 4
 
+- The profile rule (D-030): which places are town or city centres (`features.town_centres`), the town radius and the Kigali radius. OSM has 11 `place=city` and 99 `place=town` nodes; they are not extracted yet.
+- `dist_town_m` assigns the profile, while CLAUDE.md says it is never scored. Proposed reading: never a weighted input, but allowed for assigning the profile.
 - Applying log1p before a percentile rank does not change any rank, because log1p preserves order. Keep the step, drop it, or use it somewhere else?
 - Does "percentile rank within Rwanda" rank a candidate among the candidates or against a national reference?
 - In backtest mode the charging-gap component is the same for every candidate. Its value depends on tie handling and on how "no charger" distances are stored. Because urban weights this component at 0.15 and corridor at 0.25, that value shifts corridor scores against urban ones by up to 10 points.
@@ -286,6 +351,7 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 6
 
+- SPEC §3 says a site without a host cannot be investigated, but keeps corridor points without a host (218 on real data). Should those be eligible for the 30?
 - Is the top-50% eligibility cut taken across all candidates or within each profile?
 - SPEC §8 calls sⱼ a "normalized site score" without defining it. Proposal: score / 100, since min-max normalization is not allowed.
 - In production mode, is demand renormalized to sum to 1 after demand near existing chargers is down-weighted?

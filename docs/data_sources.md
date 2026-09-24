@@ -36,10 +36,10 @@ uv run python scripts/ingest.py validate   # re-check existing outputs only
 - **Known gaps:**
   - Mapping completeness varies by district; grid-layer completeness is measured by district in M3 (SPEC §4).
   - Only 7 `amenity=charging_station` objects are mapped (6 nodes, 1 way); 4 carry `socket:*` tags. No fuel station carries a `socket:*` tag.
-  - Nyungwe and Volcanoes National Parks are tagged `boundary=national_park`, not the `boundary=protected_area` that SPEC §2 names, so they are **not** in `osm_protected_areas`. Akagera National Park is tagged `boundary=protected_area` and is included. Whether to add `boundary=national_park` is an open question for M2 ([decisions.md](decisions.md)).
+  - Nyungwe and Volcanoes National Parks are tagged `boundary=national_park`, not `boundary=protected_area`. Since Milestone 2 both tags feed `osm_protected_areas` (D-026). Akagera is tagged `boundary=protected_area`. Gishwati is not mapped as a protected area at all; only the Mukura Forest Reserve is. Features tagged only `leisure=nature_reserve` (about 0.1 km² inside Rwanda) are not included.
   - Two `power` values are not OSM power types (`150kWh`, `11 kWh`). They are kept as mapped; which values count as grid evidence is decided in M3 (`features.grid_osm_tags`).
   - The extract includes features that cross the border. Features wholly outside the Rwanda envelope (253 `power` towers and portals, 1 water area) are dropped and counted (D-020).
-  - Two `boundary=protected_area` relations outside Rwanda (in Uganda and Tanzania) are cut by the extract and cannot be assembled into areas; they are counted in the layer metadata.
+  - Three protected-area relations outside Rwanda (in Uganda, Tanzania and, since D-026, Virunga National Park in the DR Congo) are cut by the extract and cannot be assembled into areas; they are counted in the layer metadata.
 
 ### WorldPop
 
@@ -224,13 +224,14 @@ The WorldPop GeoTIFF, validated and copied **byte for byte** (it is not converte
 
 ### `osm_protected_areas`
 
-7 `boundary=protected_area` areas (`MultiPolygon`), including Akagera National Park and cross-border areas that touch Rwanda. Nyungwe and Volcanoes National Parks are **not** included (see Known gaps above). WDPA is not used (its terms forbid redistribution).
+`boundary=protected_area` and `boundary=national_park` areas (`MultiPolygon`, D-026): Akagera, Nyungwe and Volcanoes National Parks, the Mukura Forest Reserve, and cross-border areas that touch Rwanda. WDPA is not used (its terms forbid redistribution).
 
 | Column | Type | Required | Meaning |
 |---|---|---|---|
 | `feature_id` | string | yes | OSM object as type/id |
 | `osm_type` | string | yes | way or relation |
 | `osm_id` | int64 | yes | OSM id |
+| `boundary` | string | yes | OSM `boundary` value: `protected_area` or `national_park` |
 | `protect_class` | string | no | OSM `protect_class` |
 | `geometry_repaired` | bool | yes | See `osm_pois` |
 
@@ -259,6 +260,55 @@ Built from `data/manual/chargers.csv` when it exists. **Missing on 2026-09-24.**
 | `date_retrieved` | string | yes | `YYYY-MM-DD` |
 
 Geometry: `Point`. `name` and `operator_public_name` are not in this layer.
+
+## Derived layers
+
+### `candidates`
+
+Candidate charging sites generated in code by `scripts/candidates.py` (SPEC §3, D-029) from `admin_districts`, `admin_country`, `osm_pois`, `osm_roads`, `osm_water` and `osm_protected_areas`, whose content fingerprints are recorded in the layer metadata. `Point` geometry in EPSG:4326; distances are computed in EPSG:32735. OpenStreetMap data, © OpenStreetMap contributors, ODbL 1.0.
+
+The candidate budget's selection (D-031): 300 of the 595 eligible candidates on the 2026-09-24 run. The same schema without `selected`; every eligible candidate is in `candidates_eligible`.
+
+| Column | Type | Required | Meaning |
+|---|---|---|---|
+| `candidate_id` | string | yes | `cand-` + first 12 hex digits of the SHA-256 of the host's OSM id, or of `lat,lon` (6 decimals) for a corridor point without a host |
+| `lat` | float64 | yes | Latitude, EPSG:4326 |
+| `lon` | float64 | yes | Longitude, EPSG:4326 |
+| `host_name` | string | yes | Generic label: host type and district, e.g. "Fuel station, Gasabo". Never a business name. |
+| `host_type` | string | yes | fuel, mall, supermarket, logistics, industrial, hotel or none |
+| `host_osm_id` | string | no | The host's OSM id as type/id; null for a corridor point without a host |
+| `origin` | string | yes | `host`, `corridor_snapped` or `corridor` |
+| `merged_count` | int64 | yes | Candidates within 300 m that deduplication merged into this one |
+| `district_id` | string | yes | `admin_districts.district_id` |
+| `district` | string | yes | District name |
+| `province_code` | string | yes | ISO 3166-2 province code |
+| `province` | string | yes | Province name |
+| `nearest_road_class` | string | yes | `highway` value of the nearest drivable road (D-028) |
+| `dist_road_m` | float64 | yes | Distance to that road in metres, EPSG:32735; at most 500 |
+| `profile` | string | no | urban or corridor; null until the profile rule is decided (D-030) |
+
+### `candidates_eligible`
+
+Every candidate that passed SPEC §3's rules (595 on the 2026-09-24 run), before the candidate budget (D-031). Metadata records the eligible and selected counts, the target budget, each district's quota, selected count and spacing radius, and the method.
+
+| Column | Type | Required | Meaning |
+|---|---|---|---|
+| `candidate_id` | string | yes | As in `candidates` |
+| `lat` | float64 | yes | As in `candidates` |
+| `lon` | float64 | yes | As in `candidates` |
+| `host_name` | string | yes | As in `candidates` |
+| `host_type` | string | yes | As in `candidates` |
+| `host_osm_id` | string | no | As in `candidates` |
+| `origin` | string | yes | As in `candidates` |
+| `merged_count` | int64 | yes | As in `candidates` |
+| `district_id` | string | yes | As in `candidates` |
+| `district` | string | yes | As in `candidates` |
+| `province_code` | string | yes | As in `candidates` |
+| `province` | string | yes | As in `candidates` |
+| `nearest_road_class` | string | yes | As in `candidates` |
+| `dist_road_m` | float64 | yes | As in `candidates` |
+| `profile` | string | no | As in `candidates` |
+| `selected` | bool | yes | True for the 300 candidates the budget kept |
 
 ## Checks every processed layer passes
 

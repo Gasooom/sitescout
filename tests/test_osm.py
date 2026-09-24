@@ -74,8 +74,12 @@ def test_water_and_protected_areas_come_from_ways_and_relations(layers):
     assert sorted(layers["osm_water"].index) == ["relation/301", "way/108"]
     assert layers["osm_water"].loc["way/108", "water"] == "lake"
     protected = layers["osm_protected_areas"]
-    assert list(protected.index) == ["relation/302"]
+    assert sorted(protected.index) == ["relation/302", "way/114"]
     assert protected.loc["relation/302", "protect_class"] == "2"
+    assert protected["boundary"].to_dict() == {
+        "relation/302": "protected_area",
+        "way/114": "national_park",
+    }
 
 
 def test_names_brands_and_operators_are_never_extracted(config, dirs, layers):

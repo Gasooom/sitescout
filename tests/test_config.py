@@ -23,8 +23,6 @@ from support import delete_path, flatten, set_path
 # value in config/settings.yaml, removing it here and recording the decision.
 EXPECTED_PENDING = {
     "settings.sources.charger_match_radius_m",
-    "settings.candidates.host_osm_tags",
-    "settings.candidates.drivable_road_classes",
     "settings.candidates.profile.town_radius_m",
     "settings.candidates.profile.kigali_radius_m",
     "settings.features.town_centres",
@@ -186,6 +184,7 @@ EXPECTED_M1_SETTINGS = {
     "sources.grid_cross_check.download.credit": (
         "World Bank Group, Rwanda Electricity Transmission Network, via energydata.info"
     ),
+    "sources.osm_tags.national_park": "boundary=national_park",
     "sources.osm_tags.roads": "highway=*",
     "sources.osm_tags.pois": [
         "amenity=*",
@@ -218,11 +217,80 @@ def test_real_config_files_load():
     assert config.weights.profiles.urban.demand == 0.30
 
 
+# Milestone 2 decisions for parameters SPEC.md left pending (D-027, D-028) and the
+# candidate budget Gasim set (D-031).
+EXPECTED_M2_SETTINGS = {
+    "candidates.budget.size": 300,
+    "candidates.host_osm_tags.fuel": ["amenity=fuel"],
+    "candidates.host_osm_tags.mall": ["shop=mall"],
+    "candidates.host_osm_tags.supermarket": ["shop=supermarket"],
+    "candidates.host_osm_tags.logistics": [
+        "building=warehouse",
+        "industrial=depot",
+        "industrial=intermodal_freight_terminal",
+    ],
+    "candidates.host_osm_tags.industrial": ["landuse=industrial", "man_made=works"],
+    "candidates.host_osm_tags.hotel": ["tourism=hotel"],
+    "candidates.drivable_road_classes": [
+        "motorway",
+        "motorway_link",
+        "trunk",
+        "trunk_link",
+        "primary",
+        "primary_link",
+        "secondary",
+        "secondary_link",
+        "tertiary",
+        "tertiary_link",
+        "unclassified",
+        "residential",
+        "living_street",
+        "service",
+        "road",
+    ],
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
         **EXPECTED_M1_SETTINGS,
+        **EXPECTED_M2_SETTINGS,
     }
+
+
+def test_restaurants_and_tracks_are_never_selected():
+    candidates = load_config().settings.candidates
+    tags = [
+        tag for host in candidates.host_types for tag in getattr(candidates.host_osm_tags, host)
+    ]
+    assert not any("restaurant" in tag for tag in tags)
+    assert "track" not in candidates.drivable_road_classes
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("candidates.host_osm_tags.hotel", ["tourism=hotel", "amenity=fuel"], "both fuel and"),
+        ("candidates.host_osm_tags.mall", ["craft=brewery"], "not extracted into osm_pois"),
+        ("candidates.drivable_road_classes", ["residential", "primary"], "not drivable"),
+        ("candidates.budget.size", 450, "must lie within target_count 200-400"),
+        ("candidates.budget.size", 150, "must lie within target_count 200-400"),
+    ],
+    ids=[
+        "tag-in-two-host-types",
+        "tag-outside-extraction",
+        "corridor-not-drivable",
+        "budget-above-target",
+        "budget-below-target",
+    ],
+)
+def test_candidate_selection_is_checked_across_settings(
+    settings_data, weights_data, dotted, value, message
+):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
 
 
 def test_pending_parameters_are_exactly_the_documented_list():

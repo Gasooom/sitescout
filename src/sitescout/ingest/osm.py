@@ -6,7 +6,8 @@ Layers and the tags that select them come from ``sources.osm_tags`` in settings.
 - ``osm_pois``: nodes and areas matching any ``pois`` tag: a superset, not host types;
 - ``osm_charging_stations``: ``amenity=charging_station`` nodes and areas;
 - ``osm_power``: ``power=*`` nodes, lines and areas;
-- ``osm_water``: ``natural=water`` areas; ``osm_protected_areas``: ``boundary=protected_area``.
+- ``osm_water``: ``natural=water`` areas; ``osm_protected_areas``: ``boundary=protected_area``
+  and ``boundary=national_park`` areas (D-026).
 
 The file is read in two filtered passes (keys with any value, then exact key=value pairs),
 which keeps the 1.4 million untagged buildings out of Python. Name, brand and operator tags
@@ -144,8 +145,8 @@ def osm_layers(settings: Settings) -> list[OsmLayer]:
         OsmLayer(OSM_WATER, (TagSpec.parse(tags.water),), ("water",), nodes=False, ways="areas"),
         OsmLayer(
             OSM_PROTECTED_AREAS,
-            (TagSpec.parse(tags.protected_area),),
-            ("protect_class",),
+            (TagSpec.parse(tags.protected_area), TagSpec.parse(tags.national_park)),
+            ("boundary", "protect_class"),
             nodes=False,
             ways="areas",
         ),
