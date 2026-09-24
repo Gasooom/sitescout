@@ -1,0 +1,163 @@
+# SiteScout settings.
+#
+# Every value comes from docs/SPEC.md (the section is noted on each block), except the
+# paths and the log level, which CLAUDE.md requires to live here. A parameter that SPEC.md
+# requires but does not define is written as `pending` with the reason. It has no default:
+# code that reads it stops with an error, and overrides cannot fill it.
+#
+# Paths are relative to the repository root. Distances are in metres.
+
+paths:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  manual_chargers_csv: data/manual/chargers.csv
+  export_json: data/export/sitescout.json
+  evaluation_report: reports/evaluation.md
+
+logging:
+  level: INFO
+
+# SPEC §2
+crs:
+  storage: "EPSG:4326"
+  metric: "EPSG:32735"
+
+# SPEC §2
+sources:
+  osm:
+    provider: Geofabrik
+    extract: rwanda-latest.osm.pbf
+  population:
+    provider: WorldPop
+    year: 2025
+    resolution_m: 100
+    constrained: true
+    release: R2025A
+  elevation:
+    provider: Copernicus DEM
+    product: GLO-30
+    status: deferred
+  boundaries:
+    provider: geoBoundaries
+    iso3: RWA
+    master_level: ADM2
+    derived_levels: [ADM1, ADM0]
+  grid_cross_check:
+    provider: energydata.info
+    dataset: Rwanda transmission network
+    data_year: 2009
+    use: cross_check_only
+  osm_tags:
+    charging_station: "amenity=charging_station"
+    fuel_station_sockets: "socket:*"
+    grid: "power=*"
+    water: "natural=water"
+    protected_area: "boundary=protected_area"
+  charger_csv:
+    columns: [name, lat, lon, source_url, date_retrieved, operator_public_name]
+    provenance_only_columns: [operator_public_name]
+  charger_match_radius_m:
+    pending: "SPEC §2 combines the manual CSV with OSM chargers but gives no radius for matching duplicates. Decide in M1."
+
+# SPEC §3
+candidates:
+  target_count:
+    min: 200
+    max: 400
+  host_types: [fuel, mall, supermarket, logistics, industrial, hotel]
+  dedup:
+    radius_m: 300
+    host_priority: [fuel, mall, supermarket, logistics, industrial, hotel, none]
+  corridor:
+    spacing_m: 10000
+    road_classes: [trunk, primary]
+    host_snap_radius_m: 2000
+  filters:
+    max_road_distance_m: 500
+    exclude_areas: [water, protected_area]
+  host_osm_tags:
+    pending: "SPEC §3 names the host types but not the OSM tags that identify them. Decide in M2."
+  drivable_road_classes:
+    pending: "SPEC §3 drops points more than 500 m from a drivable road but does not list the road classes. Decide in M2."
+  profile:
+    town_radius_m:
+      pending: "SPEC §3 says the urban radius around a town or city centre lives in config but gives no value. Decide in M2."
+    kigali_radius_m:
+      pending: "SPEC §3 says the urban radius is larger for Kigali but gives no value. Decide in M2."
+
+# SPEC §4
+features:
+  population_radii_m: [1000, 5000, 10000]
+  poi_radii_m: [1000, 3000]
+  charger_count_radii_m: [10000, 25000]
+  reported_only: [dist_town_m, dist_kigali_cbd_m, elevation, slope]
+  town_centres:
+    pending: "SPEC §3 and §4 use a town or city centre (profile rule, dist_town_m) without saying which places count. Decide in M2."
+  kigali_cbd:
+    pending: "SPEC §4 uses the Kigali CBD for dist_kigali_cbd_m without defining its location. Decide in M3."
+  poi_types:
+    pending: "SPEC §4 counts POIs by type within 1 and 3 km without listing the types. Decide in M3."
+  grid_osm_tags:
+    pending: "SPEC §4 measures distance to a substation and a line without saying which power=* values count as each. Decide in M3."
+
+# SPEC §5 (feature weights, profile weights and bonuses are in config/weights.yaml)
+scoring:
+  scale_max: 100
+  grid_evidence:
+    missing_radius_m: 5000
+    missing_component_score: 0
+  log1p_features:
+    pending: "SPEC §5 applies log1p to skewed counts without listing them; see the open questions in docs/decisions.md. Decide in M4."
+
+# SPEC §6
+confidence:
+  grid_evidence_missing_level: Low
+  sparse_coverage_threshold:
+    pending: "SPEC §6 lowers confidence for sparse public-map coverage in the district without a threshold. Decide in M4."
+  remote_location_rule:
+    pending: "SPEC §6 lowers confidence for a remote location with few data points to cross-check without defining it. Decide in M4."
+  universal_unknowns:
+    - grid connection capacity
+    - transformer capacity
+    - land availability
+    - landowner willingness
+    - permit requirements
+
+# SPEC §7
+evaluation:
+  label: retrospective plausibility test
+  backtest:
+    hit_radius_m: 1000
+    precision_at: [10, 20, 30]
+    recall_at: 30
+  random_baseline_seeds: 1000
+  random_seed:
+    pending: "SPEC §7 and CLAUDE.md require fixed random seeds but give no seed value. Decide in M5."
+  bootstrap:
+    resamples:
+      pending: "SPEC §7 requires bootstrap confidence intervals but gives no number of resamples. Decide in M5."
+    confidence_level:
+      pending: "SPEC §7 requires bootstrap confidence intervals but gives no confidence level. Decide in M5."
+  stability:
+    perturbation: 0.20
+    renormalize: true
+    top_k: 30
+    min_overlap: 0.70
+  grounding_target: 1.0
+
+# SPEC §8
+optimization:
+  demand_h3_resolution: 7
+  service_radius_m: 10000
+  n_sites: 30
+  lambda: 0.01
+  min_spacing_m: 2000
+  min_score_percentile: 50
+  existing_charger_demand_factor: 0.5
+  time_limit_s: 300
+  sensitivity:
+    pending: "SPEC §8 varies lambda, the service radius and the existing-charger factor without giving the values to try. Decide in M6."
+
+# SPEC §10
+export:
+  boundary_geojson_max_kb: 300

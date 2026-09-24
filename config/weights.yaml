@@ -1,0 +1,54 @@
+# SiteScout scoring weights, copied from docs/SPEC.md §5.
+#
+# components: feature weights within each component; each component sums to 1.
+# profiles:   component weights for the urban and corridor profiles; each profile sums to 1.
+# bonuses:    points added to a component score, which is capped at 100. Host-type bonuses
+#             go to Host/commercial and road-class bonuses go to Access.
+
+components:
+  demand:
+    pop_5km: 0.5
+    pop_1km: 0.25
+    pop_10km: 0.25
+  access:
+    dist_road_m: 0.5
+    dist_trunk_m: 0.5
+  host_commercial:
+    poi_1km: 0.5
+    poi_3km: 0.5
+  charging_gap:
+    dist_charger_m: 0.5
+    chargers_10km: 0.25
+    chargers_25km: 0.25
+  grid_evidence:
+    dist_substation_m: 0.5
+    dist_line_m: 0.5
+
+profiles:
+  urban:
+    demand: 0.30
+    host_commercial: 0.25
+    access: 0.20
+    charging_gap: 0.15
+    grid_evidence: 0.10
+  corridor:
+    demand: 0.15
+    host_commercial: 0.15
+    access: 0.30
+    charging_gap: 0.25
+    grid_evidence: 0.15
+
+bonuses:
+  host_commercial:
+    host_type:
+      fuel: 10
+      mall: 10
+      supermarket: 5
+      logistics: 5
+      hotel: 5
+      industrial: 0
+      none: 0
+  access:
+    road_class:
+      trunk: 10
+      primary: 5

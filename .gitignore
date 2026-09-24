@@ -1,0 +1,28 @@
+# Datasets are never committed: raw, processed, manual and generated data all live under data/.
+# docs/data_sources.md and config/ describe how to rebuild them.
+data/
+
+# Python environment, build output and tool caches
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Environment files: SiteScout never reads them, and they must never be committed.
+.env
+.env.*
+
+# Logs
+*.log
+
+# Local editor, agent and OS files
+.claude/settings.local.json
+.vscode/
+.idea/
+desktop.ini
+Thumbs.db
+.DS_Store

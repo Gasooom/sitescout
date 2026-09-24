@@ -1,0 +1,46 @@
+[project]
+name = "sitescout"
+version = "0.1.0"
+description = "EV charging network intelligence for Rwanda: an independent portfolio project built on public data."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Abualgasim Ibrahim" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic>=2.13.5",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+# The repository sits in a OneDrive-synced folder. On Windows uv hard-links package files
+# from its cache into .venv by default; copying keeps OneDrive away from the cache files.
+link-mode = "copy"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+# T20 bans print(): pipelines log instead of printing (CLAUDE.md).
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "PTH", "T20"]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = ["error"]

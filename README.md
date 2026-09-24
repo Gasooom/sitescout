@@ -1,0 +1,94 @@
+# SiteScout
+
+**EV charging network intelligence for Rwanda.** An independent portfolio project built on public data.
+
+SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
+
+> **Status:** Milestone 0 (repository setup and architecture) is complete; Milestone 1 has not started. The pipeline has not produced any results yet.
+
+## What it answers
+
+1. Which locations deserve investigation?
+2. Why is each one attractive, and what evidence supports that?
+3. What is still unknown?
+4. Which 30 locations form the best network when chosen together?
+5. What should be investigated next?
+
+## What it does not claim
+
+SiteScout never claims grid approval, transformer capacity, land availability, permit approval, owner willingness, revenue or business viability, and its ranking is not ground truth. It reports **grid evidence** from public maps, never a grid connection decision.
+
+Every site brief carries these two statements:
+
+> Actual grid connection feasibility requires utility confirmation.
+
+> This analysis uses public data. It does not establish grid approval, land availability, permitting approval, or commercial viability.
+
+Some things stay unknown for every site and are listed in every output: grid connection capacity, transformer capacity, land availability, landowner willingness and permit requirements.
+
+Evaluation results are reported as a **retrospective plausibility test**.
+
+## Independence and data
+
+- SiteScout is an independent project and is not affiliated with any company. Sites carry generic labels such as "Fuel station, Remera, Gasabo", never a business or brand name.
+- It uses public data only, such as OpenStreetMap, WorldPop and geoBoundaries, and never private or company operational data.
+- Synthetic data, where used, is labelled synthetic.
+- No datasets are stored in this repository. [docs/data_sources.md](docs/data_sources.md) lists every source, its licence and how to obtain it.
+
+## How it works (planned)
+
+1. **Ingest** public data into GeoParquet (Milestone 1).
+2. **Generate 200 to 400 candidates** in code from real host sites (fuel stations, malls, supermarkets, hotels, logistics and industrial sites) and from points along trunk and primary roads (Milestone 2).
+3. **Compute features** for demand, access, host activity, charging gap and grid evidence (Milestone 3).
+4. **Score** each candidate with an urban or corridor profile and give it a High, Medium or Low confidence level (Milestone 4).
+5. **Evaluate** the ranking against random and population-only baselines (Milestone 5).
+6. **Select the network** of 30 sites exactly, as a maximum coverage location problem, and compare it with a greedy selection and the Top-30 by score (Milestone 6).
+7. **Write site briefs** in which every number traces back to structured data (Milestone 7).
+8. **Export** one JSON file that the front end displays without computing anything (Milestone 8).
+
+The method is specified in [docs/SPEC.md](docs/SPEC.md). The architecture is in [docs/architecture.md](docs/architecture.md), and design decisions and open questions are in [docs/decisions.md](docs/decisions.md).
+
+## Setup
+
+Requires [uv](https://docs.astral.sh/uv/), which installs Python 3.12 if needed.
+
+```bash
+uv sync
+uv run python scripts/check_config.py
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest -q
+```
+
+`check_config.py` validates `config/settings.yaml` and `config/weights.yaml` and lists every parameter that is still pending because the specification does not define it.
+
+## Repository layout
+
+```text
+config/    settings.yaml and weights.yaml: every parameter, taken from docs/SPEC.md
+src/       the sitescout package, where all computation lives
+scripts/   entry points that parse arguments and call src/
+tests/     pytest suite
+docs/      specification, architecture, decisions and data sources
+data/      local data, never committed (raw, manual, processed, export)
+```
+
+## Milestones
+
+| # | Milestone | Status |
+|---|---|---|
+| 0 | Repository setup and architecture | done |
+| 1 | Data ingestion and geospatial pipeline | not started |
+| 2 | Candidate generation | not started |
+| 3 | Feature engineering | not started |
+| 4 | Scoring and confidence | not started |
+| 5 | Evaluation | not started |
+| 6 | Network optimization | not started |
+| 7 | Evidence and reports | not started |
+| 8 | Export and front end | not started |
+| 9 | Stretch (optional) | not started |
+| 10 | Packaging and demo | not started |
+
+## Licence
+
+Code and documentation: [MIT](LICENSE). Data sources keep their own licences and credits; see [docs/data_sources.md](docs/data_sources.md).
