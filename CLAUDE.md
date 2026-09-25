@@ -88,6 +88,7 @@ All Git commits must represent Gasim as the author.
 - Configuration-driven paths only (`config/settings.yaml`, `config/weights.yaml`). No absolute paths.
 - Config comes from YAML only.
 - **Environment-variable and `.env` overrides are disabled.**
+  - Single exception (Milestone 9, D-050, extended by D-054): the optional AI Site Analyst reads its API key from `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, whichever matches the configured provider, as a secret credential only. Provider, model, limits, timeout, temperature and every analytical parameter still come from YAML; no environment variable or `.env` file overrides configuration.
 - Models reject unknown keys and are immutable after loading.
 - Sensitivity runs pass explicit, logged overrides; they never read the environment.
 - Parameters that `docs/SPEC.md` requires but does not define stay marked `pending` in config, with the reason. They never get invented defaults: code that reads one stops with a clear error, and overrides cannot fill them.

@@ -34,6 +34,8 @@ EXPECTED_SETTINGS = {
     "paths.manual_chargers_csv": "data/manual/chargers.csv",
     "paths.export_json": "data/export/sitescout.json",
     "paths.evaluation_report": "reports/evaluation.md",
+    "paths.analyst_scenarios": "tests/analyst_scenarios.yaml",
+    "paths.analyst_eval_report": "reports/analyst_eval.md",
     "logging.level": "INFO",
     "crs.storage": "EPSG:4326",
     "crs.metric": "EPSG:32735",
@@ -315,6 +317,17 @@ EXPECTED_M6_SETTINGS = {
 }
 
 
+# Milestone 9 decisions (D-051): the optional AI Site Analyst, from YAML only.
+EXPECTED_M9_SETTINGS = {
+    "analyst.provider": "openai",
+    "analyst.model": "gpt-5.6-luna",
+    "analyst.max_tool_calls": 6,
+    "analyst.max_tokens": 4096,
+    "analyst.timeout_s": 60.0,
+    "analyst.temperature": None,
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -324,6 +337,7 @@ def test_settings_match_spec():
         **EXPECTED_M4_SETTINGS,
         **EXPECTED_M5_SETTINGS,
         **EXPECTED_M6_SETTINGS,
+        **EXPECTED_M9_SETTINGS,
     }
 
 
@@ -351,6 +365,72 @@ def test_settings_match_spec():
 def test_scoring_settings_are_checked(settings_data, weights_data, dotted, value, message):
     set_path(settings_data, dotted, value)
     with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("analyst.provider", "gemini", "Input should be 'anthropic' or 'openai'"),
+        ("analyst.model", "", "at least 1 character"),
+        ("analyst.max_tool_calls", 0, "greater than or equal to 1"),
+        ("analyst.max_tool_calls", 21, "less than or equal to 20"),
+        ("analyst.max_tool_calls", 6.5, "valid integer"),
+        ("analyst.max_tokens", 0, "greater than 0"),
+        ("analyst.timeout_s", 0, "greater than 0"),
+        ("analyst.timeout_s", "60", "must be a number"),
+        ("analyst.temperature", 1.5, "less than or equal to 1"),
+        ("analyst.temperature", True, "must be a number"),
+        ("analyst.api_key", "sk-anything", "Extra inputs are not permitted"),
+    ],
+    ids=[
+        "unknown-provider",
+        "empty-model",
+        "no-tool-calls",
+        "too-many-tool-calls",
+        "fractional-tool-calls",
+        "no-tokens",
+        "zero-timeout",
+        "string-timeout",
+        "temperature-above-one",
+        "boolean-temperature",
+        "no-key-in-yaml",
+    ],
+)
+def test_analyst_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    ("provider", "model"),
+    [("openai", "claude-sonnet-5"), ("anthropic", "gpt-any")],
+    ids=["openai-with-a-claude-model", "anthropic-with-a-non-claude-model"],
+)
+def test_analyst_provider_and_model_must_match(settings_data, weights_data, provider, model):
+    # Independent of the live YAML's own provider/model (D-054 lets it name either):
+    # both fields are set explicitly here to create a genuine mismatch.
+    settings_data["analyst"].update(provider=provider, model=model)
+    with pytest.raises(ConfigError, match=f"does not belong to provider {provider!r}"):
+        build_config(settings_data, weights_data)
+
+
+def test_the_analyst_can_select_openai_in_yaml(settings_data, weights_data):
+    # D-054: provider and model are set together in YAML; nothing else changes.
+    settings_data["analyst"].update(provider="openai", model="gpt-any")
+    analyst = build_config(settings_data, weights_data).settings.analyst
+    assert (analyst.provider, analyst.model) == ("openai", "gpt-any")
+
+
+def test_analyst_temperature_may_be_left_out_of_requests(settings_data, weights_data):
+    settings_data["analyst"]["temperature"] = None
+    assert build_config(settings_data, weights_data).settings.analyst.temperature is None
+
+
+def test_the_analyst_block_is_required(settings_data, weights_data):
+    del settings_data["analyst"]
+    with pytest.raises(ConfigError, match="analyst"):
         build_config(settings_data, weights_data)
 
 
@@ -620,6 +700,10 @@ def test_environment_variables_and_dotenv_files_are_ignored(monkeypatch, temp_di
             "SITESCOUT_N_SITES",
             "SITESCOUT_OPTIMIZATION__N_SITES",
             "SETTINGS__OPTIMIZATION__LAMBDA",
+            "ANALYST__MODEL",
+            "SITESCOUT_ANALYST_MODEL",
+            "SITESCOUT_ANALYST__MAX_TOOL_CALLS",
+            "ANTHROPIC_MODEL",
         ):
             patch.setenv(name, "5")
         patch.chdir(temp_dir)

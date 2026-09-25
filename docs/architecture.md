@@ -158,6 +158,26 @@ See [scoring.md](scoring.md).
 
 `sitescout/export.py` (run by `scripts/export.py`, after `evaluate.py`) assembles `data/export/sitescout.json` and `sitescout.js` from the M2-M7 outputs, reusing `briefs.brief_sections()` and `evaluation.known_charging_sites()`, and validates them with pydantic models (D-048). `app/index.html` loads `sitescout.js` and draws: an inline SVG map, the network comparison, the site list and each site's evidence. It computes nothing. The two export files are the only committed files under `data/`.
 
+## Milestone 9: the SiteScout Analyst (optional)
+
+```
+question -> provider (optional model) -> one of six read-only tools (arguments validated)
+         -> evidence records -> structured answer -> validator -> answer, or one retry
+         -> second failure -> fallback "no AI summary" (the raw records, no prose)
+```
+
+- **Tools** (`sitescout/analyst/tools.py`, D-049): `find_sites`, `get_site`, `compare_sites`, `explain_score`, `network_contribution` and `generate_brief`, over `data/processed/`. They return evidence records with stable ids, reuse the M7 evidence and brief code, and never write. `scripts/ask.py --tools-only <tool> …` calls one directly, with no model.
+- **Validator** (`validate.py`, D-052): every statement must cite this session's records, and every number must be copied exactly from the display text of a record it cites. The model cannot calculate, round, approximate or rank, and `compare_sites` stays neutral: no answer may name a winner. A statement about the grid must carry the exact sentence "Actual grid connection feasibility requires utility confirmation." (`briefs.GRID_DISCLAIMER`).
+- **Loop** (`run.py`) and **provider interface** (`provider.py`, D-051): only the six allow-listed tools run, with validated arguments; the tool-call limit comes from the `analyst:` block of `config/settings.yaml`; one retry; then the deterministic fallback. `FakeModel` scripts the model for tests.
+- **Providers** (D-051, D-054): `anthropic_provider.py` (Messages API) and `openai_provider.py` (Responses API) implement the same `Provider` interface and share one set of rules (`provider_common.py`: the system prompt with the `Answer` schema, the question wrapper, the retry note, the six-tool check, answer parsing, redaction). `factory.py` builds the one provider named by `analyst.provider` in YAML, never another. Both SDKs are the optional `analyst` extra, so `uv sync` stays AI-free. Each provider's key (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) is read by `credentials.py` as a secret only (D-050); every other analyst setting comes from YAML. `scripts/ask.py "<question>"` runs the loop and prints the validated answer or the labelled fallback.
+
+```
+SiteScout Analyst -> Provider interface -> Anthropic | OpenAI -> the six tools
+                  -> deterministic evidence -> the validator (one retry, then the fallback)
+```
+- **Scenario evaluation** (`scenarios.py`, `scripts/analyst_eval.py`): the fixed scenario set `tests/analyst_scenarios.yaml` (categories A to L) is put to the configured provider one question at a time and scored with deterministic checks only (tools and arguments called, citations, exact number grounding, derived-number traps, evaluative words, required and forbidden phrases, UNKNOWN statements, the exact grid disclaimer), and every answer is re-validated from the logged tool outputs. It writes `reports/analyst_eval.md` and the full log `data/processed/analyst_eval.json`; `--offline` runs only the deterministic parts and writes nothing.
+- **Boundary** (D-053): deterministic code makes every numerical decision; the model only maps questions to tools and phrases grounded results. Analyst output must never enter production decision outputs: the export, `evidence.json`, the briefs or the page; the M8 demo runs without it. The one exception is evaluation artifacts — the scenario evaluation (above) records model answers under `reports/` and `data/processed/` as test evidence, never as a SiteScout claim, and nothing reads them back into the pipeline, the export, the briefs or the demo.
+
 ## Rules every stage follows
 
 - **Configuration.** Stages receive a loaded `Config` object. They never read `config/` files or environment variables themselves.

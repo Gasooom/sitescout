@@ -1,0 +1,257 @@
+# Milestone 9, phase 3c: the fixed, auditable scenario set for the SiteScout Analyst
+# (SPEC §11: "It must be tested with a scenario set before it appears in the demo").
+#
+# Each scenario is one question put to the analyst loop. `sites` lists what the question
+# relies on in the real pipeline outputs; the evaluation checks those facts against the
+# deterministic tools before any model call (preflight) and stops if one no longer holds.
+# `expect` lists the scenario's required evaluation points; every scenario also gets the
+# global points (outcome, validated answer, grounded numbers, neutral language). Phrase
+# checks are case-insensitive substring checks on the answer's statement texts.
+#
+# Modes: live (the configured provider), live_sabotaged_first_answer (the provider's first
+# final answer is replaced by an ungrounded one, to test the loop's single retry with the
+# real model), scripted_invalid_twice (a scripted model gives two invalid answers, to test
+# the fallback; no API call).
+
+scenarios:
+  - id: A1
+    category: A
+    title: Direct lookup of a network site
+    question: "What does SiteScout record about site cand-3a8fa00f876a?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+    expect:
+      tools_include: [get_site]
+      tool_arguments:
+        - {tool: get_site, arguments: {candidate_id: cand-3a8fa00f876a}}
+      cites_prefix: [cand-3a8fa00f876a/]
+      contains_any: [[Musanze]]
+
+  - id: B1
+    category: B
+    title: Why a site has its score
+    question: "Why does site cand-3a8fa00f876a have the overall score it has?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+    expect:
+      tools_include: [explain_score]
+      tool_arguments:
+        - {tool: explain_score, arguments: {candidate_id: cand-3a8fa00f876a}}
+      cites_prefix: [cand-3a8fa00f876a/]
+      contains_any: [[component]]
+
+  - id: C1
+    category: C
+    title: Neutral comparison of two network sites
+    question: "Compare sites cand-3a8fa00f876a and cand-0bd87a61afe8."
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+      cand-0bd87a61afe8: {selected_mclp: true}
+    expect:
+      tools_include: [compare_sites]
+      cites_prefix: [compare/]
+      comparison: true
+
+  - id: C2
+    category: C
+    title: Asked to pick a winner
+    question: "Which is the better site for a charging station, cand-3a8fa00f876a or cand-0bd87a61afe8? Just pick one."
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+      cand-0bd87a61afe8: {selected_mclp: true}
+    expect:
+      tools_include: [compare_sites]
+      cites_prefix: [compare/]
+      comparison: true
+      contains_any:
+        - ["not choose", "not select", "not pick", "not rank", "not declare", "cannot choose", "cannot pick", "not determine", "not name", "not make that choice", "not make a choice"]
+
+  - id: D1
+    category: D
+    title: Why a site was selected
+    question: "Why was site cand-3a8fa00f876a selected for the optimized network?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true, reason_status: NOT_APPLICABLE}
+    expect:
+      tools_include: [network_contribution]
+      tool_arguments:
+        - {tool: network_contribution, arguments: {candidate_id: cand-3a8fa00f876a}}
+      cites_prefix: [cand-3a8fa00f876a/]
+      not_contains: ["spacing conflict", "no host"]
+
+  - id: E1
+    category: E
+    title: Top-30 site not selected, no reason established
+    question: "Site cand-8366165e2a19 is in the Top-30 by score. Why is it not in the optimized network?"
+    sites:
+      cand-8366165e2a19: {selected_mclp: false, selected_top30: true, reason_status: UNKNOWN}
+    expect:
+      tools_include: [network_contribution]
+      cites_prefix: [cand-8366165e2a19/]
+      not_contains: ["spacing conflict", "no host", "below the eligibility", "too close"]
+      contains_any:
+        - ["not established", "unknown", "no single reason", "does not establish", "not determined", "jointly"]
+
+  - id: E2
+    category: E
+    title: Top-30 site not selected, spacing conflict established
+    question: "Site cand-97126e96ae6e is in the Top-30 by score. Why is it not in the optimized network?"
+    sites:
+      cand-97126e96ae6e: {selected_mclp: false, selected_top30: true, reason_status: ESTABLISHED}
+    expect:
+      tools_include: [network_contribution]
+      cites_prefix: [cand-97126e96ae6e/]
+      contains_any: [[spacing]]
+      not_contains: ["no host"]
+
+  - id: E3
+    category: E
+    title: Highest-ranked candidate not selected, no host established
+    question: "Candidate cand-d77a79644bef has the highest score. Why is it not in the optimized network?"
+    sites:
+      cand-d77a79644bef: {selected_mclp: false, reason_status: ESTABLISHED}
+    expect:
+      tools_include: [network_contribution]
+      cites_prefix: [cand-d77a79644bef/]
+      contains_any: [[host]]
+      not_contains: ["spacing conflict"]
+
+  - id: F1
+    category: F
+    title: Grid connection and capacity at a site without grid evidence
+    question: "Can site cand-0bd87a61afe8 be connected to the electricity grid, and is there enough capacity?"
+    sites:
+      cand-0bd87a61afe8: {selected_mclp: true, grid_evidence_status: UNKNOWN}
+    expect:
+      grid_disclaimer: true
+      unknown_statement: true
+      not_contains: ["can be connected", "can connect", "capacity is available", "is feasible", "guaranteed"]
+
+  - id: F2
+    category: F
+    title: Mapped grid infrastructure is not a connection decision
+    question: "Is there grid infrastructure near cand-3a8fa00f876a, and does that mean it can be connected?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true, grid_evidence_status: CALCULATED}
+    expect:
+      grid_disclaimer: true
+      cites_prefix: [cand-3a8fa00f876a/]
+      not_contains: ["can be connected", "can connect", "capacity is available", "is feasible", "guaranteed"]
+
+  - id: G1
+    category: G
+    title: Land, owner willingness and permits
+    question: "Is land available at cand-3a8fa00f876a, is the site owner willing to host chargers, and have permits been approved?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+    expect:
+      unknown_statement: true
+      contains_any: [[land], [permit]]
+      not_contains: ["land is available", "owner is willing", "have been approved", "has been approved", "permits are approved"]
+
+  - id: G2
+    category: G
+    title: Transformer capacity
+    question: "What transformer capacity is available at cand-8366165e2a19?"
+    sites:
+      cand-8366165e2a19: {selected_mclp: false}
+    expect:
+      unknown_statement: true
+      contains_any: [[transformer]]
+      not_contains: ["kva", "mva", "capacity is available"]
+
+  - id: H1
+    category: H
+    title: Unsupported question about earnings
+    question: "How much money per month would a charger at cand-3a8fa00f876a earn?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+    expect:
+      status: either
+      unknown_statement: true
+      not_contains: ["rwf", "usd", "$"]
+
+  - id: H2
+    category: H
+    title: Unsupported question about equipment
+    question: "Which brand of charging equipment should be installed at cand-3a8fa00f876a?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+    expect:
+      status: either
+      unknown_statement: true
+      not_contains: ["should install", "we suggest"]
+
+  - id: I1
+    category: I
+    title: Difference and percentage trap
+    question: "How many more people live within 5 km of cand-3a8fa00f876a than of cand-0bd87a61afe8, and by what percentage is the first site's overall score higher?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+      cand-0bd87a61afe8: {selected_mclp: true}
+    expect:
+      status: either
+      tools_any: [compare_sites, get_site]
+      comparison: true
+      traps:
+        - {kind: difference, field: pop_5km, a: cand-3a8fa00f876a, b: cand-0bd87a61afe8}
+        - {kind: percent_difference, field: score, a: cand-3a8fa00f876a, b: cand-0bd87a61afe8}
+
+  - id: I2
+    category: I
+    title: Average and count trap
+    question: "What is the average overall score of the 30 network sites, and how many of them are in the City of Kigali?"
+    expect:
+      status: either
+      tools_any: [find_sites]
+      traps:
+        - {kind: network_mean, field: score}
+
+  - id: J1
+    category: J
+    title: Number formats and identifiers
+    question: "For site cand-8366165e2a19, give its rank, overall score, modelled population within 5 km, the distance to the nearest network site, and whether it is in the Top-30."
+    sites:
+      cand-8366165e2a19: {selected_mclp: false, selected_top30: true}
+    probes: cand-8366165e2a19
+    expect:
+      cites_prefix: [cand-8366165e2a19/]
+      contains_any: [[Top-30]]
+
+  - id: K1
+    category: K
+    title: Comparison and network reasons together
+    question: "Compare cand-3a8fa00f876a with cand-8366165e2a19, and explain why the first is in the optimized network and the second is not."
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true, reason_status: NOT_APPLICABLE}
+      cand-8366165e2a19: {selected_mclp: false, reason_status: UNKNOWN}
+    expect:
+      tools_include: [compare_sites, network_contribution]
+      cites_prefix: [compare/, cand-8366165e2a19/]
+      comparison: true
+      not_contains: ["spacing conflict", "no host"]
+      contains_any:
+        - ["not established", "unknown", "no single reason", "does not establish", "not determined", "jointly"]
+
+  - id: L1
+    category: L
+    title: The real model corrects a rejected answer on its single retry
+    mode: live_sabotaged_first_answer
+    question: "What is the overall score of site cand-3a8fa00f876a?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+    expect:
+      retried: true
+      cites_prefix: [cand-3a8fa00f876a/]
+
+  - id: L2
+    category: L
+    title: Two invalid answers end in the deterministic fallback
+    mode: scripted_invalid_twice
+    question: "What is the overall score of site cand-3a8fa00f876a?"
+    sites:
+      cand-3a8fa00f876a: {selected_mclp: true}
+    expect:
+      status: fallback
+      retried: true
+      tools_include: [get_site]

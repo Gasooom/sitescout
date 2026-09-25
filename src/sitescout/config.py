@@ -183,6 +183,8 @@ class PathSettings(_Model):
     manual_chargers_csv: RelativePath
     export_json: RelativePath
     evaluation_report: RelativePath
+    analyst_scenarios: RelativePath
+    analyst_eval_report: RelativePath
 
 
 class LoggingSettings(_Model):
@@ -599,6 +601,34 @@ class ExportSettings(_Model):
     boundary_geojson_max_kb: Count
 
 
+class AnalystSettings(_Model):
+    """The optional AI Site Analyst (Milestone 9, D-051, D-054). Its one secret, the chosen
+    provider's API key (``ANTHROPIC_API_KEY`` or ``OPENAI_API_KEY``), is read by
+    ``sitescout.analyst.credentials`` (D-050); every value here comes from YAML only, like
+    the rest of this file."""
+
+    provider: Literal["anthropic", "openai"]  # D-054: two real providers, one interface
+    model: Text
+    max_tool_calls: Annotated[int, Strict(), Field(ge=1, le=20)]
+    max_tokens: Count
+    timeout_s: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0, le=600)]
+    # null leaves the parameter out of the request; a number is sent to the provider, and a
+    # model that does not accept it rejects the request (the run then falls back).
+    temperature: Share | None
+
+    @model_validator(mode="after")
+    def _model_matches_provider(self) -> AnalystSettings:
+        # Catches switching the provider without switching the model. Anthropic model ids
+        # all start with "claude-"; the provider still rejects an id it does not serve.
+        is_claude = self.model.startswith("claude-")
+        if (self.provider == "anthropic") != is_claude:
+            raise ValueError(
+                f"model {self.model!r} does not belong to provider {self.provider!r}; "
+                "set analyst.provider and analyst.model together"
+            )
+        return self
+
+
 class Settings(_Model):
     """config/settings.yaml."""
 
@@ -614,6 +644,7 @@ class Settings(_Model):
     evaluation: EvaluationSettings
     optimization: OptimizationSettings
     export: ExportSettings
+    analyst: AnalystSettings
 
 
 # --- weights.yaml -----------------------------------------------------------------------

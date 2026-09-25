@@ -13,6 +13,9 @@ paths:
   manual_chargers_csv: data/manual/chargers.csv
   export_json: data/export/sitescout.json
   evaluation_report: reports/evaluation.md
+  # Milestone 9, phase 3c: the analyst's fixed scenario set and its evaluation report.
+  analyst_scenarios: tests/analyst_scenarios.yaml
+  analyst_eval_report: reports/analyst_eval.md
 
 logging:
   level: INFO
@@ -322,3 +325,16 @@ optimization:
 # SPEC §10
 export:
   boundary_geojson_max_kb: 300
+
+# SPEC §11, Milestone 9 (D-051): the optional AI Site Analyst. Its one secret, the API key,
+# comes from ANTHROPIC_API_KEY (D-050); none of these values can be set from the environment.
+analyst:
+  provider: openai
+  model: gpt-5.6-luna
+  max_tool_calls: 6
+  max_tokens: 4096
+  timeout_s: 60
+  # null leaves temperature out of the request. A number is sent to the provider (as a raw
+  # field for Anthropic, whose SDK 1.8 has no temperature parameter); a model that does not
+  # accept it rejects the request, and the run falls back.
+  temperature: null

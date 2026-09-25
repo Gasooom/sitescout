@@ -95,8 +95,8 @@ data/      local data, never committed (raw, manual, processed, export)
 | 5 | Evaluation | done |
 | 6 | Network optimization | done |
 | 7 | Evidence and reports | done |
-| 8 | Export and front end | in review |
-| 9 | Stretch (optional) | not started |
+| 8 | Export and front end | done |
+| 9 | Stretch (optional): AI Site Analyst | done — scenario evaluation 98.1% (153/156, target ≥90%) |
 | 10 | Packaging and demo | not started |
 
 ## Data credits
