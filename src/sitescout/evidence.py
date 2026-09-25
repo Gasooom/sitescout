@@ -159,9 +159,16 @@ SITE_SPECS: tuple[Spec, ...] = (
 )  # fmt: skip
 
 
-def site_records(site: pd.Series, config: Config) -> list[EvidenceRecord]:
-    """Every evidence record for one selected site, from its joined M2-M6 row."""
-    if config.settings.optimization.require_host and site["host_type"] == "none":
+def site_records(
+    site: pd.Series, config: Config, *, network_site: bool = True
+) -> list[EvidenceRecord]:
+    """Every evidence record for one site, from its joined M2-M6 row.
+
+    ``network_site`` (the default, used by the briefs) refuses a hostless site, which can
+    never be in the network. The M9 analyst passes False to describe any candidate.
+    """
+    hostless = site["host_type"] == "none"
+    if network_site and config.settings.optimization.require_host and hostless:
         raise EvidenceError(f"{site['candidate_id']} has no host but is in the network")
     grid_missing = site["grid_evidence_status"] == "UNKNOWN"
     records = [
@@ -261,26 +268,42 @@ def _unique(records: list[EvidenceRecord]) -> list[EvidenceRecord]:
 # --- The selected sites --------------------------------------------------------------------
 
 
-def selected_sites(config: Config, processed_dir: Path) -> pd.DataFrame:
-    """The MCLP network sites, one row each with every M2-M6 column, in rank order."""
+NETWORK_COLUMNS = [
+    "candidate_id",
+    "eligible",
+    "selected_mclp",
+    "selected_greedy",
+    "selected_top30",
+    "marginal_coverage",
+]
+
+
+def all_sites(config: Config, processed_dir: Path) -> pd.DataFrame:
+    """Every candidate, one row each with every M2-M6 column, in rank order."""
     s = config.settings
 
     def table(name: str) -> pd.DataFrame:
         return pd.DataFrame(read_layer(name, processed_dir, s).drop(columns="geometry"))
 
-    network = table("network")
-    chosen = network.loc[network["selected_mclp"], ["candidate_id", "marginal_coverage"]]
-    if chosen.empty:
-        raise EvidenceError("The network layer selects no site; run scripts/optimize.py first")
+    network = table("network")[NETWORK_COLUMNS]
     scores, features = table("scores_production"), table("features_production")
     shared = [c for c in features.columns if c in scores.columns and c != "candidate_id"]
     candidates = table("candidates")[["candidate_id", "host_name", "lat", "lon"]]
     joined = (
-        chosen.merge(scores, on="candidate_id")
+        network.merge(scores, on="candidate_id")
         .merge(features.drop(columns=shared), on="candidate_id")
         .merge(candidates, on="candidate_id")
     )
     return joined.sort_values(["rank", "candidate_id"], kind="mergesort", ignore_index=True)
+
+
+def selected_sites(config: Config, processed_dir: Path) -> pd.DataFrame:
+    """The MCLP network sites, one row each with every M2-M6 column, in rank order."""
+    sites = all_sites(config, processed_dir)
+    chosen = sites[sites["selected_mclp"]].reset_index(drop=True)
+    if chosen.empty:
+        raise EvidenceError("The network layer selects no site; run scripts/optimize.py first")
+    return chosen
 
 
 def build_evidence(config: Config, processed_dir: Path) -> dict[str, Any]:

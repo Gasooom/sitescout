@@ -484,6 +484,82 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Leaflet with OpenStreetMap tiles (a CDN and a tile service, rejected by Gasim); `fetch()` of the JSON (blocked from `file://`); keeping the export uncommitted (the public repository could not show the demo); a timestamp-free export (SPEC §10 lists `generated_at`).
 - **Reason:** SPEC §10 and CLAUDE.md: the pipeline exports one JSON file, and the front end renders it without computing. A single static page is the smallest thing that makes the result visible: optimizing 30 sites together covers 49.8% of the modelled population, against 24.0% for the Top-30 by individual score.
 
+## D-049: M9 is the AI Site Analyst, built on deterministic tools first
+
+- **Date:** 2026-09-25 (Milestone 9, approved by Gasim)
+- **Decision:**
+  - Of SPEC §11's two stretch options, M9 builds the AI Site Analyst. Station sizing is not built: Erlang C needs arrival and service rates that no project dataset holds.
+  - **Phase 1 (no AI):** six deterministic, read-only tools in `sitescout/analyst/tools.py` over `data/processed/`, and `scripts/ask.py --tools-only <tool> …`, which prints a tool's structured result as JSON.
+    - `find_sites`: exact filters only (id, generic label, district, province, rank, profile, confidence, network and Top-30 flags, grid-evidence status), combined with AND, in rank order. No fuzzy or semantic search.
+    - `get_site`: identity, score, rank, profile, confidence, components, the M7 evidence records, selection flags, the universal unknowns and, for network sites, the M7 next actions.
+    - `compare_sites`: two sites side by side, field by field, with a value-neutral `relation` (`equal`, `a_greater`, `b_greater`; `same`, `different`). No winner, ranking, preference, total, difference or ratio.
+    - `explain_score`: the stored score, components, the profile's component weights, feature weights, percentile points, bonuses and confidence reasons. Nothing is recomputed.
+    - `network_contribution`: the M6 facts about a site's place in the network (eligibility, host, flags, the demand it covers or would add, the nearest other network site, spacing conflicts). A non-selected site's reason is ESTABLISHED only when an M6 rule excludes it (no host, score below the eligibility percentile, a network site closer than the minimum spacing); otherwise it is UNKNOWN.
+    - `generate_brief`: the M7 brief sections and Markdown of a network site, from `briefs.brief_sections()` and `render_brief()`.
+  - Every value is an evidence record with a stable id (`<candidate_id>/<field>`, `context/<field>`, `weights/<component>/<feature>`, `compare/<a>/<b>/<field>`), its display text, its type and its source, so a later validator can check each statement against exactly the text it cites. `evidence.all_sites()` joins every candidate, and `site_records(…, network_site=False)` describes any candidate; the M7 outputs are unchanged.
+  - Later phases, each reviewed separately: the answer schema and validator (D-052), the provider interface and tool-calling loop, and the optional Anthropic provider with its configuration (D-051) and credential (D-050). What AI output may reach is fixed by D-053.
+- **Alternatives:** Station sizing; an LLM first; embeddings or a vector store (300 keyed records need exact lookup, not semantic search); a free-text parser without a model.
+- **Reason:** The gaps M8 leaves (why a high-scoring site is not in the network, side-by-side comparison, questions across sites) are deterministic information gaps. The tools close them without AI and are what an optional model would call.
+
+## D-050: The analyst's API key is the one environment input, and only a secret
+
+- **Date:** 2026-09-25 (Milestone 9, phase 3b; approved by Gasim)
+- **Decision:**
+  - `sitescout/analyst/credentials.py::read_api_key` is the only code in SiteScout that reads the environment. It reads `ANTHROPIC_API_KEY` and nothing else, returns it as a masked `SecretStr`, and raises `CredentialError` (naming the variable, never a value) when it is unset or blank.
+  - The key is a secret, not configuration. Provider, model, limits, timeout, temperature and every analytical parameter come from `config/settings.yaml` (D-051); no environment variable or `.env` file overrides any of them, and `load_config` is unchanged. CLAUDE.md carries this as the single exception to "environment-variable and `.env` overrides are disabled".
+  - The key never appears in logs, tool results, the model's context, `RunResult`, error messages or files. It reaches only the SDK client's constructor, which sends it as an HTTP header. Provider errors report the error type and HTTP status only.
+  - The client is built with the key and the API endpoint passed explicitly, so the SDK consults neither its own credential variables (`ANTHROPIC_AUTH_TOKEN`, profiles, federation) nor `ANTHROPIC_BASE_URL`.
+  - A missing key never raises from `scripts/ask.py` and never switches provider: the answer is the deterministic fallback ("no AI summary") with the reason, and no data is read.
+- **Alternatives:** A git-ignored key file referenced from config (a secret on disk next to the repository); a general environment loader (would reopen environment configuration); a key field in YAML (would put a secret in a committed file).
+- **Reason:** The Anthropic API needs a secret, and the secret must never be committed. The standard variable keeps it out of the repository and out of YAML, while the rule that configuration comes from YAML only stays intact.
+
+## D-051: The analyst's provider interface, configuration and optional SDK
+
+- **Date:** 2026-09-25 (Milestone 9, phases 3a and 3b; approved by Gasim)
+- **Decision:**
+  - **Provider interface** (`sitescout/analyst/provider.py`): one method, `Provider.next_step(ModelContext) -> ModelStep`. The context holds the question, the six tool definitions built from `REGISTRY`, the transcript of executed tool calls and, on the retry turn only, the validator's errors. A step is either one tool call or the raw final answer. A provider returns data only; tool execution, validation, the retry and the fallback stay in the loop (`sitescout/analyst/run.py`). `FakeModel` is the scripted implementation for tests.
+  - **Anthropic provider** (`sitescout/analyst/anthropic_provider.py`): stateless; each turn rebuilds the conversation from the context. It declares exactly the six tools (no server, code, shell, file or web tool) with parallel tool use off, asks for the final answer as a JSON object matching the `Answer` schema, and translates the reply into a `ModelStep` without checking or fixing it: output that is not a JSON object becomes `{"unparsed_output": ...}` and fails the schema in the loop. The SDK's own retries are off (`max_retries=0`); the loop's single answer retry is the only retry.
+  - **Configuration** (`analyst:` in `config/settings.yaml`, `AnalystSettings` in `config.py`): `provider` (only `anthropic`), `model` (`claude-sonnet-5`), `max_tool_calls` (6, 1 to 20; used by the loop through `RunLimits.from_settings`), `max_tokens` (4096), `timeout_s` (60) and `temperature` (`null`). The Anthropic SDK 1.8 has no temperature parameter; `null` leaves it out, and a number is sent as a raw request field for a model that still accepts it.
+  - **Optional dependency:** `anthropic` is the only package in the `analyst` extra (`[project.optional-dependencies]`). A plain `uv sync` installs no AI package; `uv sync --extra analyst` installs the SDK. The SDK is imported only inside `build_provider`, so SiteScout, the tools, the validator, the loop and every automated test run without it; a missing SDK is reported, not raised.
+  - **Command line:** `scripts/ask.py "<question>"` runs the loop with the configured provider and prints the validated answer with its citations, or the fallback labelled "no AI summary" with the raw evidence records (exit 0 or 1). `--tools-only` keeps the deterministic path. Prompts and provider state are never printed.
+  - No automated test calls the API. One test runs the real SDK, when the extra is installed, through an in-memory HTTP transport.
+- **Alternatives:** A framework (LangChain, LangGraph) or an agent library (unnecessary for one tool loop, CLAUDE.md); a local model (weaker at tool calling and structured output; possible later behind the same interface); the SDK in the base dependencies (would make the demo pipeline depend on an AI package); the SDK's structured-output option (its schema support could not be checked offline; the loop's parser and validator are authoritative either way).
+- **Reason:** A new dependency must solve a named problem (CLAUDE.md): the SDK is the supported way to call the Messages API. Keeping it optional and behind one small interface keeps the pipeline, the demo and the tests AI-free, and lets another provider replace it without touching the loop.
+
+## D-052: The answer schema, the validator, one retry and the fallback
+
+- **Date:** 2026-09-25 (Milestone 9, phases 2 and 3a; approved by Gasim)
+- **Decision:**
+  - **Answer schema** (`sitescout/analyst/validate.py`): five sections (`direct_answer`, `evidence`, `interpretation`, `unknowns`, `next_investigation`), each a list of statements with `text`, `kind` (RETRIEVED_FACT, CALCULATED, INFERRED, UNKNOWN) and `evidence_ids`. Unknown fields are rejected.
+  - **Validator** (`validate_answer(answer, session)`): offline and deterministic; it trusts only the records returned by this session's tools. A statement fails when it cites an id not in the session; is not UNKNOWN and cites nothing; is CALCULATED without citing a CALCULATED record; is UNKNOWN without saying that something is unavailable; contains a number that is not, character for character, a number in the display text of a record it cites (so rounding, rescaling and reformatting fail); contains an operator or a hyphen between numbers; uses an approximation word or a number written as a word; makes one of CLAUDE.md's prohibited claims; mentions the grid without the exact sentence "Actual grid connection feasibility requires utility confirmation." (`briefs.GRID_DISCLAIMER`, the only grid disclaimer); uses an evaluative comparison word (better, worse, best, prefer, preferred, winner, recommend, ranks above); or uses a comparative word (greater, higher, more, less, lower, smaller, larger) without citing a `compare_sites` field whose relation is directional. The word rules are deliberately conservative: a false rejection falls back, a false acceptance would publish an ungrounded claim.
+  - **One retry:** a final answer that fails the schema or the validator gets exactly one retry, with the structured errors in the model's context. Both kinds of failure share it.
+  - **Fallback:** a second failure, an unknown tool, invalid arguments, a tool's refusal, the tool-call limit, a malformed step, a provider error or a missing key returns `FallbackAnswer`, labelled "no AI summary": the reason and the raw evidence records the session's tools returned, with no prose and no new number. An unvalidated answer is never returned.
+- **Alternatives:** A special-cased parser for "refusing to choose" (not reliably deterministic); checking a number anywhere in the session rather than in the cited records (would let a statement borrow an unrelated number); retrying tool-call errors (the retry is for answers; a bad tool call stops the run).
+- **Reason:** CLAUDE.md: deterministic code makes every numerical decision, LLMs never produce numbers, and every claim is grounded. The validator enforces that on the model's text as the M7 grounding check does on the briefs.
+
+## D-053: What AI output may reach
+
+- **Date:** 2026-09-25 (Milestone 9; approved by Gasim)
+- **Decision:**
+  - AI Analyst output must never affect SiteScout's decision outputs: it is never written into `data/export/`, the deterministic pipeline's own outputs under `data/processed/` (including `evidence.json`), the Site Evidence Briefs or `app/index.html`. The M8 demo stays AI-free and runs without the analyst.
+  - The one documented exception is the evaluation harness itself (phase 3c): `scripts/analyst_eval.py` writes model answers, as evaluation artifacts, to `reports/analyst_eval.md` and to its own log file, `data/processed/analyst_eval.json` (not a pipeline output; not committed). These record test evidence of how the analyst answered a fixed scenario set — never a SiteScout claim. Nothing reads either file back into the pipeline, the export, the briefs or the demo, and this exception does not widen beyond these two evaluation artifacts.
+  - Deterministic tools make every numerical decision. The model only chooses tools and phrases their returned values; it cannot select, rank, score, reorder or calculate.
+  - `compare_sites` never produces a winner, ranking, preference, total, difference or ratio, and the validator rejects an answer that turns a comparison into one.
+- **Alternatives:** An "AI Analyst preview" in the page (SPEC §10), which SPEC §11 allows only after a scenario set passes; storing answers next to the briefs.
+- **Reason:** The briefs and the export are grounded, reproducible outputs. Model output is neither, so it stays outside them.
+
+## D-054: OpenAI as a second provider behind the same interface
+
+- **Date:** 2026-09-25 (Milestone 9; requested by Gasim)
+- **Decision:**
+  - `analyst.provider` accepts `anthropic` or `openai`; `analyst.model` is set with it in YAML, and a model id that does not belong to the provider (Anthropic ids start with `claude-`) is rejected at load. No provider, model or setting comes from the environment, and no provider is ever substituted for another.
+  - `sitescout/analyst/openai_provider.py` implements `Provider.next_step` on the OpenAI Responses API (`client.responses.create`, SDK 3.19): stateless, `store=False`, the shared rules as `instructions`, the question as delimited data, each executed tool call replayed as a `function_call` with its `function_call_output`, the validator's errors as a final user item on the retry turn only, exactly the six tools as non-strict function tools (their parameters are the loop's own pydantic argument schemas; strict mode would need every optional `find_sites` filter to be required), parallel tool calls off, `max_output_tokens` from `max_tokens`, `temperature` only when set. A reply becomes a tool call (a built-in tool call, never declared, is passed on under its own type name for the loop to refuse), or raw answer data from the message text (a refusal or non-JSON text becomes `unparsed_output`). The loop keeps tool allow-listing, argument validation, execution, the schema, `validate_answer`, the single retry and the fallback; the SDK's retries are off.
+  - The rules both providers send live once in `provider_common.py`; the Anthropic provider now imports them from there, with its requests and reply translations byte-identical to before. `factory.py` is the only provider selection; `ask` and the scenario evaluation use it.
+  - The D-050 credential rule extends to `OPENAI_API_KEY`: `credentials.read_openai_api_key` reads it as a masked secret through the same single environment read. Errors report the error type, HTTP status and the API's error code; the API's own message is logged with keys and bearer tokens redacted.
+  - Both SDKs are the optional `analyst` extra; a plain `uv sync` installs neither.
+- **Alternatives:** The Chat Completions API (the Responses API is the SDK's current tool-calling interface); strict function schemas (would loosen `find_sites` into all-required fields); a second prompt or tool registry for OpenAI (would drift from the Anthropic rules); choosing the provider by which key is present (would let the environment select the provider).
+- **Reason:** A second provider makes the analyst independent of one vendor's availability, while every guarantee stays in SiteScout's own code: the same tools, evidence, schema, validator, retry, fallback and credential rule apply whichever model answers.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -535,3 +611,14 @@ These need a decision before or during the milestone named. None has a default.
 
 - Resolved in Milestone 8 (D-048): the export, the committed demo export, `generated_at`, the SVG map. Synthetic exports exist only inside tests; the pipeline writes `data_status: pipeline`.
 - `app/prototype.html`, which CLAUDE.md names as the design reference, was never added; `app/index.html` was designed from scratch as a single page rather than SPEC §10's multi-view prototype.
+
+### Milestone 9
+
+- Resolved in Milestone 9: the M7 note that an API key "would also need an approved source" (D-050); the provider, configuration and optional SDK (D-051); the answer rules (D-052); what AI output may reach (D-053); OpenAI as a second provider (D-054).
+- The SDK still reads a few variables of its own that SiteScout cannot switch off through its public API: `ANTHROPIC_CUSTOM_HEADERS` (extra request headers), `ANTHROPIC_LOG` (its log level) and the standard proxy variables of its HTTP client. None can change the provider, model, limits, timeout, temperature or any analytical value, which are passed explicitly on every request.
+- **The phase 3c live evaluation ran with the OpenAI provider (`gpt-5.6-luna`) on 2026-09-25 and passed.** 18 of 20 scenarios were answered (2 ended in the deterministic fallback); 153 of 156 required evaluation points passed (98.1%, target ≥90%). All 18 shown answers passed validation; 0 ungrounded derived numbers; 0 trap values; 0 winner or ranking violations; comparison refusals and neutral comparisons all correct; grid disclaimer behaviour all correct. The full record is `reports/analyst_eval.md`; the per-scenario tool calls and answers are logged in `data/processed/analyst_eval.json` (not committed, per D-053).
+- The Anthropic provider's live run has not passed: it returned HTTP 400 before any tool call. Per Gasim's instruction this was not diagnosed or rerun as part of adding OpenAI (D-054); it remains open. The committed `config/settings.yaml` default is a separate question from whether the code works — as of this evaluation, only the OpenAI path is evidenced end to end.
+- `find_sites` with no filter returns all 300 candidates with their records, which is large for a model's context; every scenario in the fixed set calls it with a filter, so this stays untested.
+- The next re-export will carry the `analyst:` settings in `meta.config`, like every other setting (the committed export predates them). They are configuration, not AI output.
+- The OpenAI SDK also reads variables of its own that SiteScout does not switch off: `OPENAI_ORG_ID` and `OPENAI_PROJECT_ID` (sent as organization and project headers), `OPENAI_CUSTOM_HEADERS`, `OPENAI_LOG` and the proxy variables. The key and the endpoint are passed explicitly, so `OPENAI_BASE_URL` and the SDK's own key lookup are never used; no variable can change the provider, model, limits or any analytical value.
+- CLAUDE.md's D-050 line names only `ANTHROPIC_API_KEY`; extending it to `OPENAI_API_KEY` (D-054) still needs Gasim's approval of the wording.

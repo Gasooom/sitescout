@@ -42,6 +42,34 @@ def config(settings_data, weights_data):
     return synthetic_config(settings_data, weights_data)
 
 
+@pytest.fixture(scope="module")
+def analyst_world() -> Iterator[tuple[Any, Path, Path]]:
+    """One SYNTHETIC world through M6 (one network site) and M7 (its brief), per test module.
+
+    The M9 analyst tests only read it (the tools never write, which test_analyst_tools
+    checks), so each module builds it once instead of once per test: a few solver runs
+    instead of dozens, and a much faster suite. Yields (config, processed dir, briefs dir).
+    """
+    from sitescout.briefs import run_briefs
+    from sitescout.features import run_features
+    from sitescout.optimize import run_network
+    from sitescout.scoring import run_scores
+    from synthetic_features import feature_config, write_feature_world
+
+    config = feature_config(
+        read_yaml(SETTINGS_FILE), read_yaml(WEIGHTS_FILE), **{"settings.optimization.n_sites": 1}
+    )
+    with tempfile.TemporaryDirectory(prefix="sitescout-test-") as name:
+        processed, briefs = Path(name) / "processed", Path(name) / "briefs"
+        processed.mkdir()
+        write_feature_world(processed, config.settings)
+        run_features(config.settings, processed)
+        run_scores(config.settings, config.weights, processed)
+        run_network(config, processed)
+        run_briefs(config, processed, briefs)
+        yield config, processed, briefs
+
+
 @pytest.fixture
 def dirs(temp_dir):
     """Empty raw/, processed/ and work/ directories for one SYNTHETIC pipeline run."""
