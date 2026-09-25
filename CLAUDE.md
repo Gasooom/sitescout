@@ -283,7 +283,15 @@ Day 0 is the day Milestone 0 is committed. If Milestone 5 (evaluation) is not co
 - Out of scope for v1: RAG, LangGraph, PostGIS, Kenya, contract extraction, a site-pipeline tracker, authentication.
 - A new dependency must solve a named problem; record it in `docs/decisions.md`.
 
-## Current state
+## Current State
 
-**Current milestone: 3 — Feature engineering (implemented, in review).**
-Milestones 0, 1 and 2 are delivered (M2 on 2026-09-24). Milestone 3 is implemented and awaiting Gasim's review; it is not committed. Do not start Milestone 4 until Gasim explicitly approves it.
+Never use CLAUDE.md to determine the current milestone or repository state.
+
+At the beginning of every session, determine the actual state from:
+- git status
+- git log
+- repository contents
+- milestone artifacts/tests
+- docs/SPEC.md
+
+Never assume a milestone is complete based only on CLAUDE.md.

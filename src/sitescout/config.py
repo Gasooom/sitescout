@@ -359,8 +359,10 @@ class CandidateFilters(_Model):
 
 
 class ProfileRule(_Model):
-    town_radius_m: Metres | Pending
-    kigali_radius_m: Metres | Pending
+    """SPEC §3 profile rule (D-039): urban within these radii, otherwise corridor."""
+
+    town_radius_m: Metres
+    kigali_radius_m: Metres
 
     @model_validator(mode="after")
     def _kigali_radius_is_larger(self) -> Self:
@@ -503,16 +505,35 @@ class GridEvidenceRule(_Model):
     missing_component_score: Annotated[int, Strict(), Field(ge=0, le=100)]
 
 
+FeatureNames = Annotated[
+    tuple[Annotated[str, Strict(), Field(pattern=r"^[a-z0-9_]+$")], ...],
+    AfterValidator(_no_duplicates),
+]
+
+
 class ScoringSettings(_Model):
     scale_max: Count
     grid_evidence: GridEvidenceRule
-    log1p_features: Pending
+    log1p_features: FeatureNames
+    lower_is_better: FeatureNames
+
+
+ConfidenceLevel = Literal["High", "Medium", "Low"]
+
+
+class RemoteLocationRule(_Model):
+    """SPEC §6 "remote location with few data points to cross-check" (D-041)."""
+
+    max_poi_3km: Annotated[int, Strict(), Field(ge=0)]
 
 
 class ConfidenceSettings(_Model):
-    grid_evidence_missing_level: Literal["High", "Medium", "Low"]
-    sparse_coverage_threshold: Pending
-    remote_location_rule: Pending
+    grid_evidence_missing_level: ConfidenceLevel
+    sparse_coverage_threshold: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0)]
+    remote_location_rule: RemoteLocationRule
+    factor_count_levels: Annotated[
+        tuple[ConfidenceLevel, ...], Field(min_length=1), AfterValidator(_no_duplicates)
+    ]
     universal_unknowns: Texts
 
 
@@ -816,6 +837,11 @@ def _check_across_files(settings: Settings, weights: Weights) -> None:
             f"Host tags {uncovered} are not extracted into osm_pois (sources.osm_tags.pois)"
         )
     _check_features(settings)
+    weighted = set(weights.weighted_features())
+    for name in ("log1p_features", "lower_is_better"):
+        unknown = set(getattr(settings.scoring, name)) - weighted
+        if unknown:
+            raise ConfigError(f"scoring.{name} {sorted(unknown)} are not weighted features")
 
 
 def _check_features(settings: Settings) -> None:

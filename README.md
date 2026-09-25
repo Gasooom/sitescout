@@ -4,7 +4,7 @@
 
 SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
 
-> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering) is implemented and in review: raw demand, access, host, charging-gap and grid-evidence features for every candidate, in production and backtest mode ([docs/features.md](docs/features.md)). No scores or results have been published.
+> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering: raw demand, access, host, charging-gap and grid-evidence features, [docs/features.md](docs/features.md)) is complete. Milestone 4 (scoring and confidence) is implemented and in review: an explainable score, profile and confidence level for every candidate in production and backtest mode ([docs/scoring.md](docs/scoring.md)). No results have been published.
 
 ## What it answers
 
@@ -58,6 +58,7 @@ uv run python scripts/check_config.py
 uv run python scripts/ingest.py all
 uv run python scripts/candidates.py
 uv run python scripts/features.py
+uv run python scripts/score.py
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest -q
@@ -72,7 +73,7 @@ config/    settings.yaml and weights.yaml: every parameter, taken from docs/SPEC
 src/       the sitescout package, where all computation lives
 scripts/   entry points that parse arguments and call src/
 tests/     pytest suite
-docs/      specification, architecture, decisions, data sources and features
+docs/      specification, architecture, decisions, data sources, features and scoring
 data/      local data, never committed (raw, manual, processed, export)
 ```
 
@@ -83,8 +84,8 @@ data/      local data, never committed (raw, manual, processed, export)
 | 0 | Repository setup and architecture | done |
 | 1 | Data ingestion and geospatial pipeline | done |
 | 2 | Candidate generation | done |
-| 3 | Feature engineering | in review |
-| 4 | Scoring and confidence | not started |
+| 3 | Feature engineering | done |
+| 4 | Scoring and confidence | in review |
 | 5 | Evaluation | not started |
 | 6 | Network optimization | not started |
 | 7 | Evidence and reports | not started |

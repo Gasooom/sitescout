@@ -369,6 +369,49 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** One layer with a `mode` column; computing backtest values by blanking production ones; applying log1p in M3.
 - **Reason:** Two layers keep each `read_layer` contract simple, and building each mode from its own inputs is what makes the leakage tests meaningful. The normalisation SPEC §5 describes is part of scoring.
 
+## D-039: The profile rule
+
+- **Date:** 2026-09-25 (Milestone 4, chosen by Gasim)
+- **Decision:** `candidates.profile.town_radius_m` = 3,000 m and `kigali_radius_m` = 10,000 m. A candidate is **urban** when it lies within 10 km of the Kigali city centre as mapped in OSM (`node/60485579`, D-035) or within 3 km of any town or city centre (`features.town_centres`), both inclusive; otherwise it is **corridor**. The profile is assigned from `dist_kigali_cbd_m` and `dist_town_m`, which are never scored. It is a column of the score layers; the M2 `candidates` layer keeps `profile` null.
+- **Alternatives:** A 5 km town radius (135 of 300 candidates within it instead of 74); a 15 km Kigali radius (71 candidates, some outside the City of Kigali).
+- **Reason:** SPEC §3 puts both radii in config without values. 3 km covers a town core; 10 km from the Kigali node covers 59 of the 69 City-of-Kigali candidates without reaching far beyond it. On the real candidates: 107 urban, 193 corridor.
+
+## D-040: Percentile points, direction, missing values and log1p
+
+- **Date:** 2026-09-25 (Milestone 4, chosen by Gasim)
+- **Decision:**
+  - Each weighted feature becomes percentile points: 100 × (candidates below + 0.5 × candidates equal) / n, where n counts the candidates of the **same mode** whose value is present. Urban and corridor candidates share one reference. Ties get the same value; a feature whose values are all equal, and a single candidate, get 50. With 300 candidates the points run from 0.17 to 99.83.
+  - `scoring.lower_is_better` (`dist_road_m`, `dist_trunk_m`, `dist_substation_m`, `dist_line_m`, `chargers_10km`, `chargers_25km`) are inverted as 100 − percentile. A larger `dist_charger_m` is better (a larger charging gap).
+  - A missing value gets 0, after inversion, so it never raises a score.
+  - `scoring.log1p_features` = `poi_1km`, `poi_3km`, `chargers_10km`, `chargers_25km`: log1p is applied before ranking. It keeps the order of values, so it changes no percentile; a test proves it. It is kept because SPEC §5 asks for it.
+  - Equal scores are ranked by `candidate_id`.
+- **Alternatives:** pandas' `rank(pct=True)` (a constant feature gets 50.2, one candidate 100); ranking missing values last instead of 0; a national reference outside the candidates; dropping log1p.
+- **Reason:** SPEC §5 asks for percentile ranks within Rwanda without a formula. This is the standard percentile rank: symmetric, defined for ties and for one candidate. CLAUDE.md: missing data never raises a score. SPEC §5's grid rule also gives missing evidence 0.
+
+## D-041: Confidence levels
+
+- **Date:** 2026-09-25 (Milestone 4, chosen by Gasim)
+- **Decision:**
+  - Grid evidence missing (no mapped substation or line within 5 km) → **Low**, whatever else holds.
+  - Otherwise count three factors: sparse public-map coverage (the district's `grid_completeness_ratio` below `confidence.sparse_coverage_threshold` = 0.5); no identified host (`host_type` none); remote location (`poi_3km` at most `confidence.remote_location_rule.max_poi_3km` = 0). 0 → **High**, 1 → **Medium**, 2 or more → **Low** (`confidence.factor_count_levels`).
+  - The reasons list every factor that holds, including those that do not change the level. They contain no site-specific numbers, only the configured thresholds.
+  - The universal unknowns (SPEC §6) are the same fixed list for every site and are not part of the level.
+- **Alternatives:** Thresholds of 0.25 or 1.0 for sparse coverage (47 or 116 candidates); `poi_3km` ≤ 2 for remote (105 candidates); a weighted confidence number (SPEC and CLAUDE.md forbid a percentage).
+- **Reason:** SPEC §6 names the factors but no thresholds and no way to combine them. 0.5 is half the national median of the proxy; a cut at 1.0 would flag half the districts by construction. On the real candidates: High 113, Medium 59, Low 128 (114 of them because grid evidence is missing).
+
+## D-042: Components, bonuses, grid evidence and the score layers
+
+- **Date:** 2026-09-25 (Milestone 4, chosen by Gasim)
+- **Decision:**
+  - Each component is the `config/weights.yaml` feature weights applied to the percentile points. The host-type bonus goes to host / commercial and the road-class bonus to access; each component is capped at 100 (SPEC §5).
+  - The road-class bonus needs an exact `road_class` match: `trunk` +10, `primary` +5; `trunk_link`, `primary_link` and every other class +0.
+  - Grid evidence is missing when neither a mapped substation nor a line lies within 5 km (inclusive). Its component is then 0 and its status UNKNOWN; otherwise CALCULATED.
+  - Score = the profile's component weights × the components, 0 to 100.
+  - **Backtest:** with no existing charger, `dist_charger_m` is missing (0 points) and both counts are 0 for every candidate (50 points after inversion), so the charging-gap component is **25** for every candidate. It adds 3.75 points to every urban score and 6.25 to every corridor score. This is an intentional consequence of SPEC §5's backtest definition and is not compensated.
+  - `sitescout/scoring.py` writes `scores_production` and `scores_backtest`: 300 rows each, with the profile, score, rank, confidence and reasons, the five components, the bonuses, the grid-evidence status, the percentile points of every weighted feature and the universal unknowns. Raw feature values stay in the feature layers. Both layers are checked before either is written.
+- **Alternatives:** Applying the trunk bonus to `trunk_link`; renormalising the profile weights in backtest mode (a workaround SPEC §5 rules out); repeating the raw features in the score layers.
+- **Reason:** SPEC §5 lists the bonus classes as trunk and primary. Keeping raw values in one place (M3) and the reasoning in another (M4) keeps both layers small and each number in one source.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -398,14 +441,9 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 4
 
-- The profile rule (D-030): the town radius and the Kigali radius. The centres themselves are decided (D-035): 109 OSM city and town nodes inside Rwanda.
-- `dist_town_m` assigns the profile, while CLAUDE.md says it is never scored. Proposed reading: never a weighted input, but allowed for assigning the profile.
-- Applying log1p before a percentile rank does not change any rank, because log1p preserves order. Keep the step, drop it, or use it somewhere else?
-- Does "percentile rank within Rwanda" rank a candidate among the candidates or against a national reference?
-- In backtest mode the charging-gap component is the same for every candidate. M3 stores "no charger" as a null `dist_charger_m` and zero counts (D-034); how M4 scores them decides the constant. Because urban weights this component at 0.15 and corridor at 0.25, that value shifts corridor scores against urban ones by up to 10 points.
-- `dist_charger_m` works in the opposite direction to `chargers_10km` and `chargers_25km` (far from a charger is a larger gap; many chargers nearby is a smaller one). Invert explicitly, as SPEC §5 requires.
-- Grid evidence is missing "when no mapped substation or line lies within 5 km". The natural reading is that neither lies within 5 km. On the real candidates, 186 of 300 have a substation or a line within 5 km.
-- How the confidence factors combine into Medium or Low.
+- Resolved in Milestone 4: the profile rule (D-039); `dist_town_m` assigns the profile but is never scored (D-039); log1p changes no rank and is kept (D-040); percentiles are within the candidates of each mode (D-040); the backtest charging-gap constant is 25 (D-042); how the confidence factors combine (D-041).
+- In production mode a corridor point without a host ranks first (Rubavu), and 3 of the top 10 are corridor points. Corridor weights favour access (0.30) and the charging gap (0.25), and a corridor point far from the 5 known charging sites scores high on both. SPEC §3 says a site without a host cannot be investigated; whether such points may enter the 30 is the Milestone 6 question below.
+- The 5 known charging sites are in or near Kigali, so production charging-gap scores are lowest there (5 to 9 for the top Kigali sites). Until `data/manual/chargers.csv` is filled, the charging gap mostly measures distance from Kigali.
 
 ### Milestone 5
 

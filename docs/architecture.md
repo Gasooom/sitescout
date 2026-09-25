@@ -117,6 +117,31 @@ data/processed/ (candidates, admin_districts, admin_country, osm_roads, osm_pois
 
 Values are raw, in natural units; normalisation, bonuses, weights and profiles belong to scoring (Milestone 4). OSM place nodes (`osm_places`) are a Milestone 1 layer, added in Milestone 3 from the same PBF.
 
+## Milestone 4: scoring and confidence
+
+```text
+data/processed/features_production, features_backtest (each read through read_layer)
+  for each mode, from its own feature layer:
+  -> percentile points per weighted feature: log1p on skewed counts, 100 x (below +
+     0.5 x equal) / n within the mode, lower-is-better inverted, missing = 0 (D-040)
+  -> components (weights.yaml) + host and exact road-class bonuses, capped at 100
+  -> grid evidence missing (no substation or line within 5 km) -> 0, UNKNOWN (D-042)
+  -> profile: urban within 10 km of Kigali or 3 km of a town/city centre (D-039)
+  -> score = profile weights x components; rank
+  -> confidence level and reasons; universal unknowns (D-041)
+  -> bounds checks for both modes
+  -> data/processed/scores_production.parquet and scores_backtest.parquet
+     (+ .meta.json), or a stop that writes neither
+```
+
+| Module | Responsibility |
+|---|---|
+| `sitescout/scoring.py` | Percentile points, components, bonuses, grid-evidence rule, profile, score, rank; writes both layers |
+| `sitescout/confidence.py` | Confidence factors, level and reasons; the universal unknowns |
+| `scripts/score.py` | Loads the config and calls `run_scores`; exit code 1 when scoring stops |
+
+See [scoring.md](scoring.md).
+
 ## Rules every stage follows
 
 - **Configuration.** Stages receive a loaded `Config` object. They never read `config/` files or environment variables themselves.

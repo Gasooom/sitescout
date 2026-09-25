@@ -22,11 +22,6 @@ from support import delete_path, flatten, set_path
 # Parameters docs/SPEC.md requires but does not define. Resolving one means giving it a
 # value in config/settings.yaml, removing it here and recording the decision.
 EXPECTED_PENDING = {
-    "settings.candidates.profile.town_radius_m",
-    "settings.candidates.profile.kigali_radius_m",
-    "settings.scoring.log1p_features",
-    "settings.confidence.sparse_coverage_threshold",
-    "settings.confidence.remote_location_rule",
     "settings.evaluation.random_seed",
     "settings.evaluation.bootstrap.resamples",
     "settings.evaluation.bootstrap.confidence_level",
@@ -286,13 +281,60 @@ EXPECTED_M3_SETTINGS = {
 }
 
 
+# Milestone 4 decisions for parameters SPEC.md left pending (D-039 to D-041).
+EXPECTED_M4_SETTINGS = {
+    "candidates.profile.town_radius_m": 3000,
+    "candidates.profile.kigali_radius_m": 10000,
+    "scoring.log1p_features": ["poi_1km", "poi_3km", "chargers_10km", "chargers_25km"],
+    "scoring.lower_is_better": [
+        "dist_road_m",
+        "dist_trunk_m",
+        "dist_substation_m",
+        "dist_line_m",
+        "chargers_10km",
+        "chargers_25km",
+    ],
+    "confidence.sparse_coverage_threshold": 0.5,
+    "confidence.remote_location_rule.max_poi_3km": 0,
+    "confidence.factor_count_levels": ["High", "Medium", "Low"],
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
         **EXPECTED_M1_SETTINGS,
         **EXPECTED_M2_SETTINGS,
         **EXPECTED_M3_SETTINGS,
+        **EXPECTED_M4_SETTINGS,
     }
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("scoring.log1p_features", ["poi_1km", "dist_town_m"], "are not weighted features"),
+        ("scoring.lower_is_better", ["dist_kigali_cbd_m"], "are not weighted features"),
+        ("scoring.log1p_features", ["poi_1km", "poi_1km"], "duplicates"),
+        ("confidence.sparse_coverage_threshold", 0, "greater than 0"),
+        ("confidence.remote_location_rule.max_poi_3km", -1, "greater than or equal to 0"),
+        ("confidence.factor_count_levels", ["High", "Certain"], "Input should be"),
+        ("candidates.profile.kigali_radius_m", 3000, "Kigali radius must be larger"),
+    ],
+    ids=[
+        "log1p-reported-feature",
+        "inverted-reported-feature",
+        "log1p-duplicate",
+        "zero-threshold",
+        "negative-poi",
+        "unknown-level",
+        "kigali-not-larger",
+    ],
+)
+def test_scoring_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
 
 
 @pytest.mark.parametrize(
@@ -380,14 +422,14 @@ def test_snapshot_is_json_and_rebuilds_the_same_config():
 
 
 def test_reading_a_pending_parameter_raises():
-    radius = load_config().settings.candidates.profile.town_radius_m
-    assert isinstance(radius, Pending)
-    with pytest.raises(PendingParameterError, match=r"town_radius_m is pending: SPEC §3"):
-        require(radius, "candidates.profile.town_radius_m")
+    seed = load_config().settings.evaluation.random_seed
+    assert isinstance(seed, Pending)
+    with pytest.raises(PendingParameterError, match=r"random_seed is pending: SPEC §7"):
+        require(seed, "evaluation.random_seed")
 
 
 def test_a_pending_parameter_cannot_pass_for_a_value():
-    pending = load_config().settings.scoring.log1p_features
+    pending = load_config().settings.optimization.sensitivity
     with pytest.raises(PendingParameterError):
         bool(pending)
     with pytest.raises(PendingParameterError):
@@ -398,7 +440,7 @@ def test_require_returns_decided_values():
     assert require(load_config().settings.optimization.n_sites, "optimization.n_sites") == 30
 
 
-@pytest.mark.parametrize("dotted", ["candidates.profile.town_radius_m", "scoring.log1p_features"])
+@pytest.mark.parametrize("dotted", ["evaluation.random_seed", "optimization.sensitivity"])
 def test_pending_parameters_are_required_keys(settings_data, weights_data, dotted):
     delete_path(settings_data, dotted)
     with pytest.raises(ConfigError, match="Field required"):
@@ -610,8 +652,8 @@ def test_unknown_override_keys_are_rejected(settings_data, weights_data, key):
 @pytest.mark.parametrize(
     ("key", "value"),
     [
-        ("settings.candidates.profile.town_radius_m", 1),
-        ("settings.candidates.profile", {"town_radius_m": 1, "kigali_radius_m": 2}),
+        ("settings.evaluation.random_seed", 1),
+        ("settings.evaluation.bootstrap", {"resamples": 1000, "confidence_level": 0.95}),
         ("settings.optimization.n_sites", {"pending": "created by an override"}),
     ],
     ids=["fill-pending", "replace-block-with-pending", "create-pending"],

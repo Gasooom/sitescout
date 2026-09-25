@@ -413,6 +413,95 @@ FEATURES_BACKTEST = replace(
     "charger removed from every input (SPEC §5). Raw values; scoring is Milestone 4.",
 )
 
+SCORE_COMPONENTS = ("demand", "access", "host_commercial", "charging_gap", "grid_evidence")
+WEIGHTED_FEATURES = (
+    "pop_5km",
+    "pop_1km",
+    "pop_10km",
+    "dist_road_m",
+    "dist_trunk_m",
+    "poi_1km",
+    "poi_3km",
+    "dist_charger_m",
+    "chargers_10km",
+    "chargers_25km",
+    "dist_substation_m",
+    "dist_line_m",
+)
+
+
+def _score_columns() -> tuple[Column, ...]:
+    """The Milestone 4 score columns (docs/scoring.md)."""
+    return (
+        Column("candidate_id", "string", True, "candidates.candidate_id."),
+        Column("host_type", "string", True, "candidates.host_type."),
+        Column("origin", "string", True, "candidates.origin."),
+        Column("district_id", "string", True, "candidates.district_id."),
+        Column("district", "string", True, "candidates.district."),
+        Column("province", "string", True, "candidates.province."),
+        Column("profile", "string", True, "urban or corridor (SPEC §3 profile rule, D-039)."),
+        Column("score", "float64", True, "Overall score, 0-100: profile weights x components."),
+        Column("rank", "int64", True, "1 = highest score in this mode; ties by candidate_id."),
+        Column("confidence", "string", True, "High, Medium or Low (SPEC §6, D-041)."),
+        Column("confidence_reasons", "string", True, "Why the level was given, as text."),
+        *(
+            Column(
+                f"component_{name}",
+                "float64",
+                True,
+                f"The {name} component score, 0-100, after any bonus and the cap at 100.",
+            )
+            for name in SCORE_COMPONENTS
+        ),
+        Column("host_bonus", "int64", True, "Points added to host_commercial for host_type."),
+        Column("road_bonus", "int64", True, "Points added to access for the exact road_class."),
+        Column(
+            "grid_evidence_status",
+            "string",
+            True,
+            "CALCULATED, or UNKNOWN when no mapped substation or line lies within 5 km "
+            "(the grid-evidence component is then 0).",
+        ),
+        *(
+            Column(
+                f"pct_{name}",
+                "float64",
+                True,
+                f"Percentile points of {name}, 0-100, higher is better (inverted if lower is "
+                "better); 0 when the feature is missing.",
+            )
+            for name in WEIGHTED_FEATURES
+        ),
+        Column(
+            "universal_unknowns",
+            "string",
+            True,
+            "The fixed list of unknowns every site shares (SPEC §6), separated by '; '.",
+        ),
+    )
+
+
+_SCORES = LayerSchema(
+    name="scores",
+    description="",
+    id_column="candidate_id",
+    columns=_score_columns(),
+    geometry_types=frozenset({POINT}),
+    sort_by=("candidate_id",),
+)
+SCORES_PRODUCTION = replace(
+    _SCORES,
+    name="scores_production",
+    description="Milestone 4 scores and confidence for the candidates, production mode "
+    "(SPEC §5, §6), from features_production.",
+)
+SCORES_BACKTEST = replace(
+    _SCORES,
+    name="scores_backtest",
+    description="Milestone 4 scores and confidence for the candidates, backtest mode "
+    "(SPEC §5, §6), from features_backtest.",
+)
+
 LAYERS: dict[str, LayerSchema] = {
     schema.name: schema
     for schema in (
@@ -432,6 +521,8 @@ LAYERS: dict[str, LayerSchema] = {
         CANDIDATES_ELIGIBLE,
         FEATURES_PRODUCTION,
         FEATURES_BACKTEST,
+        SCORES_PRODUCTION,
+        SCORES_BACKTEST,
     )
 }
 

@@ -296,7 +296,7 @@ The candidate budget's selection (D-031): 300 of the 595 eligible candidates on 
 | `province` | string | yes | Province name |
 | `nearest_road_class` | string | yes | `highway` value of the nearest drivable road (D-028) |
 | `dist_road_m` | float64 | yes | Distance to that road in metres, EPSG:32735; at most 500 |
-| `profile` | string | no | urban or corridor; null until the profile rule is decided (D-030) |
+| `profile` | string | no | Always null here; the profile is assigned in the score layers (D-039) |
 
 ### `candidates_eligible`
 
@@ -366,6 +366,49 @@ Milestone 3 features for the 300 candidates in production mode: existing charger
 ### `features_backtest`
 
 The same columns for the same candidates in backtest mode: every existing charger is removed from every input before anything is computed (SPEC §5, D-034), so `dist_charger_m` is null and `chargers_10km` and `chargers_25km` are 0 for every candidate. Columns: `candidate_id`, `host_type`, `host_osm_id`, `origin`, `district_id`, `district`, `province_code`, `province`, `pop_1km`, `pop_5km`, `pop_10km`, `dist_road_m`, `road_class`, `dist_trunk_m`, `poi_1km`, `poi_3km`, `poi_amenity_1km`, `poi_amenity_3km`, `poi_shop_1km`, `poi_shop_3km`, `poi_tourism_1km`, `poi_tourism_3km`, `poi_office_1km`, `poi_office_3km`, `poi_industrial_1km`, `poi_industrial_3km`, `dist_charger_m`, `chargers_10km`, `chargers_25km`, `dist_substation_m`, `dist_line_m`, `grid_completeness_ratio`, `dist_kigali_cbd_m`, `dist_town_m`, `outside_rwanda_share_10km`.
+
+### `scores_production`
+
+Milestone 4 scores and confidence for the 300 candidates in production mode, computed from `features_production` (SPEC §5, §6; D-039 to D-042). One row per candidate, sorted by `candidate_id`, with the candidate's point (EPSG:4326). Raw feature values are not repeated; they stay in the feature layers. Method: [scoring.md](scoring.md). Metadata records the input fingerprint, the weights, the profile, scoring and confidence settings, the universal unknowns, the decisions and counts by profile, confidence and grid-evidence status.
+
+| Column | Type | Required | Meaning |
+|---|---|---|---|
+| `candidate_id` | string | yes | candidates.candidate_id. |
+| `host_type` | string | yes | candidates.host_type. |
+| `origin` | string | yes | candidates.origin. |
+| `district_id` | string | yes | candidates.district_id. |
+| `district` | string | yes | candidates.district. |
+| `province` | string | yes | candidates.province. |
+| `profile` | string | yes | urban or corridor (SPEC §3 profile rule, D-039). |
+| `score` | float64 | yes | Overall score, 0-100: profile weights x components. |
+| `rank` | int64 | yes | 1 = highest score in this mode; ties by candidate_id. |
+| `confidence` | string | yes | High, Medium or Low (SPEC §6, D-041). |
+| `confidence_reasons` | string | yes | Why the level was given, as text. |
+| `component_demand` | float64 | yes | The demand component score, 0-100, after any bonus and the cap at 100. |
+| `component_access` | float64 | yes | The access component score, 0-100, after any bonus and the cap at 100. |
+| `component_host_commercial` | float64 | yes | The host_commercial component score, 0-100, after any bonus and the cap at 100. |
+| `component_charging_gap` | float64 | yes | The charging_gap component score, 0-100, after any bonus and the cap at 100. |
+| `component_grid_evidence` | float64 | yes | The grid_evidence component score, 0-100, after any bonus and the cap at 100. |
+| `host_bonus` | int64 | yes | Points added to host_commercial for host_type. |
+| `road_bonus` | int64 | yes | Points added to access for the exact road_class. |
+| `grid_evidence_status` | string | yes | CALCULATED, or UNKNOWN when no mapped substation or line lies within 5 km (the grid-evidence component is then 0). |
+| `pct_pop_5km` | float64 | yes | Percentile points of pop_5km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_pop_1km` | float64 | yes | Percentile points of pop_1km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_pop_10km` | float64 | yes | Percentile points of pop_10km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_dist_road_m` | float64 | yes | Percentile points of dist_road_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_dist_trunk_m` | float64 | yes | Percentile points of dist_trunk_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_poi_1km` | float64 | yes | Percentile points of poi_1km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_poi_3km` | float64 | yes | Percentile points of poi_3km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_dist_charger_m` | float64 | yes | Percentile points of dist_charger_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_chargers_10km` | float64 | yes | Percentile points of chargers_10km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_chargers_25km` | float64 | yes | Percentile points of chargers_25km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_dist_substation_m` | float64 | yes | Percentile points of dist_substation_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `pct_dist_line_m` | float64 | yes | Percentile points of dist_line_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing. |
+| `universal_unknowns` | string | yes | The fixed list of unknowns every site shares (SPEC §6), separated by '; '. |
+
+### `scores_backtest`
+
+The same columns, computed from `features_backtest`. With no existing charger, `component_charging_gap` is 25 for every candidate (D-042). Columns: `candidate_id`, `host_type`, `origin`, `district_id`, `district`, `province`, `profile`, `score`, `rank`, `confidence`, `confidence_reasons`, `component_demand`, `component_access`, `component_host_commercial`, `component_charging_gap`, `component_grid_evidence`, `host_bonus`, `road_bonus`, `grid_evidence_status`, `pct_pop_5km`, `pct_pop_1km`, `pct_pop_10km`, `pct_dist_road_m`, `pct_dist_trunk_m`, `pct_poi_1km`, `pct_poi_3km`, `pct_dist_charger_m`, `pct_chargers_10km`, `pct_chargers_25km`, `pct_dist_substation_m`, `pct_dist_line_m`, `universal_unknowns`.
 
 ## Checks every processed layer passes
 

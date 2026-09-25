@@ -185,11 +185,12 @@ candidates:
     - living_street
     - service
     - road
+  # Decided by Gasim on 2026-09-25 (D-039): urban if within kigali_radius_m of the Kigali
+  # city centre (features.kigali_cbd) or within town_radius_m of any town or city centre
+  # (features.town_centres); otherwise corridor. Both inclusive.
   profile:
-    town_radius_m:
-      pending: "SPEC §3 says the urban radius around a town or city centre lives in config but gives no value. Deferred from M2 on 2026-09-24 (D-030): profile is first used in scoring. Decide in M4."
-    kigali_radius_m:
-      pending: "SPEC §3 says the urban radius is larger for Kigali but gives no value. Deferred from M2 on 2026-09-24 (D-030). Decide in M4."
+    town_radius_m: 3000
+    kigali_radius_m: 10000
 
 # SPEC §4
 features:
@@ -246,16 +247,30 @@ scoring:
   grid_evidence:
     missing_radius_m: 5000
     missing_component_score: 0
-  log1p_features:
-    pending: "SPEC §5 applies log1p to skewed counts without listing them; see the open questions in docs/decisions.md. Decide in M4."
+  # D-040: the skewed counts SPEC §5 applies log1p to before ranking. log1p keeps the
+  # order of values, so it changes no percentile rank; it is kept because SPEC asks for it.
+  log1p_features: [poi_1km, poi_3km, chargers_10km, chargers_25km]
+  # D-040: "lower is better" features, inverted explicitly as 100 - percentile (SPEC §5).
+  lower_is_better:
+    - dist_road_m
+    - dist_trunk_m
+    - dist_substation_m
+    - dist_line_m
+    - chargers_10km
+    - chargers_25km
 
 # SPEC §6
 confidence:
   grid_evidence_missing_level: Low
-  sparse_coverage_threshold:
-    pending: "SPEC §6 lowers confidence for sparse public-map coverage in the district without a threshold. Decide in M4."
+  # Decided by Gasim on 2026-09-25 (D-041). Sparse public-map coverage: the district's
+  # grid_completeness_ratio is below this value (half the national median).
+  sparse_coverage_threshold: 0.5
+  # Remote: no more than this many mapped POIs within 3 km to cross-check against.
   remote_location_rule:
-    pending: "SPEC §6 lowers confidence for a remote location with few data points to cross-check without defining it. Decide in M4."
+    max_poi_3km: 0
+  # Without missing grid evidence, the level follows the number of other factors (sparse
+  # coverage, no host, remote): 0 -> High, 1 -> Medium, 2 or more -> the last entry.
+  factor_count_levels: [High, Medium, Low]
   universal_unknowns:
     - grid connection capacity
     - transformer capacity
