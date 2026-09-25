@@ -412,6 +412,26 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Applying the trunk bonus to `trunk_link`; renormalising the profile weights in backtest mode (a workaround SPEC §5 rules out); repeating the raw features in the score layers.
 - **Reason:** SPEC §5 lists the bonus classes as trunk and primary. Keeping raw values in one place (M3) and the reasoning in another (M4) keeps both layers small and each number in one source.
 
+## D-043: Seeds and bootstrap settings
+
+- **Date:** 2026-09-25 (Milestone 5, approved by Gasim in the demo plan)
+- **Decision:** `evaluation.random_seed` = 20260924 (Day 0, the M0 commit date). The random baseline's 1,000 rankings use seeds 20260924, 20260925, …, one per ranking; the bootstrap uses 20260924. `evaluation.bootstrap.resamples` = 1,000; `confidence_level` = 0.95 (percentile intervals, 2.5th to 97.5th).
+- **Alternatives:** Other seeds (any fixed value would do); 10,000 resamples.
+- **Reason:** SPEC §7 and CLAUDE.md require fixed seeds and bootstrap intervals without values. 1,000 resamples keeps a run to a few seconds; 95% is the usual level.
+
+## D-044: How the plausibility test is measured
+
+- **Date:** 2026-09-25 (Milestone 5)
+- **Decision:**
+  - **Hits:** a candidate within 1 km (inclusive) of a known charging site: the production charger set of D-034 (OSM charging stations merged within 50 m, plus the manual CSV when it exists). Ranking uses `scores_backtest`, where no charger reaches any feature.
+  - **Precision@k** = hits among the top k ÷ k. **Recall@30** = hits in the top 30 ÷ all hit candidates; undefined (null) with no hit candidate.
+  - **Population-only baseline:** candidates ranked by `pop_5km`, the most heavily weighted demand feature. **Random baseline:** the mean over 1,000 seeded random rankings.
+  - **Bootstrap:** each resample draws the 300 candidates with replacement; SiteScout and population-only are re-ranked on the same resample, which also gives an interval for their difference.
+  - **Weight stability:** every feature weight (12) and profile weight (10) is multiplied by 0.8 and by 1.2 in turn (44 runs), its group renormalised to 1, and the production Top-30 compared with the unperturbed Top-30. The report gives the mean, the minimum and the number of runs below the 70% target. Bonuses are points, not weights, and are not perturbed. Each run passes its weights as logged config overrides.
+  - Results go to `data/processed/evaluation.json`; `reports/evaluation.md` is filled from them by a template, with no hand-written numbers.
+- **Alternatives:** Recall over known sites instead of hit candidates; `pop_10km` or a sum of the population features as the baseline; resampling the known sites instead of the candidates; judging stability on the average only.
+- **Reason:** SPEC §7 names the metrics and baselines but not their definitions. Candidate-level hits keep precision and recall on the same footing and let the bootstrap resample one population. With 5 known sites and 5 hit candidates on the 2026-09-23 data, the intervals are wide; the report says so and draws no strong claim.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -447,9 +467,7 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 5
 
-- The definition of Recall@30.
-- What the bootstrap resamples.
-- Which weights the ±20% stability test changes (profile weights, feature weights, bonuses), and whether the 70% target applies to each change or to the average.
+- Resolved in Milestone 5: Recall@30, what the bootstrap resamples, which weights the stability test changes and how the 70% target is reported (D-044); seeds and bootstrap settings (D-043).
 - The network section of `reports/evaluation.md` is added in Milestone 6 and the grounding section in Milestone 7.
 
 ### Milestone 6

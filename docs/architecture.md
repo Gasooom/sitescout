@@ -142,6 +142,10 @@ data/processed/features_production, features_backtest (each read through read_la
 
 See [scoring.md](scoring.md).
 
+## Milestone 5: evaluation
+
+`sitescout/evaluation.py` (run by `scripts/evaluate.py`) reads the candidates, feature and score layers and computes the retrospective plausibility test (D-043, D-044): the backtest against known charging sites with random and population-only baselines and bootstrap intervals, weight stability (44 perturbations, each passed as logged config overrides and rescored with `scoring.score_features`) and data quality. It writes `data/processed/evaluation.json` and fills `reports/evaluation.md` from a template.
+
 ## Rules every stage follows
 
 - **Configuration.** Stages receive a loaded `Config` object. They never read `config/` files or environment variables themselves.

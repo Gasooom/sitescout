@@ -286,13 +286,12 @@ evaluation:
     precision_at: [10, 20, 30]
     recall_at: 30
   random_baseline_seeds: 1000
-  random_seed:
-    pending: "SPEC §7 and CLAUDE.md require fixed random seeds but give no seed value. Decide in M5."
+  # Decided by Gasim on 2026-09-25 (D-043). The random baseline uses seeds random_seed,
+  # random_seed + 1, ..., one per ranking; the bootstrap uses random_seed itself.
+  random_seed: 20260924
   bootstrap:
-    resamples:
-      pending: "SPEC §7 requires bootstrap confidence intervals but gives no number of resamples. Decide in M5."
-    confidence_level:
-      pending: "SPEC §7 requires bootstrap confidence intervals but gives no confidence level. Decide in M5."
+    resamples: 1000
+    confidence_level: 0.95
   stability:
     perturbation: 0.20
     renormalize: true
