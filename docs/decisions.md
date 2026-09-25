@@ -306,6 +306,69 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Loosening the 200 to 400 range, removing hotels or corridor points, or corridor points on trunk roads only (all rejected by Gasim); a 5 km or 10 km grid round-robin (in a simulation the City of Kigali fell from 23% of candidates to 6% or 4%); district quotas with pure priority inside each district (no spread within a district); random sampling.
 - **Reason:** SPEC §3's rules give 595 eligible candidates on the 2026-09-23 extract, and SPEC and CLAUDE.md require 200 to 400. 300 sits well inside the range. Proportional district quotas keep the eligible universe's geographic distribution; spacing spreads each district's candidates; host priority decides when candidates compete, as in deduplication. The 595 remain auditable. SPEC.md is not changed.
 
+## D-032: The trunk corridor for `dist_trunk_m`
+
+- **Date:** 2026-09-25 (Milestone 3, chosen by Gasim)
+- **Decision:** `features.trunk_road_classes` is `[trunk, trunk_link]`. `dist_trunk_m` is the distance in EPSG:32735 to the nearest OSM road of those classes. Roads are not clipped to Rwanda, as for `dist_road_m`. Config checks that the classes are drivable (D-028).
+- **Alternatives:** `trunk` only; `trunk` and `primary` (the roads M2 places corridor points on).
+- **Reason:** SPEC §4 says "distance to trunk corridor" without listing classes. The feature's name and SPEC §5's separate trunk (10) and primary (5) road-class bonuses both point to trunk roads; a trunk link is part of the trunk road. Rwanda has no motorway in OSM.
+
+## D-033: POI types and grid-evidence power values
+
+- **Date:** 2026-09-25 (Milestone 3, chosen by Gasim)
+- **Decision:**
+  - **POI types** (`features.poi_types`): one type per OSM key: `amenity=*`, `shop=*`, `tourism=*`, `office=*` and `industrial=*`. `poi_1km` and `poi_3km` count the distinct POIs of any type within the radius (inclusive), so a POI with two keys counts once there; `poi_<type>_1km` and `poi_<type>_3km` give the reported breakdown. Land-use areas, `building=*` rows and `man_made=works` in `osm_pois` are not POIs. An area POI is represented by a point on its surface, as M2 represents area hosts.
+  - `amenity=charging_station` is excluded from POI counts in both modes (`features.poi_exclude`). Config requires it there.
+  - A candidate's own host (`host_osm_id`) is never counted for that candidate. Other hosts nearby are counted.
+  - **Grid evidence** (`features.grid_osm_tags`): substations are `power=substation`; lines are `power=line`, `power=minor_line` and `power=cable`. The completeness proxy counts only `line`, `minor_line`, `cable`, `substation`, `transformer`, `tower`, `pole`, `portal`, `plant`, `generator` and `connection`. No other `power` value is ever counted. Config accepts only exact `power=<value>` tags and requires the substation and line values to be in the completeness list.
+- **Alternatives:** A hand-picked list of commercial values; every `osm_pois` row; counting charging stations in production and removing them in backtest (SPEC §5's literal reading); counting the candidate's own host; counting every `power=*` value; `power=line` only for lines.
+- **Reason:** SPEC §4 counts POIs "by type" and measures distance to "the nearest mapped substation and line" without listing either. Keys are the plainest types OSM offers. Charging stations are measured by the charging-gap component; counting them as POIs would count them twice and open a leakage path. The host-type bonus already rewards a candidate's own host. On the 2026-09-23 extract, two charging-station nodes also carry `power=150kWh` and `power=11 kWh` (charger capacities), so counting every `power` value would put chargers into grid evidence.
+
+## D-034: Existing chargers in production and backtest mode
+
+- **Date:** 2026-09-25 (Milestone 3, chosen by Gasim)
+- **Decision:**
+  - **Production:** OSM charging stations, except those tagged `access=private` or `access=no` (`features.chargers.exclude_access`); fuel stations tagged `socket:*` (`features.chargers.fuel_sockets_count_as_chargers: true`); and the rows of `data/manual/chargers.csv` when it exists. While the CSV is missing, OSM is the only source and every feature layer's metadata says so. Nothing stands in for it.
+  - `sources.charger_match_radius_m` = **50 m**. Records within 50 m of each other, directly or through a chain of such records, are one charging site, within one source and between sources. A site takes the position of its first record in a fixed order: OSM charging stations, then fuel stations, then CSV rows, then by id. An area charger is represented by a point on its surface. The 50 m is a project data-matching choice, not a claim that 50 m defines a charging site.
+  - **Backtest:** the charger set is empty and is built without reading any charger source: `dist_charger_m` is null and `chargers_10km` and `chargers_25km` are 0 for every candidate. Every charger object (all charging stations, whatever their access, and socket-tagged fuel stations) is also removed from the POI and power inputs before anything is computed. No backtest value is copied or patched from a production value.
+  - `dist_charger_m` is null, never a stand-in distance, when there is no charger.
+- **Alternatives:** Counting OSM objects without merging; greedy, non-transitive merging as in D-029; a centroid for merged records; counting private chargers; keeping `charger_match_radius_m` pending.
+- **Reason:** SPEC §2 combines the manual CSV with OSM chargers but gives no matching radius (D-024). On the 2026-09-23 extract, OSM maps one site as three nodes 10 m apart (`node/8816058906`, `node/8816058907`, `node/8816068253`); without merging, that site would count three times in `chargers_10km`. The next-nearest pair of chargers is 407 m apart, so 50 m merges the one cluster and nothing else: 7 records become 5 sites. SPEC §2 names public chargers. SPEC §5 removes chargers from every feature in backtest mode.
+
+## D-035: Town and city centres, and the Kigali city centre
+
+- **Date:** 2026-09-25 (Milestone 3, chosen by Gasim)
+- **Decision:**
+  - A new OSM layer, `osm_places`, holds `place=city` and `place=town` nodes (`sources.osm_tags.places`). It is extracted from the same PBF as every other OSM layer; no other source is downloaded. Ways and relations tagged `place` are not taken, and names are not read.
+  - **Town and city centres** (`features.town_centres`): every `place=city` and `place=town` node inside Rwanda. `dist_town_m` is the distance to the nearest one. On the 2026-09-23 extract: 11 cities and 98 towns; 1 town node lies outside Rwanda and is not used.
+  - **Kigali** (`features.kigali_cbd`): `node/60485579`, the `place=city` node with `capital=yes`, labelled "Kigali city centre as mapped in OSM". `dist_kigali_cbd_m` is the distance to it. The run stops if that node is missing from the extract or is not a `place=city` node inside Rwanda. By the geoBoundaries ADM2 outlines the node lies in **Gasabo** district, not in Nyarugenge. It is where OSM places the city, not an official CBD boundary.
+  - The profile radii (`candidates.profile.town_radius_m`, `kigali_radius_m`) stay pending until M4. `dist_town_m` and `dist_kigali_cbd_m` are reported only and never scored.
+- **Alternatives:** A coordinate from another public source; the centroid of Nyarugenge district; keeping `features.town_centres` deferred to M4 (D-030).
+- **Reason:** SPEC §4 lists both distances as features without defining the places. OSM is SPEC §2's source for places; one node pinned by id is reproducible and can be checked on every run. The Kigali node was identified once by its tags during M3 (a one-off check that read its name); the pipeline itself never reads names (D-019). The extract also has two unnamed `place=city` nodes near Musanze; they are kept, because the rule counts every city node.
+
+## D-036: Population within a radius, and the border diagnostic
+
+- **Date:** 2026-09-25 (Milestone 3; the diagnostic chosen by Gasim)
+- **Decision:**
+  - `pop_1km`, `pop_5km` and `pop_10km` sum the WorldPop pixel values whose pixel **centre** lies within the radius (inclusive). Pixel centres are computed from the raster's grid in EPSG:4326 and projected to EPSG:32735; the distance is measured in metres. Values are summed in float64, ring by ring from the smallest radius outward, so a larger radius never holds fewer people. A nodata pixel adds 0. The raster is not clipped or resampled.
+  - `outside_rwanda_share_10km`: the share of the candidate's 10 km circle (a 256-segment polygon in EPSG:32735) that lies outside `admin_country`. Exactly 0 when the circle is inside Rwanda. Reported only: it never changes a population value, a score, a confidence level or a selection.
+- **Alternatives:** Weighting each pixel by the share of its area inside the circle (it needs a new dependency such as exactextract); treating nodata as unknown; estimating population outside Rwanda.
+- **Reason:** SPEC §4 asks for population within 1, 5 and 10 km. With 3 arc-second pixels a 1 km circle holds about 370 of them, so the edge effect of the pixel-centre rule is small and has no direction. In WorldPop's constrained model a nodata pixel has no modelled settlement. The raster ends at the border, so a circle that crosses it counts only people inside Rwanda: on the real candidates, 69 of 300 have part of their 10 km circle outside Rwanda, 31 of them a quarter or more. The diagnostic makes that visible instead of silently understating demand.
+
+## D-037: Terrain is deferred
+
+- **Date:** 2026-09-25 (Milestone 3, chosen by Gasim)
+- **Decision:** Elevation and slope, SPEC §4's reported-only terrain features, are not computed in M3. They stay in `features.reported_only`, and no column holds them.
+- **Alternatives:** Reading Copernicus DEM tiles now.
+- **Reason:** SPEC §2 defers the Copernicus DEM, and SPEC §4 reports terrain without scoring it.
+
+## D-038: Feature layers, modes and the boundary with scoring
+
+- **Date:** 2026-09-25 (Milestone 3, chosen by Gasim)
+- **Decision:** `sitescout/features/` writes two layers, `features_production` and `features_backtest`, with one row per candidate (300), sorted by `candidate_id`, each candidate's point in EPSG:4326. Each is computed from the validated inputs independently (D-034). Both are checked before either is written; if anything fails, both are removed. Every value is raw, in natural units: metres, people, counts and ratios. No percentile rank, log1p, inversion, bonus, weight, profile, score or confidence is applied; SPEC §5 puts all of them in scoring (Milestone 4). Metadata records the mode, the fingerprint of every input, the charger sources, the grid-completeness table, the settings used, these decisions and the known limitations.
+- **Alternatives:** One layer with a `mode` column; computing backtest values by blanking production ones; applying log1p in M3.
+- **Reason:** Two layers keep each `read_layer` contract simple, and building each mode from its own inputs is what makes the leakage tests meaningful. The normalisation SPEC §5 describes is part of scoring.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -316,7 +379,7 @@ These need a decision before or during the milestone named. None has a default.
 - Deriving ADM1 from ADM2 without a province code: D-021.
 - `rwanda-latest.osm.pbf` changing over time: D-016.
 - The distortion of EPSG:32735 east of 30°E: D-018 (at most +0.199%).
-- `charger_match_radius_m`: still pending, moved to M3 (D-024).
+- `charger_match_radius_m`: moved to M3 (D-024) and set to 50 m there (D-034).
 - National parks tagged `boundary=national_park`: D-026 (Milestone 2).
 
 ### Milestone 2
@@ -328,18 +391,20 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 3
 
-- The radius for matching manual CSV chargers to OSM chargers (`charger_match_radius_m`, pending; D-024).
-- Do fuel stations tagged `socket:*` count as existing chargers in production mode? SPEC mentions them only for removal in backtest mode. On the 2026-09-23 extract no fuel station has a `socket:*` tag, but the rule is still needed.
-- Two OSM `power` values are not power types (`150kWh`, `11 kWh`). `features.grid_osm_tags` (pending) should list the values that count, so these are ignored rather than repaired.
-- The backtest ground truth is small. OSM maps 7 charging stations, and `data/manual/chargers.csv` does not exist yet. SPEC §7 expects "a few dozen". Until the CSV is filled, the M5 backtest has 7 known chargers at most, and its confidence intervals will be very wide.
+- Resolved in Milestone 3: the charger match radius and which records are chargers (D-034); `socket:*` fuel stations count as chargers in production (D-034); the `power` values that count, which leaves out `150kWh` and `11 kWh` (D-033); POI types (D-033); the trunk classes (D-032); town and city centres and the Kigali centre (D-035); terrain deferred (D-037).
+- The backtest ground truth is small. OSM maps 7 charging stations (5 sites after merging within 50 m), and `data/manual/chargers.csv` does not exist yet. SPEC §7 expects "a few dozen". Until the CSV is filled, the M5 backtest has 5 known charging sites at most, and its confidence intervals will be very wide.
+- The OSM data is dated 2026-09-23, after the chargers were mapped. People who mapped a charger may also have mapped the places around it, which backtest mode cannot remove. Report this with the M5 results.
+- `grid_completeness_ratio` counts every approved feature equally, so densely mapped towers or individually mapped generating units can dominate a district. Rwamagana holds 334 of the 488 `generator` and `plant` features (ratio 3.57), and Gasabo's highest ratio (6.62) comes mostly from 379 towers. It measures how much is mapped, not the grid, and stays a labelled proxy.
 
 ### Milestone 4
 
-- The profile rule (D-030): which places are town or city centres (`features.town_centres`), the town radius and the Kigali radius. OSM has 11 `place=city` and 99 `place=town` nodes; they are not extracted yet.
+- The profile rule (D-030): the town radius and the Kigali radius. The centres themselves are decided (D-035): 109 OSM city and town nodes inside Rwanda.
 - `dist_town_m` assigns the profile, while CLAUDE.md says it is never scored. Proposed reading: never a weighted input, but allowed for assigning the profile.
 - Applying log1p before a percentile rank does not change any rank, because log1p preserves order. Keep the step, drop it, or use it somewhere else?
 - Does "percentile rank within Rwanda" rank a candidate among the candidates or against a national reference?
-- In backtest mode the charging-gap component is the same for every candidate. Its value depends on tie handling and on how "no charger" distances are stored. Because urban weights this component at 0.15 and corridor at 0.25, that value shifts corridor scores against urban ones by up to 10 points.
+- In backtest mode the charging-gap component is the same for every candidate. M3 stores "no charger" as a null `dist_charger_m` and zero counts (D-034); how M4 scores them decides the constant. Because urban weights this component at 0.15 and corridor at 0.25, that value shifts corridor scores against urban ones by up to 10 points.
+- `dist_charger_m` works in the opposite direction to `chargers_10km` and `chargers_25km` (far from a charger is a larger gap; many chargers nearby is a smaller one). Invert explicitly, as SPEC §5 requires.
+- Grid evidence is missing "when no mapped substation or line lies within 5 km". The natural reading is that neither lies within 5 km. On the real candidates, 186 of 300 have a substation or a line within 5 km.
 - How the confidence factors combine into Medium or Low.
 
 ### Milestone 5

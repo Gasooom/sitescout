@@ -4,7 +4,7 @@
 
 SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
 
-> **Status:** Milestone 1 (data ingestion) is complete. Milestone 2 (candidate generation) is implemented and in review: the specification's rules give 595 eligible candidates from current OpenStreetMap data, and a deterministic budget selects 300 of them by district quota and spacing. No candidates, scores or results have been published.
+> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering) is implemented and in review: raw demand, access, host, charging-gap and grid-evidence features for every candidate, in production and backtest mode ([docs/features.md](docs/features.md)). No scores or results have been published.
 
 ## What it answers
 
@@ -57,6 +57,7 @@ uv sync
 uv run python scripts/check_config.py
 uv run python scripts/ingest.py all
 uv run python scripts/candidates.py
+uv run python scripts/features.py
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest -q
@@ -71,7 +72,7 @@ config/    settings.yaml and weights.yaml: every parameter, taken from docs/SPEC
 src/       the sitescout package, where all computation lives
 scripts/   entry points that parse arguments and call src/
 tests/     pytest suite
-docs/      specification, architecture, decisions and data sources
+docs/      specification, architecture, decisions, data sources and features
 data/      local data, never committed (raw, manual, processed, export)
 ```
 
@@ -81,8 +82,8 @@ data/      local data, never committed (raw, manual, processed, export)
 |---|---|---|
 | 0 | Repository setup and architecture | done |
 | 1 | Data ingestion and geospatial pipeline | done |
-| 2 | Candidate generation | in review |
-| 3 | Feature engineering | not started |
+| 2 | Candidate generation | done |
+| 3 | Feature engineering | in review |
 | 4 | Scoring and confidence | not started |
 | 5 | Evaluation | not started |
 | 6 | Network optimization | not started |

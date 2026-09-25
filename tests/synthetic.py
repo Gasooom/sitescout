@@ -221,6 +221,9 @@ def osm_pbf(path: Path) -> Path:
         4: ((30.05, -1.92), {"power": "tower"}),
         5: ((29.50, -3.30), {"power": "tower"}),  # wholly outside the Rwanda envelope
         6: ((30.06, -1.92), {"shop": "supermarket"}),
+        7: ((30.07, -1.92), {"place": "city", "name": "SYNTHETIC City", "capital": "yes"}),
+        8: ((30.08, -1.92), {"place": "town", "name": "SYNTHETIC Town"}),
+        9: ((30.09, -1.92), {"place": "village"}),  # not a town or city
     }
     ways: list[tuple[int, list[int], dict[str, str]]] = []
     nodes.update({10: (30.00, -1.95), 11: (30.05, -1.95), 12: (30.10, -1.96)})
@@ -237,6 +240,7 @@ def osm_pbf(path: Path) -> Path:
     ways.append((109, ring(110, 30.03, -2.01), {}))  # outer ring of relation 301
     ways.append((111, ring(120, 30.04, -2.01), {}))  # outer ring of relation 302
     ways.append((114, ring(150, 30.05, -2.01), {"boundary": "national_park", "protect_class": "2"}))
+    ways.append((115, ring(160, 30.06, -2.03), {"place": "town"}))  # places are nodes only
     nodes.update({130: (30.06, -2.01), 131: (30.07, -2.02)})
     ways.append((112, [130, 131], {"amenity": "parking"}))  # open way: POIs take nodes/areas
     # A self-intersecting "bow-tie" ring tagged as water.

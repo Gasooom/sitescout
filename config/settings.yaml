@@ -116,11 +116,16 @@ sources:
       - "building=commercial"
       - "building=retail"
       - "man_made=works"
+    # Milestone 3 (D-035): town and city centre nodes for dist_town_m and the Kigali city
+    # centre. Only nodes are extracted; names are never read.
+    places: ["place=city", "place=town"]
   charger_csv:
     columns: [name, lat, lon, source_url, date_retrieved, operator_public_name]
     provenance_only_columns: [operator_public_name]
-  charger_match_radius_m:
-    pending: "SPEC §2 combines the manual CSV with OSM chargers but gives no radius for matching duplicates; M1 ingests both without combining them. Decide in M3."
+  # Decided by Gasim on 2026-09-25 (D-034): charger records within this distance are one
+  # charging site, within a source (OSM maps one site as three nodes 10 m apart) and between
+  # the manual CSV and OSM. A project data-matching choice, not a definition of a site.
+  charger_match_radius_m: 50
 
 # Milestone 1 ingestion checks (not from SPEC; D-018).
 ingest:
@@ -191,15 +196,49 @@ features:
   population_radii_m: [1000, 5000, 10000]
   poi_radii_m: [1000, 3000]
   charger_count_radii_m: [10000, 25000]
-  reported_only: [dist_town_m, dist_kigali_cbd_m, elevation, slope]
-  town_centres:
-    pending: "SPEC §3 and §4 use a town or city centre (profile rule, dist_town_m) without saying which places count. Deferred from M2 on 2026-09-24 (D-030). Decide in M4."
+  # outside_rwanda_share_10km is a border diagnostic (D-036). Elevation and slope are
+  # deferred with their source (SPEC §2, D-037) and are not computed.
+  reported_only: [dist_town_m, dist_kigali_cbd_m, outside_rwanda_share_10km, elevation, slope]
+  # Milestone 3 decisions by Gasim on 2026-09-25 (D-032 to D-036).
+  # D-032: the "trunk corridor" of dist_trunk_m. Must be drivable classes.
+  trunk_road_classes: [trunk, trunk_link]
+  # D-035: every OSM place=city and place=town node inside Rwanda is a town or city centre.
+  town_centres: ["place=city", "place=town"]
+  # D-035: the OSM place=city node for Kigali (capital=yes; in Gasabo district by the ADM2
+  # boundaries), verified in the 2026-09-23 extract. Not an official CBD boundary.
   kigali_cbd:
-    pending: "SPEC §4 uses the Kigali CBD for dist_kigali_cbd_m without defining its location. Decide in M3."
+    osm_id: node/60485579
+    label: "Kigali city centre as mapped in OSM"
+  # D-033: one POI type per OSM key. A POI matching several types counts once in poi_1km
+  # and poi_3km. Excluded in both modes: charging stations (J). A candidate's own host is
+  # never counted for it (K).
   poi_types:
-    pending: "SPEC §4 counts POIs by type within 1 and 3 km without listing the types. Decide in M3."
+    amenity: ["amenity=*"]
+    shop: ["shop=*"]
+    tourism: ["tourism=*"]
+    office: ["office=*"]
+    industrial: ["industrial=*"]
+  poi_exclude: ["amenity=charging_station"]
+  # D-033: which power=* values are grid evidence. No other power value is ever counted.
   grid_osm_tags:
-    pending: "SPEC §4 measures distance to a substation and a line without saying which power=* values count as each. Decide in M3."
+    substation: ["power=substation"]
+    line: ["power=line", "power=minor_line", "power=cable"]
+    completeness:
+      - "power=line"
+      - "power=minor_line"
+      - "power=cable"
+      - "power=substation"
+      - "power=transformer"
+      - "power=tower"
+      - "power=pole"
+      - "power=portal"
+      - "power=plant"
+      - "power=generator"
+      - "power=connection"
+  # D-034: which records are existing chargers in production mode.
+  chargers:
+    exclude_access: [private, "no"]
+    fuel_sockets_count_as_chargers: true
 
 # SPEC §5 (feature weights, profile weights and bonuses are in config/weights.yaml)
 scoring:

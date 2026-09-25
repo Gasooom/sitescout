@@ -7,7 +7,8 @@ Layers and the tags that select them come from ``sources.osm_tags`` in settings.
 - ``osm_charging_stations``: ``amenity=charging_station`` nodes and areas;
 - ``osm_power``: ``power=*`` nodes, lines and areas;
 - ``osm_water``: ``natural=water`` areas; ``osm_protected_areas``: ``boundary=protected_area``
-  and ``boundary=national_park`` areas (D-026).
+  and ``boundary=national_park`` areas (D-026);
+- ``osm_places``: ``place=city`` and ``place=town`` nodes only (D-035).
 
 The file is read in two filtered passes (keys with any value, then exact key=value pairs),
 which keeps the 1.4 million untagged buildings out of Python. Name, brand and operator tags
@@ -35,6 +36,7 @@ from sitescout.ingest.acquire import load_raw, raw_sources
 from sitescout.ingest.geometry import inside_bbox, repair_polygons
 from sitescout.ingest.layers import (
     OSM_CHARGING_STATIONS,
+    OSM_PLACES,
     OSM_POIS,
     OSM_POWER,
     OSM_PROTECTED_AREAS,
@@ -86,7 +88,7 @@ class OsmLayer:
     specs: tuple[TagSpec, ...]
     tag_columns: tuple[str, ...]
     nodes: bool
-    ways: Literal["lines", "areas", "power"]  # roads: every way is a line
+    ways: Literal["lines", "areas", "power", "none"]  # roads: lines; places: nodes only
 
     def matches(self, tags: Any) -> bool:
         return any(spec.matches(tags) for spec in self.specs)
@@ -150,6 +152,13 @@ def osm_layers(settings: Settings) -> list[OsmLayer]:
             nodes=False,
             ways="areas",
         ),
+        OsmLayer(
+            OSM_PLACES,
+            tuple(TagSpec.parse(text) for text in tags.places),
+            ("place",),
+            nodes=True,
+            ways="none",
+        ),
     ]
 
 
@@ -205,6 +214,8 @@ def extract(pbf: Path, settings: Settings) -> tuple[dict[str, gpd.GeoDataFrame],
                         _add(
                             target, layer, "node", obj.id, obj.tags, sockets, wkb.create_point, obj
                         )
+                elif layer.ways == "none":
+                    continue  # a node-only layer
                 elif kind == "w":
                     _way(target, layer, obj, sockets, wkb)
                 elif kind == "r":

@@ -285,5 +285,5 @@ Day 0 is the day Milestone 0 is committed. If Milestone 5 (evaluation) is not co
 
 ## Current state
 
-**Current milestone: 1 — Data ingestion + geospatial pipeline (complete, ready for commit).**
-Milestone 0 delivered on 2026-09-24. Milestone 1 is complete and ready for commit. Do not start Milestone 2 until Gasim explicitly approves it.
+**Current milestone: 3 — Feature engineering (implemented, in review).**
+Milestones 0, 1 and 2 are delivered (M2 on 2026-09-24). Milestone 3 is implemented and awaiting Gasim's review; it is not committed. Do not start Milestone 4 until Gasim explicitly approves it.

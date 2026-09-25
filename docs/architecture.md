@@ -84,6 +84,39 @@ data/processed/ (admin_districts, admin_country, osm_pois, osm_roads, osm_water,
 
 Candidate generation reads processed layers only, uses no randomness and never reads the existing chargers. The same processed layers give byte-identical output (tested). The `candidates` schema lives with the other layer schemas in `ingest/layers.py`, so later stages read it through `read_layer`.
 
+## Milestone 3: feature engineering
+
+```text
+data/processed/ (candidates, admin_districts, admin_country, osm_roads, osm_pois,
+                 osm_charging_stations, osm_power, osm_places, chargers_manual or its
+                 `missing` record, population_worldpop.tif; each re-checked on read)
+  for each mode, from the inputs alone (D-038):
+    production: existing chargers = public OSM stations + socket-tagged fuel + CSV,
+                merged within 50 m (D-034)
+    backtest:   no chargers; every charger object removed from POIs and power first
+  -> demand: population within 1/5/10 km (pixel centres, metres; D-036)
+  -> access: dist_road_m and road_class from M2; dist_trunk_m (D-032)
+  -> host / commercial: POI counts by OSM key within 1/3 km (D-033)
+  -> charging gap: dist_charger_m, chargers within 10/25 km
+  -> grid evidence: substation and line distances; district completeness proxy (D-033)
+  -> reported only: Kigali city centre and town distances (D-035); border share (D-036)
+  -> bounds checks for both modes
+  -> data/processed/features_production.parquet and features_backtest.parquet
+     (+ .meta.json), or a stop that writes neither
+```
+
+| Module | Responsibility |
+|---|---|
+| `features/nearest.py` | Nearest distance, pairs and counts within an inclusive radius, points on the surface of areas; metric geometries only |
+| `features/demand.py` | Population sums from the WorldPop raster; the border diagnostic |
+| `features/pois.py` | POI types, exclusions and counts |
+| `features/chargers.py` | The existing chargers for each mode, and merging within the match radius |
+| `features/grid.py` | Substation and line distances; the grid-completeness proxy |
+| `features/build.py` | Loads the inputs, builds both modes, checks bounds, writes both layers with their metadata |
+| `scripts/features.py` | Loads the config and calls `run_features`; exit code 1 when feature engineering stops |
+
+Values are raw, in natural units; normalisation, bonuses, weights and profiles belong to scoring (Milestone 4). OSM place nodes (`osm_places`) are a Milestone 1 layer, added in Milestone 3 from the same PBF.
+
 ## Rules every stage follows
 
 - **Configuration.** Stages receive a loaded `Config` object. They never read `config/` files or environment variables themselves.

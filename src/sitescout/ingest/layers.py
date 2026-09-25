@@ -196,6 +196,14 @@ OSM_PROTECTED_AREAS = _osm(
     types={MULTIPOLYGON},
 )
 
+OSM_PLACES = _osm(
+    "osm_places",
+    "OSM place=city and place=town nodes (sources.osm_tags.places, D-035): town and city "
+    "centres as mapped in OSM. Names are not extracted.",
+    Column("place", "string", True, "OSM place value: city or town."),
+    types={POINT},
+)
+
 GRID_TRANSMISSION = LayerSchema(
     name="grid_transmission_lines",
     description="energydata.info Rwanda transmission network (2009): grid-evidence "
@@ -286,6 +294,125 @@ CANDIDATES_ELIGIBLE = replace(
     ),
 )
 
+
+def _feature_columns() -> tuple[Column, ...]:
+    """The Milestone 3 feature columns (docs/features.md): raw values, never normalised."""
+    metres = "metres, EPSG:32735"
+    per_type = [
+        Column(
+            f"poi_{kind}_{km}km",
+            "int64",
+            True,
+            f"Reported only: POIs of type {kind} within {km} km (same rules as poi_{km}km).",
+        )
+        for kind in ("amenity", "shop", "tourism", "office", "industrial")
+        for km in (1, 3)
+    ]
+    return (
+        Column("candidate_id", "string", True, "candidates.candidate_id."),
+        Column("host_type", "string", True, "candidates.host_type (host / commercial)."),
+        Column("host_osm_id", "string", False, "candidates.host_osm_id; null for no host."),
+        Column("origin", "string", True, "candidates.origin."),
+        Column("district_id", "string", True, "candidates.district_id."),
+        Column("district", "string", True, "candidates.district."),
+        Column("province_code", "string", True, "candidates.province_code."),
+        Column("province", "string", True, "candidates.province."),
+        *(
+            Column(
+                f"pop_{km}km",
+                "float64",
+                True,
+                f"Modelled population (WorldPop) of pixels whose centre is within {km} km; "
+                "people. Population outside Rwanda is not in the raster.",
+            )
+            for km in (1, 5, 10)
+        ),
+        Column(
+            "dist_road_m",
+            "float64",
+            True,
+            f"candidates.dist_road_m: nearest drivable road, {metres}.",
+        ),
+        Column("road_class", "string", True, "candidates.nearest_road_class (highway value)."),
+        Column(
+            "dist_trunk_m",
+            "float64",
+            False,
+            f"Nearest road in features.trunk_road_classes, {metres}; null if none is mapped.",
+        ),
+        Column("poi_1km", "int64", True, "Distinct POIs of any configured type within 1 km."),
+        Column("poi_3km", "int64", True, "Distinct POIs of any configured type within 3 km."),
+        *per_type,
+        Column(
+            "dist_charger_m",
+            "float64",
+            False,
+            f"Nearest existing charging site for this mode, {metres}; null when there is none.",
+        ),
+        Column("chargers_10km", "int64", True, "Existing charging sites within 10 km."),
+        Column("chargers_25km", "int64", True, "Existing charging sites within 25 km."),
+        Column(
+            "dist_substation_m",
+            "float64",
+            False,
+            f"Nearest mapped OSM substation (grid evidence), {metres}; null if none is mapped.",
+        ),
+        Column(
+            "dist_line_m",
+            "float64",
+            False,
+            f"Nearest mapped OSM power line (grid evidence), {metres}; null if none is mapped.",
+        ),
+        Column(
+            "grid_completeness_ratio",
+            "float64",
+            True,
+            "Proxy: the district's mapped power features per km² divided by the national "
+            "median district density.",
+        ),
+        Column(
+            "dist_kigali_cbd_m",
+            "float64",
+            True,
+            f"Reported only: to the Kigali city centre as mapped in OSM, {metres}.",
+        ),
+        Column(
+            "dist_town_m",
+            "float64",
+            False,
+            f"Reported only: nearest OSM town or city centre node, {metres}.",
+        ),
+        Column(
+            "outside_rwanda_share_10km",
+            "float64",
+            True,
+            "Reported only: share of the 10 km circle's area outside Rwanda, where the "
+            "population raster has no data.",
+        ),
+    )
+
+
+_FEATURES = LayerSchema(
+    name="features",
+    description="",
+    id_column="candidate_id",
+    columns=_feature_columns(),
+    geometry_types=frozenset({POINT}),
+    sort_by=("candidate_id",),
+)
+FEATURES_PRODUCTION = replace(
+    _FEATURES,
+    name="features_production",
+    description="Milestone 3 features for the candidates, production mode: existing chargers "
+    "included (SPEC §5). Raw values in natural units; scoring is Milestone 4.",
+)
+FEATURES_BACKTEST = replace(
+    _FEATURES,
+    name="features_backtest",
+    description="Milestone 3 features for the candidates, backtest mode: every existing "
+    "charger removed from every input (SPEC §5). Raw values; scoring is Milestone 4.",
+)
+
 LAYERS: dict[str, LayerSchema] = {
     schema.name: schema
     for schema in (
@@ -298,10 +425,13 @@ LAYERS: dict[str, LayerSchema] = {
         OSM_POWER,
         OSM_WATER,
         OSM_PROTECTED_AREAS,
+        OSM_PLACES,
         GRID_TRANSMISSION,
         CHARGERS_MANUAL,
         CANDIDATES,
         CANDIDATES_ELIGIBLE,
+        FEATURES_PRODUCTION,
+        FEATURES_BACKTEST,
     )
 }
 

@@ -270,6 +270,7 @@ class OsmTags(_Model):
     national_park: OsmTag
     roads: OsmTag
     pois: Annotated[tuple[OsmTag, ...], Field(min_length=1), AfterValidator(_no_duplicates)]
+    places: Annotated[tuple[OsmTag, ...], Field(min_length=1), AfterValidator(_no_duplicates)]
 
 
 class ChargerCsv(_Model):
@@ -429,15 +430,72 @@ class CandidateSettings(_Model):
         return self
 
 
+class KigaliCentre(_Model):
+    """The OSM node used as the Kigali city centre (D-035); not an official CBD boundary."""
+
+    osm_id: Annotated[str, Strict(), Field(pattern=r"^node/[0-9]+$")]
+    label: Text
+
+
+class PoiTypes(_Model):
+    """The OSM tags counted as each POI type for poi_1km and poi_3km (D-033)."""
+
+    amenity: OsmTagList
+    shop: OsmTagList
+    tourism: OsmTagList
+    office: OsmTagList
+    industrial: OsmTagList
+
+
+def _power_values(tags: tuple[str, ...]) -> tuple[str, ...]:
+    for tag in tags:
+        key, _, value = tag.partition("=")
+        if key != "power" or value in ("", "*"):
+            raise ValueError(f"{tag!r} must name one power value, as power=<value>")
+    return tags
+
+
+PowerTagList = Annotated[OsmTagList, AfterValidator(_power_values)]
+
+
+class GridOsmTags(_Model):
+    """The power=* values counted as grid evidence (D-033); no other value ever counts."""
+
+    substation: PowerTagList
+    line: PowerTagList
+    completeness: PowerTagList
+
+    @model_validator(mode="after")
+    def _distances_use_counted_values(self) -> Self:
+        missing = (set(self.substation) | set(self.line)) - set(self.completeness)
+        if missing:
+            raise ValueError(f"{sorted(missing)} must also be in the completeness list")
+        return self
+
+
+class ChargerRules(_Model):
+    """Which records are existing chargers in production mode (D-034)."""
+
+    exclude_access: Annotated[
+        tuple[OsmValue, ...], Field(min_length=1), AfterValidator(_no_duplicates)
+    ]
+    fuel_sockets_count_as_chargers: Flag
+
+
 class FeatureSettings(_Model):
     population_radii_m: IncreasingMetres
     poi_radii_m: IncreasingMetres
     charger_count_radii_m: IncreasingMetres
     reported_only: Texts
-    town_centres: Pending
-    kigali_cbd: Pending
-    poi_types: Pending
-    grid_osm_tags: Pending
+    trunk_road_classes: Annotated[
+        tuple[OsmValue, ...], Field(min_length=1), AfterValidator(_no_duplicates)
+    ]
+    town_centres: OsmTagList
+    kigali_cbd: KigaliCentre
+    poi_types: PoiTypes
+    poi_exclude: OsmTagList
+    grid_osm_tags: GridOsmTags
+    chargers: ChargerRules
 
 
 class GridEvidenceRule(_Model):
@@ -757,6 +815,30 @@ def _check_across_files(settings: Settings, weights: Weights) -> None:
         raise ConfigError(
             f"Host tags {uncovered} are not extracted into osm_pois (sources.osm_tags.pois)"
         )
+    _check_features(settings)
+
+
+def _check_features(settings: Settings) -> None:
+    """Milestone 3 feature settings that depend on other sections (D-032 to D-035)."""
+    features, tags = settings.features, settings.sources.osm_tags
+    not_drivable = set(features.trunk_road_classes) - set(settings.candidates.drivable_road_classes)
+    if not_drivable:
+        raise ConfigError(f"features.trunk_road_classes {sorted(not_drivable)} are not drivable")
+    poi_tags = [
+        *(tag for name in PoiTypes.model_fields for tag in getattr(features.poi_types, name)),
+        *features.poi_exclude,
+    ]
+    uncovered = [tag for tag in poi_tags if not _within_extraction_scope(tag, tags.pois)]
+    if uncovered:
+        raise ConfigError(f"POI tags {uncovered} are not extracted into osm_pois")
+    if tags.charging_station not in features.poi_exclude:
+        raise ConfigError(
+            f"features.poi_exclude must list {tags.charging_station}: charging stations never "
+            "count as POIs (D-033)"
+        )
+    outside = [tag for tag in features.town_centres if tag not in tags.places]
+    if outside:
+        raise ConfigError(f"features.town_centres {outside} are not in sources.osm_tags.places")
 
 
 def _within_extraction_scope(tag: str, scope: tuple[str, ...]) -> bool:

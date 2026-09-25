@@ -57,6 +57,7 @@ OUTPUTS = {
         "osm_power",
         "osm_water",
         "osm_protected_areas",
+        "osm_places",
     ),
     "chargers": ("chargers_manual",),
 }

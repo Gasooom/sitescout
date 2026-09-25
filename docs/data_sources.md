@@ -235,6 +235,17 @@ The WorldPop GeoTIFF, validated and copied **byte for byte** (it is not converte
 | `protect_class` | string | no | OSM `protect_class` |
 | `geometry_repaired` | bool | yes | See `osm_pois` |
 
+### `osm_places`
+
+`place=city` and `place=town` **nodes** (`Point`, D-035): town and city centres as mapped in OSM, for `dist_town_m` and the Kigali city centre (`node/60485579`). Ways and relations tagged `place` are not taken; names are not extracted. 110 nodes on the 2026-09-23 extract (11 cities, 99 towns; one town lies outside Rwanda and is not used as a centre).
+
+| Column | Type | Required | Meaning |
+|---|---|---|---|
+| `feature_id` | string | yes | OSM object as type/id |
+| `osm_type` | string | yes | node |
+| `osm_id` | int64 | yes | OSM id |
+| `place` | string | yes | OSM `place` value: `city` or `town` |
+
 ### `grid_transmission_lines`
 
 38 lines (`LineString`) from the energydata.info transmission network, 1,091.0 km in total. Voltages: 30 kV (22 lines), 70 kV (5), 110 kV (9), 220 kV (2). Grid evidence and a cross-check only.
@@ -309,6 +320,52 @@ Every candidate that passed SPEC §3's rules (595 on the 2026-09-24 run), before
 | `dist_road_m` | float64 | yes | As in `candidates` |
 | `profile` | string | no | As in `candidates` |
 | `selected` | bool | yes | True for the 300 candidates the budget kept |
+
+### `features_production`
+
+Milestone 3 features for the 300 candidates in production mode: existing chargers included (SPEC §5). One row per candidate, sorted by `candidate_id`, with the candidate's point (EPSG:4326). Raw values in natural units; nothing is normalised or scored. Definitions, sources and limitations: [features.md](features.md). Metadata records the mode, the fingerprint of every input, the charger sources (the manual CSV is missing on 2026-09-25, so OSM is the only one), the grid-completeness table by district, the settings used and the decisions (D-032 to D-038).
+
+| Column | Type | Required | Meaning |
+|---|---|---|---|
+| `candidate_id` | string | yes | candidates.candidate_id. |
+| `host_type` | string | yes | candidates.host_type (host / commercial). |
+| `host_osm_id` | string | no | candidates.host_osm_id; null for no host. |
+| `origin` | string | yes | candidates.origin. |
+| `district_id` | string | yes | candidates.district_id. |
+| `district` | string | yes | candidates.district. |
+| `province_code` | string | yes | candidates.province_code. |
+| `province` | string | yes | candidates.province. |
+| `pop_1km` | float64 | yes | Modelled population (WorldPop) of pixels whose centre is within 1 km; people. Population outside Rwanda is not in the raster. |
+| `pop_5km` | float64 | yes | Modelled population (WorldPop) of pixels whose centre is within 5 km; people. Population outside Rwanda is not in the raster. |
+| `pop_10km` | float64 | yes | Modelled population (WorldPop) of pixels whose centre is within 10 km; people. Population outside Rwanda is not in the raster. |
+| `dist_road_m` | float64 | yes | candidates.dist_road_m: nearest drivable road, metres, EPSG:32735. |
+| `road_class` | string | yes | candidates.nearest_road_class (highway value). |
+| `dist_trunk_m` | float64 | no | Nearest road in features.trunk_road_classes, metres, EPSG:32735; null if none is mapped. |
+| `poi_1km` | int64 | yes | Distinct POIs of any configured type within 1 km. |
+| `poi_3km` | int64 | yes | Distinct POIs of any configured type within 3 km. |
+| `poi_amenity_1km` | int64 | yes | Reported only: POIs of type amenity within 1 km (same rules as poi_1km). |
+| `poi_amenity_3km` | int64 | yes | Reported only: POIs of type amenity within 3 km (same rules as poi_3km). |
+| `poi_shop_1km` | int64 | yes | Reported only: POIs of type shop within 1 km (same rules as poi_1km). |
+| `poi_shop_3km` | int64 | yes | Reported only: POIs of type shop within 3 km (same rules as poi_3km). |
+| `poi_tourism_1km` | int64 | yes | Reported only: POIs of type tourism within 1 km (same rules as poi_1km). |
+| `poi_tourism_3km` | int64 | yes | Reported only: POIs of type tourism within 3 km (same rules as poi_3km). |
+| `poi_office_1km` | int64 | yes | Reported only: POIs of type office within 1 km (same rules as poi_1km). |
+| `poi_office_3km` | int64 | yes | Reported only: POIs of type office within 3 km (same rules as poi_3km). |
+| `poi_industrial_1km` | int64 | yes | Reported only: POIs of type industrial within 1 km (same rules as poi_1km). |
+| `poi_industrial_3km` | int64 | yes | Reported only: POIs of type industrial within 3 km (same rules as poi_3km). |
+| `dist_charger_m` | float64 | no | Nearest existing charging site for this mode, metres, EPSG:32735; null when there is none. |
+| `chargers_10km` | int64 | yes | Existing charging sites within 10 km. |
+| `chargers_25km` | int64 | yes | Existing charging sites within 25 km. |
+| `dist_substation_m` | float64 | no | Nearest mapped OSM substation (grid evidence), metres, EPSG:32735; null if none is mapped. |
+| `dist_line_m` | float64 | no | Nearest mapped OSM power line (grid evidence), metres, EPSG:32735; null if none is mapped. |
+| `grid_completeness_ratio` | float64 | yes | Proxy: the district's mapped power features per km² divided by the national median district density. |
+| `dist_kigali_cbd_m` | float64 | yes | Reported only: to the Kigali city centre as mapped in OSM, metres, EPSG:32735. |
+| `dist_town_m` | float64 | no | Reported only: nearest OSM town or city centre node, metres, EPSG:32735. |
+| `outside_rwanda_share_10km` | float64 | yes | Reported only: share of the 10 km circle's area outside Rwanda, where the population raster has no data. |
+
+### `features_backtest`
+
+The same columns for the same candidates in backtest mode: every existing charger is removed from every input before anything is computed (SPEC §5, D-034), so `dist_charger_m` is null and `chargers_10km` and `chargers_25km` are 0 for every candidate. Columns: `candidate_id`, `host_type`, `host_osm_id`, `origin`, `district_id`, `district`, `province_code`, `province`, `pop_1km`, `pop_5km`, `pop_10km`, `dist_road_m`, `road_class`, `dist_trunk_m`, `poi_1km`, `poi_3km`, `poi_amenity_1km`, `poi_amenity_3km`, `poi_shop_1km`, `poi_shop_3km`, `poi_tourism_1km`, `poi_tourism_3km`, `poi_office_1km`, `poi_office_3km`, `poi_industrial_1km`, `poi_industrial_3km`, `dist_charger_m`, `chargers_10km`, `chargers_25km`, `dist_substation_m`, `dist_line_m`, `grid_completeness_ratio`, `dist_kigali_cbd_m`, `dist_town_m`, `outside_rwanda_share_10km`.
 
 ## Checks every processed layer passes
 

@@ -82,11 +82,18 @@ def test_water_and_protected_areas_come_from_ways_and_relations(layers):
     }
 
 
+def test_places_are_city_and_town_nodes_only(layers):
+    places = layers["osm_places"]
+    assert places["place"].to_dict() == {"node/7": "city", "node/8": "town"}
+    assert (places.geom_type == "Point").all()
+
+
 def test_names_brands_and_operators_are_never_extracted(config, dirs, layers):
     for name in layers:
         content = (dirs["processed"] / f"{name}.parquet").read_bytes()
         assert b"SYNTHETIC Brand" not in content and b"SYNTHETIC Operator" not in content
         assert b"SYNTHETIC Mall" not in content and b"SYNTHETIC Park" not in content
+        assert b"SYNTHETIC City" not in content and b"SYNTHETIC Town" not in content
 
 
 def test_skipped_and_dropped_features_are_counted_in_metadata(config, dirs, layers):

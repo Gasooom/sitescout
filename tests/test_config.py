@@ -22,13 +22,8 @@ from support import delete_path, flatten, set_path
 # Parameters docs/SPEC.md requires but does not define. Resolving one means giving it a
 # value in config/settings.yaml, removing it here and recording the decision.
 EXPECTED_PENDING = {
-    "settings.sources.charger_match_radius_m",
     "settings.candidates.profile.town_radius_m",
     "settings.candidates.profile.kigali_radius_m",
-    "settings.features.town_centres",
-    "settings.features.kigali_cbd",
-    "settings.features.poi_types",
-    "settings.features.grid_osm_tags",
     "settings.scoring.log1p_features",
     "settings.confidence.sparse_coverage_threshold",
     "settings.confidence.remote_location_rule",
@@ -102,7 +97,13 @@ EXPECTED_SETTINGS = {
     "features.population_radii_m": [1000, 5000, 10000],
     "features.poi_radii_m": [1000, 3000],
     "features.charger_count_radii_m": [10000, 25000],
-    "features.reported_only": ["dist_town_m", "dist_kigali_cbd_m", "elevation", "slope"],
+    "features.reported_only": [
+        "dist_town_m",
+        "dist_kigali_cbd_m",
+        "outside_rwanda_share_10km",
+        "elevation",
+        "slope",
+    ],
     "scoring.scale_max": 100,
     "scoring.grid_evidence.missing_radius_m": 5000,
     "scoring.grid_evidence.missing_component_score": 0,
@@ -251,12 +252,80 @@ EXPECTED_M2_SETTINGS = {
 }
 
 
+# Milestone 3 decisions for parameters SPEC.md left pending (D-032 to D-036).
+EXPECTED_M3_SETTINGS = {
+    "sources.charger_match_radius_m": 50,
+    "sources.osm_tags.places": ["place=city", "place=town"],
+    "features.trunk_road_classes": ["trunk", "trunk_link"],
+    "features.town_centres": ["place=city", "place=town"],
+    "features.kigali_cbd.osm_id": "node/60485579",
+    "features.kigali_cbd.label": "Kigali city centre as mapped in OSM",
+    "features.poi_types.amenity": ["amenity=*"],
+    "features.poi_types.shop": ["shop=*"],
+    "features.poi_types.tourism": ["tourism=*"],
+    "features.poi_types.office": ["office=*"],
+    "features.poi_types.industrial": ["industrial=*"],
+    "features.poi_exclude": ["amenity=charging_station"],
+    "features.grid_osm_tags.substation": ["power=substation"],
+    "features.grid_osm_tags.line": ["power=line", "power=minor_line", "power=cable"],
+    "features.grid_osm_tags.completeness": [
+        "power=line",
+        "power=minor_line",
+        "power=cable",
+        "power=substation",
+        "power=transformer",
+        "power=tower",
+        "power=pole",
+        "power=portal",
+        "power=plant",
+        "power=generator",
+        "power=connection",
+    ],
+    "features.chargers.exclude_access": ["private", "no"],
+    "features.chargers.fuel_sockets_count_as_chargers": True,
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
         **EXPECTED_M1_SETTINGS,
         **EXPECTED_M2_SETTINGS,
+        **EXPECTED_M3_SETTINGS,
     }
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("features.trunk_road_classes", ["trunk", "track"], "are not drivable"),
+        ("features.poi_types.office", ["craft=*"], "not extracted into osm_pois"),
+        ("features.poi_exclude", ["amenity=restaurant"], "must list amenity=charging_station"),
+        ("features.town_centres", ["place=village"], "not in sources.osm_tags.places"),
+        ("features.grid_osm_tags.line", ["power=*"], "must name one power value"),
+        ("features.grid_osm_tags.substation", ["man_made=works"], "must name one power value"),
+        ("features.grid_osm_tags.substation", ["power=plant_x"], "also be in the completeness"),
+        ("features.kigali_cbd.osm_id", "way/1", "String should match pattern"),
+        ("features.chargers.exclude_access", ["private", "private"], "duplicates"),
+        ("sources.charger_match_radius_m", 0, "greater than 0"),
+    ],
+    ids=[
+        "trunk-not-drivable",
+        "poi-outside-extraction",
+        "charging-stations-not-excluded",
+        "town-not-extracted",
+        "power-wildcard",
+        "power-other-key",
+        "distance-value-not-counted",
+        "kigali-not-a-node",
+        "duplicate-access",
+        "zero-match-radius",
+    ],
+)
+def test_feature_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
 
 
 def test_restaurants_and_tracks_are_never_selected():
@@ -318,7 +387,7 @@ def test_reading_a_pending_parameter_raises():
 
 
 def test_a_pending_parameter_cannot_pass_for_a_value():
-    pending = load_config().settings.features.poi_types
+    pending = load_config().settings.scoring.log1p_features
     with pytest.raises(PendingParameterError):
         bool(pending)
     with pytest.raises(PendingParameterError):
@@ -329,7 +398,7 @@ def test_require_returns_decided_values():
     assert require(load_config().settings.optimization.n_sites, "optimization.n_sites") == 30
 
 
-@pytest.mark.parametrize("dotted", ["candidates.profile.town_radius_m", "features.kigali_cbd"])
+@pytest.mark.parametrize("dotted", ["candidates.profile.town_radius_m", "scoring.log1p_features"])
 def test_pending_parameters_are_required_keys(settings_data, weights_data, dotted):
     delete_path(settings_data, dotted)
     with pytest.raises(ConfigError, match="Field required"):

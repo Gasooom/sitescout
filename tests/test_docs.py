@@ -50,3 +50,15 @@ def test_every_decision_cited_in_code_or_config_exists():
         cited |= set(re.findall(r"\bD-\d{3}\b", path.read_text(encoding="utf-8")))
     recorded = set(re.findall(r"^## (D-\d{3}):", DECISIONS, re.M))
     assert cited - recorded == set()
+
+
+def test_every_feature_is_documented_in_features_md():
+    from sitescout.ingest.layers import FEATURES_PRODUCTION
+
+    features = (PROJECT_ROOT / "docs" / "features.md").read_text(encoding="utf-8")
+    for column in FEATURES_PRODUCTION.column_names:
+        if column.startswith("poi_") and column not in ("poi_1km", "poi_3km"):
+            assert "poi_<type>_1km" in features, column
+            assert column.split("_")[1] in features, column
+        else:
+            assert f"`{column}`" in features, f"{column} is not documented in docs/features.md"
