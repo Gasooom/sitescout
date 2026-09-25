@@ -4,7 +4,9 @@
 
 SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
 
-> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering: raw demand, access, host, charging-gap and grid-evidence features, [docs/features.md](docs/features.md)) is complete. Milestone 4 (scoring and confidence, [docs/scoring.md](docs/scoring.md)) is complete. Milestone 5 (evaluation) is complete. Milestone 6 (network optimization: an exact maximum-coverage selection of 30 sites, [reports/evaluation.md](reports/evaluation.md) section C) is complete. Milestone 7 (evidence and briefs) is implemented and in review: a Site Evidence Brief for each of the 30 network sites, with every number checked against structured data ([reports/briefs](reports/briefs/README.md)).
+> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering: raw demand, access, host, charging-gap and grid-evidence features, [docs/features.md](docs/features.md)) is complete. Milestone 4 (scoring and confidence, [docs/scoring.md](docs/scoring.md)) is complete. Milestone 5 (evaluation) is complete. Milestone 6 (network optimization: an exact maximum-coverage selection of 30 sites, [reports/evaluation.md](reports/evaluation.md) section C) is complete. Milestone 7 (evidence and briefs, [reports/briefs](reports/briefs/README.md)) is complete. Milestone 8 (export and front end) is implemented and in review: a one-page decision view, [app/index.html](app/index.html).
+
+**See the demo:** open `app/index.html` in a browser (it reads the committed `data/export/sitescout.js`; no server needed). Optimizing 30 sites together covers about twice the modelled population of the 30 best-scoring sites taken one by one.
 
 ## What it answers
 
@@ -62,6 +64,7 @@ uv run python scripts/score.py
 uv run python scripts/optimize.py
 uv run python scripts/briefs.py
 uv run python scripts/evaluate.py
+uv run python scripts/export.py
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest -q
@@ -91,8 +94,8 @@ data/      local data, never committed (raw, manual, processed, export)
 | 4 | Scoring and confidence | done |
 | 5 | Evaluation | done |
 | 6 | Network optimization | done |
-| 7 | Evidence and reports | in review |
-| 8 | Export and front end | not started |
+| 7 | Evidence and reports | done |
+| 8 | Export and front end | in review |
 | 9 | Stretch (optional) | not started |
 | 10 | Packaging and demo | not started |
 

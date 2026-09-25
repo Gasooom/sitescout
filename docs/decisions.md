@@ -471,6 +471,19 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** An LLM-written Opportunity paragraph (SPEC §9 allows it, but no approved API key source exists and the grounding check would then carry the whole burden); briefs for the Top-30 by score instead of the network; keeping briefs under `data/` only.
 - **Reason:** Resolves the Milestone 7 open questions. CLAUDE.md: reports are built from templates with injected values, every displayed number comes from structured data, and grounding targets 100%. On the real data: 30 briefs, 2,262 numbers, all grounded.
 
+## D-048: The demo export and the one-page decision view
+
+- **Date:** 2026-09-25 (Milestone 8; the committed export, `generated_at` and the SVG map chosen by Gasim)
+- **Decision:**
+  - **Export** (`sitescout/export.py`, `scripts/export.py`): `data/export/sitescout.json`, validated by pydantic models before anything is written. It holds `meta` (`generated_at`, `data_status`, sources, licences, the ODbL notice, the three disclaimers, the settings snapshot), `headline` (the three networks: population share and its display, districts, provinces, mean score, sites by province; the exact-versus-greedy gap), `weights`, the evidence `context`, all 300 `sites` (the 30 network sites with their evidence records and brief sections), `existing_chargers` (positions only), an `evaluation` summary, a `map` frame, and district and province outlines simplified by 250 m in EPSG:32735 (69 KB, below the 300 KB limit). Every number the page prints is a display string formatted in Python. `data/export/sitescout.js` holds the same object as `window.SITESCOUT = …;`, so the page also opens from disk.
+  - **Brief sections are shared, not copied.** The rules that write a brief's Opportunity paragraph, risks, unknowns and next actions moved into `briefs.brief_sections()`. The Markdown briefs and the export both call it; the 30 briefs and the index stayed byte-identical.
+  - **Determinism:** the export is identical from run to run except `meta.generated_at`, which records when it was written and is intentionally variable. Re-export (and commit) only when the pipeline outputs change.
+  - **Committed demo export:** an explicit exception to "nothing under `data/` is committed", so the demo runs from the public repository. Only `data/export/sitescout.json` and `data/export/sitescout.js` are committed (`.gitignore` exceptions, a hygiene test, and a line in CLAUDE.md). Conditions: written only by `scripts/export.py`, schema-validated, never edited by hand, each file below 1 MB, no raw data, no personal data, no secrets, no business or operator names (generic host labels and OSM ids only). Everything else under `data/` stays ignored and untracked.
+  - **Licences:** the export contains data derived from OpenStreetMap, so it carries the ODbL notice and OpenStreetMap credit, plus the WorldPop and geoBoundaries credits (CC BY 4.0), in the export and in the page footer.
+  - **Page** (`app/index.html`): one file, inline CSS and plain JavaScript, no framework, no library, no network request. A read-only view: it draws the export and computes no score, coverage, rank, selection, confidence or recommendation. The map is inline SVG (district outlines, province outlines and labels; candidates subtle, the selected 30 dominant with very subtle service rings, known charging sites as outlined squares) with an "Optimized network | Top-30 by score" toggle. A network site's detail shows why it was selected, its components, evidence, grid evidence (missing stated plainly, with the exact disclaimer), confidence, unknowns, risks and next actions, and links to its brief. A Top-30 site outside the network shows score, rank, confidence and components with "Not selected for the optimized network." and nothing more. `#top30` and `#<candidate_id>` open those views directly.
+- **Alternatives:** Leaflet with OpenStreetMap tiles (a CDN and a tile service, rejected by Gasim); `fetch()` of the JSON (blocked from `file://`); keeping the export uncommitted (the public repository could not show the demo); a timestamp-free export (SPEC §10 lists `generated_at`).
+- **Reason:** SPEC §10 and CLAUDE.md: the pipeline exports one JSON file, and the front end renders it without computing. A single static page is the smallest thing that makes the result visible: optimizing 30 sites together covers 49.8% of the modelled population, against 24.0% for the Top-30 by individual score.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -520,5 +533,5 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 8
 
-- Synthetic exports exist only as labelled test fixtures, never as pipeline output.
-- `app/prototype.html`, the design reference, is not in the repository yet.
+- Resolved in Milestone 8 (D-048): the export, the committed demo export, `generated_at`, the SVG map. Synthetic exports exist only inside tests; the pipeline writes `data_status: pipeline`.
+- `app/prototype.html`, which CLAUDE.md names as the design reference, was never added; `app/index.html` was designed from scratch as a single page rather than SPEC §10's multi-view prototype.

@@ -154,6 +154,10 @@ See [scoring.md](scoring.md).
 
 `sitescout/evidence.py` joins the network sites with their scores, features and candidate records and turns every value a brief may show into an evidence record (`data/processed/evidence.json`). `sitescout/briefs.py` fills `templates/brief.md` from those records only, adds rule-based risks and next actions, checks that every number in every brief is grounded, and writes `reports/briefs/` and `data/processed/grounding.json` (D-047). Run order: `optimize.py`, `briefs.py`, then `evaluate.py`, whose section E reports the grounding check.
 
+## Milestone 8: export and the decision page
+
+`sitescout/export.py` (run by `scripts/export.py`, after `evaluate.py`) assembles `data/export/sitescout.json` and `sitescout.js` from the M2-M7 outputs, reusing `briefs.brief_sections()` and `evaluation.known_charging_sites()`, and validates them with pydantic models (D-048). `app/index.html` loads `sitescout.js` and draws: an inline SVG map, the network comparison, the site list and each site's evidence. It computes nothing. The two export files are the only committed files under `data/`.
+
 ## Rules every stage follows
 
 - **Configuration.** Stages receive a loaded `Config` object. They never read `config/` files or environment variables themselves.

@@ -262,7 +262,21 @@ def write_feature_world(
         pois=feature_pois() if pois is None else pois,
         roads=feature_roads() if roads is None else roads,
     )
+    provinces = [
+        {
+            "province_code": code,
+            "province_name": name,
+            "district_count": 1,
+            "area_km2": 1.0,
+            "geometry": shapely.MultiPolygon([shapely.box(west, -2.10, west + 0.30, -1.80)]),
+        }
+        for code, name, west in (
+            ("RW-91", "SYNTHETIC West Province", 29.95),
+            ("RW-92", "SYNTHETIC East Province", 30.25),
+        )
+    ]
     layers = {
+        "admin_provinces": provinces,
         "candidates": feature_candidates() if candidates is None else candidates,
         "osm_charging_stations": feature_chargers() if chargers is None else chargers,
         "osm_power": feature_power() if power_rows is None else power_rows,

@@ -89,7 +89,7 @@ def test_no_committable_file_is_larger_than_5_mb():
         "data/processed/admin_districts.meta.json",
         "data/processed/population_worldpop.tif",
         "data/manual/chargers.csv",
-        "data/export/sitescout.json",
+        "data/export/scratch.json",  # only the demo export itself is exempt (D-048)
         ".venv/pyvenv.cfg",
         ".env",
         ".env.local",
@@ -101,10 +101,15 @@ def test_data_environments_and_secrets_are_ignored(path):
     assert result.returncode == 0, f"{path} is not ignored by .gitignore"
 
 
+# The one explicit exception (D-048): the small demo export app/index.html reads.
+DEMO_EXPORT = {"data/export/sitescout.json", "data/export/sitescout.js"}
+
+
 def test_every_local_data_file_is_ignored_and_none_is_tracked():
-    """Whatever the pipeline has written under data/ must stay out of git."""
+    """Whatever the pipeline has written under data/ stays out of git, except the demo export."""
     data = PROJECT_ROOT / "data"
     files = [_relative(p) for p in data.rglob("*") if p.is_file()] if data.is_dir() else []
+    files = [name for name in files if name not in DEMO_EXPORT]
     if files:
         # NUL-separated bytes: text-mode pipes on Windows would turn "\n" into "\r\n".
         result = subprocess.run(
@@ -118,7 +123,25 @@ def test_every_local_data_file_is_ignored_and_none_is_tracked():
     tracked = subprocess.run(
         [_git(), "ls-files", "--", "data"], cwd=PROJECT_ROOT, capture_output=True, text=True
     )
-    assert tracked.stdout == ""
+    assert set(tracked.stdout.split()) <= DEMO_EXPORT
+
+
+def test_only_the_demo_export_is_exempt_from_the_data_rule():
+    for path in sorted(DEMO_EXPORT):
+        ignored = subprocess.run(
+            [_git(), "check-ignore", "-q", "--no-index", path], cwd=PROJECT_ROOT
+        )
+        assert ignored.returncode == 1, f"{path} should be committable (D-048)"
+    for path in (
+        "data/export/other.json",
+        "data/processed/network.json",
+        "data/raw/osm/rwanda-latest.osm.pbf",
+        "data/manual/chargers.csv",
+    ):
+        ignored = subprocess.run(
+            [_git(), "check-ignore", "-q", "--no-index", path], cwd=PROJECT_ROOT
+        )
+        assert ignored.returncode == 0, f"{path} must stay ignored"
 
 
 def test_no_dataset_files_outside_test_fixtures():

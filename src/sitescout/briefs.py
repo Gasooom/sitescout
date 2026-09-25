@@ -47,11 +47,15 @@ def _bullets(lines: list[str]) -> str:
     return "\n".join(f"- {line}" for line in lines)
 
 
-def render_brief(records: list[EvidenceRecord], context: list[EvidenceRecord]) -> str:
-    """One Site Evidence Brief, filled from evidence records only."""
+def brief_sections(records: list[EvidenceRecord], context: list[EvidenceRecord]) -> dict[str, Any]:
+    """The rule-based parts of a brief, as structured text (D-047).
+
+    Used by the Markdown brief and by the M8 export, so both say exactly the same thing:
+    the Opportunity paragraph, the border note, risks, unknowns, next actions and the
+    components from strongest to weakest.
+    """
     d = {r.id: r.display for r in [*context, *records]}
     by_id = {r.id: r for r in records}
-    profile = by_id["profile"].evidence.value
     components = sorted(
         COMPONENT_NAMES,
         key=lambda name: (-by_id[f"component_{name}"].evidence.value, name),
@@ -82,10 +86,6 @@ def render_brief(records: list[EvidenceRecord], context: list[EvidenceRecord]) -
         "population is not counted."
         if outside
         else ""
-    )
-    component_rows = "\n".join(
-        f"| {label} | {d[f'component_{name}']} | {d[f'weight_{profile}_{name}']} |"
-        for name, label in COMPONENT_NAMES.items()
     )
 
     risks = []
@@ -138,14 +138,33 @@ def render_brief(records: list[EvidenceRecord], context: list[EvidenceRecord]) -
     if outside:
         actions.append("Estimate cross-border demand, which the population figures leave out.")
 
-    values = {
-        **d,
+    return {
         "opportunity": opportunity,
         "border_note": border_note,
+        "risks": risks,
+        "unknowns": [u[0].upper() + u[1:] for u in unknowns],
+        "actions": actions,
+        "components_by_strength": components,
+    }
+
+
+def render_brief(records: list[EvidenceRecord], context: list[EvidenceRecord]) -> str:
+    """One Site Evidence Brief, filled from evidence records only."""
+    d = {r.id: r.display for r in [*context, *records]}
+    profile = next(r for r in records if r.id == "profile").evidence.value
+    sections = brief_sections(records, context)
+    component_rows = "\n".join(
+        f"| {label} | {d[f'component_{name}']} | {d[f'weight_{profile}_{name}']} |"
+        for name, label in COMPONENT_NAMES.items()
+    )
+    values = {
+        **d,
+        "opportunity": sections["opportunity"],
+        "border_note": sections["border_note"],
         "component_rows": component_rows,
-        "risks": _bullets(risks),
-        "unknowns": _bullets([u[0].upper() + u[1:] for u in unknowns]),
-        "actions": _bullets(actions),
+        "risks": _bullets(sections["risks"]),
+        "unknowns": _bullets(sections["unknowns"]),
+        "actions": _bullets(sections["actions"]),
     }
     return TEMPLATE.read_text(encoding="utf-8").format(**values)
 

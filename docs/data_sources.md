@@ -428,6 +428,10 @@ Milestone 6 network selection in production mode (SPEC §8, D-046): for each of 
 | `selected_top30` | bool | yes | Among the Top-30 eligible candidates by score. |
 | `marginal_coverage` | float64 | yes | Share of weighted demand the MCLP network loses without this site (selected) or gains with it (not selected). |
 
+## The demo export
+
+`data/export/sitescout.json` and `data/export/sitescout.js` (the same data for `app/index.html` opened from disk) are written by `scripts/export.py` from the processed layers and reports (D-048). They are the only files under `data/` that are committed: generic host labels, OSM ids, positions, derived values and display text, no raw data and no business names. They contain information derived from OpenStreetMap (© OpenStreetMap contributors), available under the Open Database License (ODbL-1.0), and derived values credited to WorldPop and geoBoundaries (CC BY 4.0). Everything but `meta.generated_at` is identical from run to run.
+
 ## Checks every processed layer passes
 
 On write and again on every read:

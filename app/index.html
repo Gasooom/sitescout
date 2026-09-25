@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiteScout · Rwanda EV charging network</title>
+<!--
+  SiteScout decision demo (Milestone 8). A read-only view over data/export/sitescout.js,
+  which scripts/export.py writes from the pipeline's outputs. This page computes nothing:
+  every number it shows is a display string from the export; it only draws and lays out.
+-->
+<style>
+  :root {
+    --ink: #1c2430; --muted: #5f6b7a; --faint: #8a96a5; --line: #d9dee5; --panel: #ffffff;
+    --bg: #f4f5f7; --network: #0b6e69; --network-soft: rgba(11, 110, 105, 0.07);
+    --top30: #b5651d; --top30-soft: rgba(181, 101, 29, 0.07); --candidate: #aab3bf;
+    --charger: #3b4452; --district: #e9ecf0; --province: #9aa5b3; --warn: #9a3412;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 24px 28px 40px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+  .brand { font-weight: 700; letter-spacing: 0.08em; font-size: 13px; text-transform: uppercase; }
+  .brand span { color: var(--muted); font-weight: 500; letter-spacing: 0.02em; text-transform: none; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 22px 0 6px; font-weight: 650; }
+  .lede { color: var(--muted); margin: 0 0 20px; max-width: 70ch; }
+  .banner { background: #fff4e5; border: 1px solid #f0c48a; padding: 8px 12px; margin-top: 12px; }
+  .compare { display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; background: var(--panel);
+    border: 1px solid var(--line); padding: 20px 24px; }
+  .bars h2, .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  .bar { display: grid; grid-template-columns: 150px 1fr 64px; align-items: center; gap: 12px;
+    margin: 10px 0; }
+  .bar .name { font-size: 14px; }
+  .bar .track { height: 14px; background: #eef0f3; position: relative; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--candidate); }
+  .bar.mclp .fill { background: var(--network); } .bar.top30 .fill { background: var(--top30); }
+  .bar .value { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+  .bar.mclp .value { color: var(--network); } .bar.top30 .value { color: var(--top30); }
+  .note { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; font-size: 13px; }
+  .split h3 { font-size: 14px; margin: 0 0 6px; }
+  .split .mclp h3 { color: var(--network); } .split .top30 h3 { color: var(--top30); }
+  .split dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0; }
+  .split dt { color: var(--muted); } .split dd { margin: 0; text-align: right;
+    font-variant-numeric: tabular-nums; }
+  .unknowns { margin: 14px 0 22px; font-size: 13px; color: var(--muted); }
+  .unknowns strong { color: var(--ink); }
+  main { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr); gap: 20px; }
+  .mapcard, .panel { background: var(--panel); border: 1px solid var(--line); }
+  .mapcard { padding: 14px 16px 10px; position: sticky; top: 12px; align-self: start; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    flex-wrap: wrap; }
+  .toggle { display: inline-flex; border: 1px solid var(--line); }
+  .toggle button { font: inherit; font-size: 13px; padding: 7px 14px; border: 0;
+    background: #fff; color: var(--muted); cursor: pointer; }
+  .toggle button[aria-pressed="true"] { color: #fff; }
+  .toggle button.mclp[aria-pressed="true"] { background: var(--network); }
+  .toggle button.top30[aria-pressed="true"] { background: var(--top30); }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px;
+    vertical-align: -1px; border-radius: 50%; }
+  .legend .c { background: var(--candidate); } .legend .s { background: var(--network); }
+  .legend .s.top30 { background: var(--top30); }
+  .legend .k { border: 1.5px solid var(--charger); border-radius: 0; width: 9px; height: 9px; }
+  svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+  .district { fill: var(--district); stroke: #fff; stroke-width: 0.8; }
+  .province { fill: none; stroke: var(--province); stroke-width: 1.2; }
+  .plabel { fill: var(--faint); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+    pointer-events: none; }
+  .cand { fill: var(--candidate); cursor: pointer; }
+  .ring { fill: var(--network-soft); stroke: none; pointer-events: none; }
+  .ring.top30 { fill: var(--top30-soft); }
+  .site { fill: var(--network); stroke: #fff; stroke-width: 1.5; cursor: pointer; }
+  .site.top30 { fill: var(--top30); }
+  .site:focus, .cand:focus { outline: none; stroke: var(--ink); stroke-width: 2.5; }
+  .site.active { stroke: var(--ink); stroke-width: 3; }
+  .charger { fill: #fff; stroke: var(--charger); stroke-width: 1.5; pointer-events: none; }
+  .panel { padding: 18px 20px; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list button { width: 100%; display: grid; grid-template-columns: 38px 1fr auto; gap: 10px;
+    align-items: baseline; font: inherit; font-size: 14px; text-align: left; background: none;
+    border: 0; border-bottom: 1px solid #eef0f3; padding: 8px 2px; cursor: pointer; color: var(--ink); }
+  .list button:hover, .list button:focus { background: #f6f8fa; outline: none; }
+  .list .rank { color: var(--faint); font-variant-numeric: tabular-nums; }
+  .list .meta { color: var(--muted); font-size: 12px; }
+  .badge { font-size: 11px; padding: 2px 7px; border: 1px solid var(--line); white-space: nowrap; }
+  .badge.High { border-color: #9cc9b8; color: #0f5a45; } .badge.Medium { border-color: #e2c98f; color: #7a5a12; }
+  .badge.Low { border-color: #e6a99a; color: var(--warn); }
+  .back { font: inherit; font-size: 13px; background: none; border: 0; color: var(--network);
+    cursor: pointer; padding: 0; margin-bottom: 10px; }
+  .detail h3 { font-size: 20px; margin: 0 0 4px; }
+  .detail .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line);
+    margin: 12px 0; }
+  .facts div { padding: 8px 10px; border-right: 1px solid var(--line); }
+  .facts div:last-child { border-right: 0; }
+  .facts b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .facts span { font-size: 12px; color: var(--muted); }
+  .detail h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    margin: 18px 0 6px; font-weight: 600; }
+  .detail p { margin: 0 0 8px; }
+  .comp { display: grid; grid-template-columns: 130px 1fr 44px; gap: 10px; align-items: center;
+    font-size: 13px; margin: 4px 0; }
+  .comp .track { height: 8px; background: #eef0f3; position: relative; }
+  .comp .fill { position: absolute; inset: 0 auto 0 0; background: var(--network); }
+  .comp .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .ev { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ev td { padding: 4px 0; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+  .ev td:last-child { text-align: right; font-variant-numeric: tabular-nums; padding-left: 10px; }
+  .ev .group td { color: var(--ink); font-weight: 600; padding-top: 10px; border-bottom: 0; }
+  .missing { color: var(--warn); font-weight: 600; }
+  .disclaimer { font-size: 12px; color: var(--muted); border-left: 2px solid var(--line);
+    padding-left: 10px; margin: 8px 0; }
+  .notselected { border: 1px solid var(--line); background: #f8f9fa; padding: 10px 12px;
+    font-size: 14px; margin: 12px 0; }
+  ul.plain { margin: 0; padding-left: 18px; } ul.plain li { margin: 3px 0; }
+  a { color: var(--network); }
+  footer { margin-top: 28px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line);
+    padding-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  footer p { margin: 0 0 6px; }
+  @media (max-width: 1000px) { main, .compare, footer { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">SiteScout <span>· EV charging network intelligence · Rwanda</span></div>
+    <div class="brand"><span id="independent"></span></div>
+  </header>
+  <div id="banner" class="banner" hidden></div>
+
+  <h1 id="question"></h1>
+  <p class="lede" id="lede"></p>
+
+  <section class="compare" aria-label="Network comparison">
+    <div class="bars">
+      <h2 id="bars-title"></h2>
+      <div id="bars"></div>
+      <p class="note" id="bars-note"></p>
+    </div>
+    <div class="split" id="split"></div>
+  </section>
+
+  <p class="unknowns" id="unknowns"></p>
+
+  <main>
+    <section class="mapcard" aria-label="Map of Rwanda">
+      <div class="toolbar">
+        <div class="toggle" role="group" aria-label="Which 30 sites to show">
+          <button type="button" class="mclp" data-mode="mclp" aria-pressed="true"></button>
+          <button type="button" class="top30" data-mode="top30" aria-pressed="false"></button>
+        </div>
+        <div class="legend">
+          <span><i class="c"></i>Candidate</span>
+          <span><i class="s" id="legend-site"></i><span id="legend-site-label"></span></span>
+          <span><i class="k"></i>Known charging site</span>
+        </div>
+      </div>
+      <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"></svg>
+    </section>
+    <section class="panel" aria-live="polite" id="panel"></section>
+  </main>
+
+  <footer>
+    <div id="footer-left"></div>
+    <div id="footer-right"></div>
+  </footer>
+</div>
+
+<script src="../data/export/sitescout.js"></script>
+<script>
+"use strict";
+const D = window.SITESCOUT;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// Build DOM nodes; every piece of text goes in through textContent, never as HTML.
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (key === "class") node.className = value;
+    else if (key === "style") node.setAttribute("style", value);
+    else node.setAttribute(key, value);
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+function svg(tag, attrs) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(attrs || {})) node.setAttribute(key, value);
+  return node;
+}
+
+if (!D) {
+  document.getElementById("question").textContent = "Export not found";
+  document.getElementById("lede").textContent =
+    "Run `uv run python scripts/export.py` to write data/export/sitescout.js, then reload.";
+  throw new Error("window.SITESCOUT is missing");
+}
+
+const H = D.headline;
+const byKey = Object.fromEntries(H.selections.map((s) => [s.key, s]));
+const unknowns = D.context.filter((r) => r.type === "UNKNOWN").map((r) => r.display);
+const gridDisclaimer = D.meta.disclaimers[1];
+let mode = "mclp";
+let activeId = null;
+
+// --- Header and the network comparison ----------------------------------------------------
+document.getElementById("independent").textContent = D.meta.disclaimers[0];
+if (D.meta.data_status !== "pipeline") {
+  const banner = document.getElementById("banner");
+  banner.hidden = false;
+  banner.textContent = "Demo data: this export was not produced by the pipeline.";
+}
+document.getElementById("question").textContent = H.question;
+document.getElementById("lede").textContent =
+  `${H.candidates} candidate sites were scored from public data. ${byKey.mclp.label}: ` +
+  `${H.n_sites} sites chosen together to cover as much of Rwanda's modelled population as ` +
+  `possible within ${H.service_radius}, compared with simply taking the ${byKey.top30.label.toLowerCase()}.`;
+document.getElementById("bars-title").textContent =
+  `Modelled population within ${H.service_radius} of a site`;
+const bars = document.getElementById("bars");
+for (const s of H.selections) {
+  bars.append(
+    el("div", { class: `bar ${s.key}` },
+      el("div", { class: "name" }, s.label),
+      el("div", { class: "track" }, el("div", { class: "fill", style: `width:${s.population_share * 100}%` })),
+      el("div", { class: "value" }, s.population_display)));
+}
+document.getElementById("bars-note").textContent =
+  `Choosing sites together trades individual score for reach: mean site score ` +
+  `${byKey.mclp.mean_score_display} in the ${byKey.mclp.label.toLowerCase()} against ` +
+  `${byKey.top30.mean_score_display} in the ${byKey.top30.label}. Exact solver: ` +
+  `${H.solver_status}; greedy comes within ${H.exact_vs_greedy_gap} of its objective.`;
+const split = document.getElementById("split");
+for (const key of ["mclp", "top30"]) {
+  const s = byKey[key];
+  split.append(
+    el("div", { class: key },
+      el("h3", {}, s.label),
+      el("dl", {},
+        el("dt", {}, "Districts"), el("dd", {}, s.districts_display),
+        el("dt", {}, "Provinces"), el("dd", {}, s.provinces_display),
+        s.by_province.flatMap(([name, count]) => [el("dt", {}, name), el("dd", {}, count)]))));
+}
+const unknownsLine = document.getElementById("unknowns");
+unknownsLine.append(el("strong", {}, "Unknown for every site: "), unknowns.join(" · "),
+  ". Grid evidence means mapped infrastructure nearby, never a grid connection decision.");
+
+// --- Map --------------------------------------------------------------------------------------
+const M = D.map;
+const WIDTH = 1000;
+const K = WIDTH / ((M.max_lon - M.min_lon) * M.lon_scale);
+const HEIGHT = (M.max_lat - M.min_lat) * K;
+const PAD = 12;
+const map = document.getElementById("map");
+map.setAttribute("viewBox", `${-PAD} ${-PAD} ${WIDTH + 2 * PAD} ${HEIGHT + 2 * PAD}`);
+const X = (lon) => (lon - M.min_lon) * M.lon_scale * K;
+const Y = (lat) => (M.max_lat - lat) * K;
+function pathOf(geometry) {
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  return polygons.map((rings) => rings.map((ring) =>
+    "M" + ring.map(([lon, lat]) => `${X(lon).toFixed(1)},${Y(lat).toFixed(1)}`).join("L") + "Z").join("")).join("");
+}
+for (const f of D.districts.features) {
+  const p = svg("path", { class: "district", d: pathOf(f.geometry) });
+  p.append(Object.assign(svg("title"), { textContent: `${f.properties.district}, ${f.properties.province}` }));
+  map.append(p);
+}
+for (const f of D.provinces.features) map.append(svg("path", { class: "province", d: pathOf(f.geometry) }));
+for (const f of D.provinces.features) {
+  const t = svg("text", { class: "plabel", x: X(f.properties.label_lon), y: Y(f.properties.label_lat),
+    "text-anchor": "middle" });
+  t.textContent = f.properties.province;
+  map.append(t);
+}
+const ringLayer = svg("g"); const candLayer = svg("g"); const chargerLayer = svg("g"); const siteLayer = svg("g");
+map.append(ringLayer, candLayer, chargerLayer, siteLayer);
+
+function activate(node, handler) {
+  node.addEventListener("click", handler);
+  node.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handler(); } });
+}
+for (const s of D.sites) {
+  const c = svg("circle", { class: "cand", cx: X(s.lon), cy: Y(s.lat), r: 3.2, tabindex: -1 });
+  c.append(Object.assign(svg("title"), { textContent: `${s.label} · score ${s.score}` }));
+  activate(c, () => showSite(s.candidate_id));
+  candLayer.append(c);
+}
+for (const k of D.existing_chargers) {
+  chargerLayer.append(svg("rect", { class: "charger", x: X(k.lon) - 5, y: Y(k.lat) - 5, width: 10, height: 10 }));
+}
+
+const selected = () => D.sites.filter((s) => (mode === "mclp" ? s.selected_mclp : s.selected_top30));
+function drawSelection() {
+  ringLayer.replaceChildren(); siteLayer.replaceChildren();
+  for (const s of selected()) {
+    ringLayer.append(svg("circle", { class: `ring ${mode}`, cx: X(s.lon), cy: Y(s.lat), r: M.ring_radius_deg * K }));
+    const dot = svg("circle", { class: `site ${mode}${s.candidate_id === activeId ? " active" : ""}`,
+      cx: X(s.lon), cy: Y(s.lat), r: 7, tabindex: 0, role: "button", "aria-label": `${s.label}, rank ${s.rank}` });
+    dot.append(Object.assign(svg("title"), { textContent: `${s.label} · rank ${s.rank} · score ${s.score}` }));
+    activate(dot, () => showSite(s.candidate_id));
+    siteLayer.append(dot);
+  }
+  document.getElementById("legend-site").className = `s ${mode}`;
+  document.getElementById("legend-site-label").textContent = byKey[mode].label;
+}
+
+// --- Panel: the list of 30 and the site detail -------------------------------------------------
+const panel = document.getElementById("panel");
+function showList() {
+  activeId = null;
+  const s = byKey[mode];
+  const list = el("ul", { class: "list" });
+  for (const site of selected()) {
+    const b = el("button", { type: "button" },
+      el("span", { class: "rank" }, `#${site.rank}`),
+      el("span", {}, site.label, el("br"), el("span", { class: "meta" }, `${site.province} · score ${site.score}`)),
+      el("span", { class: `badge ${site.confidence}` }, site.confidence));
+    b.addEventListener("click", () => showSite(site.candidate_id));
+    list.append(el("li", {}, b));
+  }
+  panel.replaceChildren(
+    el("h2", {}, `${s.label}: ${H.n_sites} sites · ${s.population_display} of the population`),
+    el("p", { class: "note" }, "Select a site on the map or in the list. # is the site's rank by score among all candidates."),
+    list);
+  drawSelection();
+}
+
+const EVIDENCE_GROUPS = [
+  ["Demand", ["pop_1km", "pop_5km", "pop_10km", "outside_share"]],
+  ["Access", ["road_class", "dist_road", "dist_trunk"]],
+  ["Host and nearby activity", ["host", "poi_1km", "poi_3km"]],
+  ["Charging gap", ["dist_charger", "chargers_10km", "chargers_25km"]],
+  ["Grid evidence", ["dist_substation", "dist_line", "grid_completeness", "grid_status"]],
+];
+
+function componentBars(site) {
+  return site.components.map((c) =>
+    el("div", { class: "comp" }, el("span", {}, c.label),
+      el("div", { class: "track" }, el("div", { class: "fill", style: `width:${c.value}%` })),
+      el("span", { class: "v" }, c.display)));
+}
+
+function showSite(id) {
+  const site = D.sites.find((s) => s.candidate_id === id);
+  activeId = id;
+  drawSelection();
+  const head = [
+    el("button", { class: "back", type: "button" }, `← All ${H.n_sites} sites`),
+    el("div", { class: "detail" },
+      el("h3", {}, site.label),
+      el("div", { class: "sub" }, `${site.district}, ${site.province} · ${site.profile} profile · ${site.candidate_id}`),
+      el("div", { class: "facts" },
+        el("div", {}, el("b", {}, site.score), el("span", {}, "Score (0–100)")),
+        el("div", {}, el("b", {}, `#${site.rank}`), el("span", {}, `Rank of ${H.candidates}`)),
+        el("div", {}, el("b", {}, site.confidence), el("span", {}, "Confidence"))))];
+  head[0].addEventListener("click", showList);
+  const body = head[1];
+
+  if (!site.selected_mclp) {
+    body.append(el("div", { class: "notselected" }, "Not selected for the optimized network."),
+      el("h4", {}, "Score components"), ...componentBars(site),
+      el("h4", {}, "Confidence"), el("p", {}, site.confidence_reasons + "."),
+      el("h4", {}, "Unknown"), el("ul", { class: "plain" }, unknowns.map((u) => el("li", {}, u))));
+    panel.replaceChildren(...head);
+    return;
+  }
+
+  const b = site.brief;
+  const records = Object.fromEntries(site.evidence.map((r) => [r.id, r]));
+  const rows = [];
+  for (const [group, ids] of EVIDENCE_GROUPS) {
+    rows.push(el("tr", { class: "group" }, el("td", { colspan: 2 }, group)));
+    for (const rid of ids) {
+      const r = records[rid];
+      if (!r || (rid === "outside_share" && !b.border_note)) continue;
+      const missing = rid === "grid_status" && r.type === "UNKNOWN";
+      rows.push(el("tr", {}, el("td", {}, r.claim.split(":")[0]),
+        el("td", { class: missing ? "missing" : "" }, missing ? "Missing" : r.display)));
+    }
+  }
+  body.append(
+    el("h4", {}, "Why this site was selected"),
+    el("p", {}, `Unique contribution: ${site.unique_coverage} of the network's weighted demand coverage.`),
+    el("p", {}, b.opportunity),
+    el("h4", {}, "Score components"), ...componentBars(site),
+    el("h4", {}, "Evidence"), el("table", { class: "ev" }, el("tbody", {}, rows)),
+    el("p", { class: "disclaimer" }, gridDisclaimer),
+    el("h4", {}, "Confidence"), el("p", {}, site.confidence_reasons + "."),
+    el("h4", {}, "Unknown"), el("ul", { class: "plain" }, b.unknowns.map((u) => el("li", {}, u))),
+    el("h4", {}, "Risks"), el("ul", { class: "plain" }, b.risks.map((r) => el("li", {}, r))),
+    el("h4", {}, "Next investigation"), el("ul", { class: "plain" }, b.actions.map((a) => el("li", {}, a))),
+    el("p", {}, el("a", { href: `../${b.brief_path}` }, "Full Site Evidence Brief")));
+  panel.replaceChildren(...head);
+}
+
+for (const button of document.querySelectorAll(".toggle button")) {
+  button.textContent = byKey[button.dataset.mode].label;
+  button.addEventListener("click", () => {
+    mode = button.dataset.mode;
+    for (const other of document.querySelectorAll(".toggle button")) other.setAttribute("aria-pressed", String(other === button));
+    showList();
+  });
+}
+
+// --- Footer ----------------------------------------------------------------------------------
+const left = document.getElementById("footer-left");
+left.append(el("p", {}, el("strong", {}, `${D.evaluation.label[0].toUpperCase()}${D.evaluation.label.slice(1)}. `),
+  el("a", { href: `../${D.evaluation.report_path}` }, "Full report")));
+for (const line of D.evaluation.lines) left.append(el("p", {}, line));
+const right = document.getElementById("footer-right");
+for (const text of D.meta.disclaimers) right.append(el("p", {}, text));
+right.append(el("p", {}, D.meta.licence_notice));
+right.append(el("p", {}, "Sources: " + D.meta.sources.map((s) => `${s.name} (${s.credit}; ${s.licence})`).join(" · ")));
+right.append(el("p", {}, `Data as of ${D.meta.data_date} · export written ${D.meta.generated_at}`));
+
+// Deep links for demos: #top30 opens the Top-30 view; #<candidate_id> opens that site.
+const hash = decodeURIComponent(location.hash.slice(1));
+if (hash === "top30") document.querySelector('.toggle button[data-mode="top30"]').click();
+else showList();
+if (hash && D.sites.some((s) => s.candidate_id === hash)) showSite(hash);
+</script>
+</body>
+</html>

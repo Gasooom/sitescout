@@ -1,6 +1,12 @@
 # Datasets are never committed: raw, processed, manual and generated data all live under data/.
 # docs/data_sources.md and config/ describe how to rebuild them.
-data/
+data/*
+# Explicit M8 exception (D-048): the small demo export app/index.html reads is committed.
+# Nothing else under data/ is ever committed.
+!data/export/
+data/export/*
+!data/export/sitescout.json
+!data/export/sitescout.js
 
 # Python environment, build output and tool caches
 .venv/
