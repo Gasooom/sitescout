@@ -410,6 +410,24 @@ Milestone 4 scores and confidence for the 300 candidates in production mode, com
 
 The same columns, computed from `features_backtest`. With no existing charger, `component_charging_gap` is 25 for every candidate (D-042). Columns: `candidate_id`, `host_type`, `origin`, `district_id`, `district`, `province`, `profile`, `score`, `rank`, `confidence`, `confidence_reasons`, `component_demand`, `component_access`, `component_host_commercial`, `component_charging_gap`, `component_grid_evidence`, `host_bonus`, `road_bonus`, `grid_evidence_status`, `pct_pop_5km`, `pct_pop_1km`, `pct_pop_10km`, `pct_dist_road_m`, `pct_dist_trunk_m`, `pct_poi_1km`, `pct_poi_3km`, `pct_dist_charger_m`, `pct_chargers_10km`, `pct_chargers_25km`, `pct_dist_substation_m`, `pct_dist_line_m`, `universal_unknowns`.
 
+### `network`
+
+Milestone 6 network selection in production mode (SPEC §8, D-046): for each of the 300 candidates, whether it is eligible, whether the exact MCLP, the greedy baseline and the Top-30 by score select it, and its marginal coverage. The comparison (covered demand, population share, province spread, overlap, exact-versus-greedy gap, sensitivity) is in `data/processed/network.json` and section C of `reports/evaluation.md`; solve times are in `network_run.json`.
+
+| Column | Type | Required | Meaning |
+|---|---|---|---|
+| `candidate_id` | string | yes | candidates.candidate_id. |
+| `host_type` | string | yes | candidates.host_type. |
+| `district` | string | yes | candidates.district. |
+| `province` | string | yes | candidates.province. |
+| `score` | float64 | yes | scores_production.score. |
+| `rank` | int64 | yes | scores_production.rank. |
+| `eligible` | bool | yes | In the top half of scores and, with optimization.require_host, has a host. |
+| `selected_mclp` | bool | yes | Selected by the exact MCLP (the network). |
+| `selected_greedy` | bool | yes | Selected by the greedy baseline. |
+| `selected_top30` | bool | yes | Among the Top-30 eligible candidates by score. |
+| `marginal_coverage` | float64 | yes | Share of weighted demand the MCLP network loses without this site (selected) or gains with it (not selected). |
+
 ## Checks every processed layer passes
 
 On write and again on every read:

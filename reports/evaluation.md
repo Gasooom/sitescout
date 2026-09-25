@@ -46,7 +46,39 @@ The ten least stable perturbations:
 
 ## C. Network effect
 
-Added in Milestone 6 (exact MCLP, greedy and Top-30 compared).
+Production mode. 108 candidates are eligible: production score in the top half (percentile at least 50) and a host. Demand: modelled population (WorldPop) summed into 4094 H3 cells at resolution 7, normalised to 1, with demand within 10 km of the 5 known charging sites weighted by 0.5. A site covers demand within 10 km; selected sites are at least 2 km apart (except in Top-30, which takes scores only); λ = 0.01.
+
+| | Exact MCLP | Greedy | Top-30 by score |
+|---|---|---|---|
+| Covered demand (weighted objective term) | 0.470 | 0.463 | 0.200 |
+| Modelled population within 10 km | 49.8% | 49.2% | 24.0% |
+| Provinces with a site | 5 | 5 | 4 |
+| Districts with a site | 22 | 23 | 8 |
+| Mean site score | 64.6 | 65.3 | 73.8 |
+| Sites in City of Kigali | 3 | 4 | 23 |
+| Sites in Eastern Province | 7 | 7 | 0 |
+| Sites in Northern Province | 4 | 4 | 2 |
+| Sites in Southern Province | 7 | 6 | 1 |
+| Sites in Western Province | 9 | 9 | 4 |
+
+- Exact MCLP solver status: **Optimal** (Optimal Solution Found).
+- Exact-versus-greedy gap: **0.64%**, measured on the optimization objective Σ wᵢ·yᵢ + λ·Σ sⱼ·xⱼ (0.6635 against 0.6592), which includes the λ score term. It is not the difference between the population-coverage percentages above.
+- Overlap: MCLP and greedy share 28 sites, MCLP and Top-30 5, greedy and Top-30 7.
+
+Selecting sites together covers more of the country than taking the best-scoring sites one by one, which cluster where scores are highest. Coverage is modelled population within a radius: it says nothing about grid capacity, land or charging demand.
+
+Sensitivity (one parameter changed at a time, the others at their defaults):
+
+| Change | Population covered | Provinces | Sites shared with the base network |
+|---|---|---|---|
+| lambda = 0 | 50.0% | 5 | 26 of 30 |
+| lambda = 0.05 | 47.4% | 5 | 24 of 30 |
+| service_radius_m = 5000 | 26.3% | 5 | 21 of 30 |
+| service_radius_m = 15000 | 68.9% | 5 | 25 of 30 |
+| existing_charger_demand_factor = 0.25 | 49.8% | 5 | 30 of 30 |
+| existing_charger_demand_factor = 0.75 | 49.8% | 5 | 30 of 30 |
+
+Changing the existing-charger factor leaves the network unchanged: the 5 known charging sites are few and concentrated (4 in City of Kigali, 1 in Eastern Province), so down-weighting the demand near them does not change which sites are chosen. It will matter once more chargers are known.
 
 ## D. Data quality
 

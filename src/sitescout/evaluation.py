@@ -288,6 +288,15 @@ def _interval(values: list[float]) -> str:
     return f"[{_pct(values[0])}, {_pct(values[1])}]"
 
 
+def network_section(summary: dict[str, Any] | None) -> str:
+    """Section C: the network comparison from Milestone 6, when network.json exists."""
+    if summary is None:
+        return "Not available: run `scripts/optimize.py` before `scripts/evaluate.py`."
+    from sitescout.optimize import render_network_section  # optimize imports this module
+
+    return render_network_section(summary)
+
+
 def render_report(results: dict[str, Any], config: Config) -> str:
     """reports/evaluation.md, filled from the computed results only."""
     settings = config.settings
@@ -373,6 +382,7 @@ def render_report(results: dict[str, Any], config: Config) -> str:
         "missing": missing,
         "national_median": f"{d['grid_completeness']['national_median_per_km2']:.3f}",
         "grid_rows": grid_rows,
+        "network_section": network_section(results.get("network")),
     }
     return TEMPLATE.read_text(encoding="utf-8").format(**values)
 
@@ -389,6 +399,9 @@ def run_evaluation(
         "backtest": backtest(processed_dir, config),
         "stability": stability(processed_dir, config),
         "data_quality": data_quality(processed_dir, config),
+        "network": read_json(network)
+        if (network := processed_dir / "network.json").is_file()
+        else None,
     }
     a = results["backtest"]
     logger.info(

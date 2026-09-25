@@ -309,8 +309,15 @@ optimization:
   min_score_percentile: 50
   existing_charger_demand_factor: 0.5
   time_limit_s: 300
+  # Decided by Gasim on 2026-09-25 (D-046): corridor points without a host stay scored
+  # and visible but are never selected (SPEC §3: a site without a host cannot be
+  # investigated).
+  require_host: true
+  # D-046: values tried one parameter at a time, the others at their defaults.
   sensitivity:
-    pending: "SPEC §8 varies lambda, the service radius and the existing-charger factor without giving the values to try. Decide in M6."
+    lambda: [0, 0.01, 0.05]
+    service_radius_m: [5000, 10000, 15000]
+    existing_charger_demand_factor: [0.25, 0.5, 0.75]
 
 # SPEC §10
 export:

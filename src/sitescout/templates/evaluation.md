@@ -34,7 +34,7 @@ The ten least stable perturbations:
 
 ## C. Network effect
 
-Added in Milestone 6 (exact MCLP, greedy and Top-30 compared).
+{network_section}
 
 ## D. Data quality
 

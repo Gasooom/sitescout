@@ -9,9 +9,11 @@ authors = [{ name = "Abualgasim Ibrahim" }]
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "geopandas>=1.1.4",
+    "h3>=4.5.0",
     "numpy>=2.5.3",
     "osmium>=4.3.1",
     "pandas>=3.0.6",
+    "pulp>=3.3.2,<4",
     "pyarrow>=25.0.1",
     "pydantic>=2.13.5",
     "pyproj>=3.8.0",

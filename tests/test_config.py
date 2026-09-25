@@ -21,9 +21,10 @@ from support import delete_path, flatten, set_path
 
 # Parameters docs/SPEC.md requires but does not define. Resolving one means giving it a
 # value in config/settings.yaml, removing it here and recording the decision.
-EXPECTED_PENDING = {
-    "settings.optimization.sensitivity",
-}
+EXPECTED_PENDING: set[str] = set()  # every SPEC parameter is decided since Milestone 6
+
+# The pending mechanism is still tested, on a SYNTHETIC pending value in a copy of settings.
+SYNTHETIC_PENDING = {"pending": "SYNTHETIC: SPEC §7 gives no seed in this test. Decide in M5."}
 
 # Every defined value in config/settings.yaml, as docs/SPEC.md (and CLAUDE.md for paths and
 # the log level) sets it. Changing one needs a change here and a docs/decisions.md entry.
@@ -305,6 +306,15 @@ EXPECTED_M5_SETTINGS = {
 }
 
 
+# Milestone 6 decisions (D-046).
+EXPECTED_M6_SETTINGS = {
+    "optimization.require_host": True,
+    "optimization.sensitivity.lambda": [0.0, 0.01, 0.05],
+    "optimization.sensitivity.service_radius_m": [5000, 10000, 15000],
+    "optimization.sensitivity.existing_charger_demand_factor": [0.25, 0.5, 0.75],
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -313,6 +323,7 @@ def test_settings_match_spec():
         **EXPECTED_M3_SETTINGS,
         **EXPECTED_M4_SETTINGS,
         **EXPECTED_M5_SETTINGS,
+        **EXPECTED_M6_SETTINGS,
     }
 
 
@@ -427,15 +438,25 @@ def test_snapshot_is_json_and_rebuilds_the_same_config():
 # --- Pending parameters ------------------------------------------------------------------
 
 
-def test_reading_a_pending_parameter_raises():
-    sensitivity = load_config().settings.optimization.sensitivity
-    assert isinstance(sensitivity, Pending)
-    with pytest.raises(PendingParameterError, match=r"sensitivity is pending: SPEC §8"):
-        require(sensitivity, "optimization.sensitivity")
+def _with_pending_seed(settings_data, weights_data):
+    settings_data["evaluation"]["random_seed"] = dict(SYNTHETIC_PENDING)
+    return build_config(settings_data, weights_data)
 
 
-def test_a_pending_parameter_cannot_pass_for_a_value():
-    pending = load_config().settings.optimization.sensitivity
+def test_reading_a_pending_parameter_raises(settings_data, weights_data):
+    seed = _with_pending_seed(settings_data, weights_data).settings.evaluation.random_seed
+    assert isinstance(seed, Pending)
+    with pytest.raises(PendingParameterError, match=r"random_seed is pending: SYNTHETIC"):
+        require(seed, "evaluation.random_seed")
+
+
+def test_a_pending_parameter_is_listed(settings_data, weights_data):
+    config = _with_pending_seed(settings_data, weights_data)
+    assert config.pending() == {"settings.evaluation.random_seed": SYNTHETIC_PENDING["pending"]}
+
+
+def test_a_pending_parameter_cannot_pass_for_a_value(settings_data, weights_data):
+    pending = _with_pending_seed(settings_data, weights_data).settings.evaluation.random_seed
     with pytest.raises(PendingParameterError):
         bool(pending)
     with pytest.raises(PendingParameterError):
@@ -446,7 +467,7 @@ def test_require_returns_decided_values():
     assert require(load_config().settings.optimization.n_sites, "optimization.n_sites") == 30
 
 
-@pytest.mark.parametrize("dotted", ["optimization.sensitivity"])
+@pytest.mark.parametrize("dotted", ["evaluation.random_seed", "optimization.sensitivity"])
 def test_pending_parameters_are_required_keys(settings_data, weights_data, dotted):
     delete_path(settings_data, dotted)
     with pytest.raises(ConfigError, match="Field required"):
@@ -658,8 +679,8 @@ def test_unknown_override_keys_are_rejected(settings_data, weights_data, key):
 @pytest.mark.parametrize(
     ("key", "value"),
     [
-        ("settings.optimization.sensitivity", 1),
-        ("settings.optimization", {"sensitivity": 1}),
+        ("settings.evaluation.random_seed", 1),
+        ("settings.evaluation", {"label": "replaced"}),
         ("settings.optimization.n_sites", {"pending": "created by an override"}),
     ],
     ids=["fill-pending", "replace-block-with-pending", "create-pending"],
@@ -667,5 +688,6 @@ def test_unknown_override_keys_are_rejected(settings_data, weights_data, key):
 def test_overrides_cannot_fill_or_create_pending_parameters(
     settings_data, weights_data, key, value
 ):
+    settings_data["evaluation"]["random_seed"] = dict(SYNTHETIC_PENDING)
     with pytest.raises(ConfigError, match="pending parameter"):
         build_config(settings_data, weights_data, overrides={key: value})

@@ -565,6 +565,23 @@ class EvaluationSettings(_Model):
     grounding_target: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0, le=1)]
 
 
+NonNegative = Annotated[float, BeforeValidator(_reject_non_numbers), Field(ge=0)]
+
+
+class SensitivitySettings(_Model):
+    """SPEC §8 sensitivity values (D-046), each tried with the other parameters at default."""
+
+    lambda_: Annotated[
+        tuple[NonNegative, ...], Field(min_length=1, alias="lambda"), AfterValidator(_no_duplicates)
+    ]
+    service_radius_m: Annotated[
+        tuple[Metres, ...], Field(min_length=1), AfterValidator(_no_duplicates)
+    ]
+    existing_charger_demand_factor: Annotated[
+        tuple[Share, ...], Field(min_length=1), AfterValidator(_no_duplicates)
+    ]
+
+
 class OptimizationSettings(_Model):
     demand_h3_resolution: Annotated[int, Strict(), Field(ge=0, le=15)]
     service_radius_m: Metres
@@ -574,7 +591,8 @@ class OptimizationSettings(_Model):
     min_score_percentile: Annotated[int, Strict(), Field(gt=0, lt=100)]
     existing_charger_demand_factor: Share
     time_limit_s: Count
-    sensitivity: Pending
+    require_host: Flag
+    sensitivity: SensitivitySettings
 
 
 class ExportSettings(_Model):
@@ -906,7 +924,12 @@ def log_summary(config: Config) -> None:
         network.min_score_percentile,
     )
     pending = config.pending()
-    logger.warning("%d parameters are pending; docs/SPEC.md does not define them:", len(pending))
+    if not pending:
+        logger.info("No parameter is pending: every parameter docs/SPEC.md requires is decided.")
+    else:
+        logger.warning(
+            "%d parameters are pending; docs/SPEC.md does not define them:", len(pending)
+        )
     for key, reason in pending.items():
         logger.warning("  %s: %s", key, reason)
     logger.info("Configuration is valid.")

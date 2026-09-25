@@ -4,7 +4,7 @@
 
 SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
 
-> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering: raw demand, access, host, charging-gap and grid-evidence features, [docs/features.md](docs/features.md)) is complete. Milestone 4 (scoring and confidence, [docs/scoring.md](docs/scoring.md)) is complete. Milestone 5 (evaluation) is implemented and in review: a retrospective plausibility test against the known public chargers, with random and population-only baselines and weight stability ([reports/evaluation.md](reports/evaluation.md)).
+> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering: raw demand, access, host, charging-gap and grid-evidence features, [docs/features.md](docs/features.md)) is complete. Milestone 4 (scoring and confidence, [docs/scoring.md](docs/scoring.md)) is complete. Milestone 5 (evaluation) is complete. Milestone 6 (network optimization) is implemented and in review: an exact maximum-coverage selection of 30 sites, compared with a greedy selection and the Top-30 by score ([reports/evaluation.md](reports/evaluation.md), section C).
 
 ## What it answers
 
@@ -59,6 +59,7 @@ uv run python scripts/ingest.py all
 uv run python scripts/candidates.py
 uv run python scripts/features.py
 uv run python scripts/score.py
+uv run python scripts/optimize.py
 uv run python scripts/evaluate.py
 uv run ruff check .
 uv run ruff format --check .
@@ -87,8 +88,8 @@ data/      local data, never committed (raw, manual, processed, export)
 | 2 | Candidate generation | done |
 | 3 | Feature engineering | done |
 | 4 | Scoring and confidence | done |
-| 5 | Evaluation | in review |
-| 6 | Network optimization | not started |
+| 5 | Evaluation | done |
+| 6 | Network optimization | in review |
 | 7 | Evidence and reports | not started |
 | 8 | Export and front end | not started |
 | 9 | Stretch (optional) | not started |

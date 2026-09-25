@@ -502,6 +502,40 @@ SCORES_BACKTEST = replace(
     "(SPEC §5, §6), from features_backtest.",
 )
 
+NETWORK = LayerSchema(
+    name="network",
+    description="Milestone 6 network selection (SPEC §8): which candidates the exact MCLP, "
+    "the greedy baseline and the Top-30 by score select, in production mode, and each "
+    "candidate's marginal coverage.",
+    id_column="candidate_id",
+    columns=(
+        Column("candidate_id", "string", True, "candidates.candidate_id."),
+        Column("host_type", "string", True, "candidates.host_type."),
+        Column("district", "string", True, "candidates.district."),
+        Column("province", "string", True, "candidates.province."),
+        Column("score", "float64", True, "scores_production.score."),
+        Column("rank", "int64", True, "scores_production.rank."),
+        Column(
+            "eligible",
+            "bool",
+            True,
+            "In the top half of scores and, with optimization.require_host, has a host.",
+        ),
+        Column("selected_mclp", "bool", True, "Selected by the exact MCLP (the network)."),
+        Column("selected_greedy", "bool", True, "Selected by the greedy baseline."),
+        Column("selected_top30", "bool", True, "Among the Top-30 eligible candidates by score."),
+        Column(
+            "marginal_coverage",
+            "float64",
+            True,
+            "Share of weighted demand the MCLP network loses without this site (selected) or "
+            "gains with it (not selected).",
+        ),
+    ),
+    geometry_types=frozenset({POINT}),
+    sort_by=("candidate_id",),
+)
+
 LAYERS: dict[str, LayerSchema] = {
     schema.name: schema
     for schema in (
@@ -523,6 +557,7 @@ LAYERS: dict[str, LayerSchema] = {
         FEATURES_BACKTEST,
         SCORES_PRODUCTION,
         SCORES_BACKTEST,
+        NETWORK,
     )
 }
 

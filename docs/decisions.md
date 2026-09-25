@@ -432,6 +432,32 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Recall over known sites instead of hit candidates; `pop_10km` or a sum of the population features as the baseline; resampling the known sites instead of the candidates; judging stability on the average only.
 - **Reason:** SPEC §7 names the metrics and baselines but not their definitions. Candidate-level hits keep precision and recall on the same footing and let the bootstrap resample one population. With 5 known sites and 5 hit candidates on the 2026-09-23 data, the intervals are wide; the report says so and draws no strong claim.
 
+## D-045: Dependencies for Milestone 6
+
+- **Date:** 2026-09-25
+- **Decision:** Two runtime dependencies, each for a named SPEC §8 problem:
+  - **pulp** (3.3.2, pinned `>=3.3.2,<4`): the exact MCLP with its **bundled CBC** solver, as SPEC §8 and CLAUDE.md require. PuLP 4.0 no longer ships CBC (it found no solver on this machine), so the pin keeps the bundled binary. PuLP 3.3 marks `PULP_CBC_CMD` as deprecated for that reason; `optimize.py` silences that one warning at the call site and nowhere else.
+  - **h3** (4.5.0): the demand nodes, WorldPop aggregated to H3 resolution 7 (SPEC §8).
+- **Alternatives:** PuLP 4 with a separately installed CBC (`pulp[cbc]`), which is no longer "bundled"; OR-Tools CP-SAT (SPEC §8: needs integer scaling); a square grid instead of H3 (SPEC names H3).
+- **Reason:** CLAUDE.md: a new dependency must solve a named problem. Both resolved as Windows wheels for Python 3.12 (D-001). As in D-017, `uv sync` needed retries because another process briefly locked files.
+
+## D-046: Network selection
+
+- **Date:** 2026-09-25 (Milestone 6; eligibility of hostless points and the sensitivity values chosen by Gasim)
+- **Decision:**
+  - **Mode:** production scores and production demand; the network is what SiteScout recommends.
+  - **Demand nodes:** every WorldPop pixel with people, summed into its H3 resolution-7 cell (4,094 cells on the real data); each node sits at its cell's centre, in EPSG:32735. Demand within the service radius of a known charging site (D-034) is multiplied by `existing_charger_demand_factor` (0.5), then all weights are **renormalised to sum to 1**.
+  - **Eligible sites:** production score percentile (D-040) at least `min_score_percentile` (50) across all candidates, not within each profile. With `optimization.require_host: true`, corridor points without a host are never selected (SPEC §3); they stay scored and visible. With fewer than 30 eligible sites the run stops; the threshold is never lowered. On the real data: 108 eligible.
+  - **sⱼ** = score / 100, a score in [0, 1] without min-max normalisation.
+  - **Exact MCLP:** SPEC §8's objective and constraints, solved by CBC on one thread with the 300 s limit. The status and CBC's solution status are reported; a result is only called exact when CBC reports it optimal. Sites strictly closer than 2 km cannot both be selected. A node is covered within the service radius, inclusive.
+  - **Greedy:** the same objective and constraints; each step adds the eligible site with the largest objective gain that respects the spacing, ties by candidate_id.
+  - **Top-30 by score:** the 30 highest-scoring eligible sites, with no spacing rule: the naive baseline.
+  - **Marginal coverage:** for a selected MCLP site, the weighted demand only it covers; for any other candidate, the weighted demand it would add.
+  - **Sensitivity** (`optimization.sensitivity`): λ ∈ {0, 0.01, 0.05}, service radius ∈ {5, 10, 15} km, existing-charger factor ∈ {0.25, 0.5, 0.75}, each varied with the others at their defaults (6 extra solves).
+  - **Outputs:** the `network` layer, `data/processed/network.json` (the comparison, deterministic) and `network_run.json` (solve times, which vary between runs and are kept out of the layer and the report). Section C of `reports/evaluation.md` is rendered from `network.json`.
+- **Alternatives:** Allowing hostless points (one ranked first in production); eligibility within each profile; a population-weighted node position; applying the spacing rule to Top-30.
+- **Reason:** Resolves the Milestone 6 open questions. On the real data the exact MCLP is optimal and covers 49.8% of Rwanda's modelled population within 10 km, against 24.0% for the Top-30 by score (23 of whose 30 sites are in the City of Kigali); greedy comes within 0.64% of it.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -472,11 +498,8 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 6
 
-- SPEC §3 says a site without a host cannot be investigated, but keeps corridor points without a host (218 on real data). Should those be eligible for the 30?
-- Is the top-50% eligibility cut taken across all candidates or within each profile?
-- SPEC §8 calls sⱼ a "normalized site score" without defining it. Proposal: score / 100, since min-max normalization is not allowed.
-- In production mode, is demand renormalized to sum to 1 after demand near existing chargers is down-weighted?
-- If the solver reaches the 300 s limit, the run reports the solver status and does not call the result exact.
+- Resolved in Milestone 6 (D-046): hostless points are not eligible; eligibility is across all candidates; sⱼ = score / 100; demand is renormalised after the down-weighting; a time-limited result is reported with CBC's status and not called exact.
+- Changing the existing-charger factor (0.25 to 0.75) leaves the network unchanged on the real data: only 5 charging sites exist, all in or near Kigali. It will matter once `data/manual/chargers.csv` is filled.
 
 ### Milestone 7
 

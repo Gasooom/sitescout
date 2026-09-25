@@ -144,7 +144,11 @@ See [scoring.md](scoring.md).
 
 ## Milestone 5: evaluation
 
-`sitescout/evaluation.py` (run by `scripts/evaluate.py`) reads the candidates, feature and score layers and computes the retrospective plausibility test (D-043, D-044): the backtest against known charging sites with random and population-only baselines and bootstrap intervals, weight stability (44 perturbations, each passed as logged config overrides and rescored with `scoring.score_features`) and data quality. It writes `data/processed/evaluation.json` and fills `reports/evaluation.md` from a template.
+`sitescout/evaluation.py` (run by `scripts/evaluate.py`) reads the candidates, feature and score layers and computes the retrospective plausibility test (D-043, D-044): the backtest against known charging sites with random and population-only baselines and bootstrap intervals, weight stability (44 perturbations, each passed as logged config overrides and rescored with `scoring.score_features`) and data quality. It writes `data/processed/evaluation.json` and fills `reports/evaluation.md` from a template. Section C comes from Milestone 6 when `network.json` exists, so `optimize.py` runs before `evaluate.py`.
+
+## Milestone 6: network optimization
+
+`sitescout/optimize.py` (run by `scripts/optimize.py`) builds H3 resolution-7 demand nodes from the WorldPop raster, down-weights demand near known charging sites, and selects 30 sites three ways: the exact MCLP (PuLP with its bundled CBC), a greedy baseline with the same objective and constraints, and the Top-30 by score. It writes the `network` layer, `network.json` and `network_run.json` (D-045, D-046). Report sections are filled from `src/sitescout/templates/`.
 
 ## Rules every stage follows
 
