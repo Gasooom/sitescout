@@ -150,6 +150,10 @@ See [scoring.md](scoring.md).
 
 `sitescout/optimize.py` (run by `scripts/optimize.py`) builds H3 resolution-7 demand nodes from the WorldPop raster, down-weights demand near known charging sites, and selects 30 sites three ways: the exact MCLP (PuLP with its bundled CBC), a greedy baseline with the same objective and constraints, and the Top-30 by score. It writes the `network` layer, `network.json` and `network_run.json` (D-045, D-046). Report sections are filled from `src/sitescout/templates/`.
 
+## Milestone 7: evidence and briefs
+
+`sitescout/evidence.py` joins the network sites with their scores, features and candidate records and turns every value a brief may show into an evidence record (`data/processed/evidence.json`). `sitescout/briefs.py` fills `templates/brief.md` from those records only, adds rule-based risks and next actions, checks that every number in every brief is grounded, and writes `reports/briefs/` and `data/processed/grounding.json` (D-047). Run order: `optimize.py`, `briefs.py`, then `evaluate.py`, whose section E reports the grounding check.
+
 ## Rules every stage follows
 
 - **Configuration.** Stages receive a loaded `Config` object. They never read `config/` files or environment variables themselves.

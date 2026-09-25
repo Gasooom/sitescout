@@ -477,4 +477,5 @@ def write_candidate_world(
         "osm_protected_areas": parks,
     }
     for name, rows in layers.items():
-        write_layer(frame(rows, name), LAYERS[name], processed, settings, sources=[])
+        stats = {"osm_data_timestamp": OSM_TIMESTAMP} if name.startswith("osm_") else None
+        write_layer(frame(rows, name), LAYERS[name], processed, settings, sources=[], stats=stats)

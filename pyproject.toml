@@ -47,6 +47,10 @@ src = ["src", "scripts", "tests"]
 # T20 bans print(): pipelines log instead of printing (CLAUDE.md).
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "PTH", "T20"]
 
+[tool.ruff.lint.per-file-ignores]
+# One evidence record per row keeps the table of what a brief may say readable (D-047).
+"src/sitescout/evidence.py" = ["E501"]
+
 [tool.ruff.format]
 line-ending = "lf"
 

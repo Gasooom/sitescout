@@ -297,6 +297,19 @@ def network_section(summary: dict[str, Any] | None) -> str:
     return render_network_section(summary)
 
 
+def grounding_section(summary: dict[str, Any] | None) -> str:
+    """Section E: the Milestone 7 grounding check, when grounding.json exists."""
+    if summary is None:
+        return "Not available: run `scripts/briefs.py` before `scripts/evaluate.py`."
+    return (
+        f"{summary['briefs']} Site Evidence Briefs ([reports/briefs](briefs/README.md)), one per "
+        f"network site, plus their index. Every number in them was checked against the "
+        f"structured evidence in `data/processed/evidence.json`: **{summary['grounded']} of "
+        f"{summary['numbers']}** grounded ({summary['share'] * 100:.1f}%; target "
+        f"{summary['target'] * 100:.0f}%)."
+    )
+
+
 def render_report(results: dict[str, Any], config: Config) -> str:
     """reports/evaluation.md, filled from the computed results only."""
     settings = config.settings
@@ -383,6 +396,7 @@ def render_report(results: dict[str, Any], config: Config) -> str:
         "national_median": f"{d['grid_completeness']['national_median_per_km2']:.3f}",
         "grid_rows": grid_rows,
         "network_section": network_section(results.get("network")),
+        "grounding_section": grounding_section(results.get("grounding")),
     }
     return TEMPLATE.read_text(encoding="utf-8").format(**values)
 
@@ -401,6 +415,9 @@ def run_evaluation(
         "data_quality": data_quality(processed_dir, config),
         "network": read_json(network)
         if (network := processed_dir / "network.json").is_file()
+        else None,
+        "grounding": read_json(grounding)
+        if (grounding := processed_dir / "grounding.json").is_file()
         else None,
     }
     a = results["backtest"]

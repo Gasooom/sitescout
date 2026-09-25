@@ -50,4 +50,4 @@ Grid-layer completeness by district (a proxy for how much of the grid is mapped;
 
 ## E. Grounding
 
-Added in Milestone 7 (site briefs).
+{grounding_section}

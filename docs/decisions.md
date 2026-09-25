@@ -458,6 +458,19 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Allowing hostless points (one ranked first in production); eligibility within each profile; a population-weighted node position; applying the spacing rule to Top-30.
 - **Reason:** Resolves the Milestone 6 open questions. On the real data the exact MCLP is optimal and covers 49.8% of Rwanda's modelled population within 10 km, against 24.0% for the Top-30 by score (23 of whose 30 sites are in the City of Kigali); greedy comes within 0.64% of it.
 
+## D-047: Site Evidence Briefs and the grounding check
+
+- **Date:** 2026-09-25 (Milestone 7)
+- **Decision:**
+  - **What:** one brief for each of the 30 sites the exact MCLP selects (D-046), plus an index, written to `reports/briefs/` by `scripts/briefs.py`. Production-mode data throughout.
+  - **Name:** "Site Evidence Brief". SPEC §9's name contains a word CLAUDE.md allows only inside the exact grid disclaimer; SPEC.md is not changed.
+  - **Content:** SPEC §9's sections, answering four questions: why the site was selected (the network, its unique coverage, rank, score, strongest components), what evidence supports it (demand, access, charging gap, grid evidence, score breakdown), what is unknown (the five universal unknowns, plus missing grid evidence), and what to investigate next. Both mandatory texts appear verbatim: the grid disclaimer and the public-data notice. Licences and data dates are credited.
+  - **Evidence records** (`sitescout/evidence.py`, `data/processed/evidence.json`): SPEC §9's `{claim, type, evidence: {source, metric, value}}` plus an `id`, a `unit` and the exact `display` text. Types: RETRIEVED_FACT (OSM tags, boundaries, dates, config), CALCULATED (pipeline values), INFERRED (the confidence level and reasons), UNKNOWN (missing grid evidence and the universal unknowns). Built only from the M2-M6 layers, their metadata and the configuration.
+  - **No LLM.** The Opportunity paragraph, risks and next actions come from `templates/brief.md` and fixed rules over the evidence records: risks for missing grid evidence, sparse grid mapping, a circle crossing the border, the few known charging sites and the weakest component; actions for the universal unknowns (utility, owner, permits), plus missing grid evidence, sparse mapping, a known charging site within the service radius and cross-border demand. No new threshold is introduced; every rule uses an existing flag or configured radius.
+  - **Grounding check:** the template contains no number of its own (a test enforces it), and every number in every brief and in the index must appear in the display text of that site's evidence records or the shared context records. The share must reach `evaluation.grounding_target` (1.0) or nothing is written. The result goes to `data/processed/grounding.json` and section E of `reports/evaluation.md`.
+- **Alternatives:** An LLM-written Opportunity paragraph (SPEC §9 allows it, but no approved API key source exists and the grounding check would then carry the whole burden); briefs for the Top-30 by score instead of the network; keeping briefs under `data/` only.
+- **Reason:** Resolves the Milestone 7 open questions. CLAUDE.md: reports are built from templates with injected values, every displayed number comes from structured data, and grounding targets 100%. On the real data: 30 briefs, 2,262 numbers, all grounded.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
@@ -503,8 +516,7 @@ These need a decision before or during the milestone named. None has a default.
 
 ### Milestone 7
 
-- SPEC §9's name for the brief uses a word CLAUDE.md prohibits outside the disclaimer. Proposal: "Site Evidence Brief".
-- SPEC §9 allows an LLM to write the Opportunity paragraph, while CLAUDE.md says reports are built from templates. Environment variables and `.env` files are disabled, so an API key would also need an approved source.
+- Resolved in Milestone 7 (D-047): the brief is a "Site Evidence Brief"; no LLM writes any of it.
 
 ### Milestone 8
 

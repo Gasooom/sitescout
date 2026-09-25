@@ -4,7 +4,7 @@
 
 SiteScout proposes a network of 30 charging sites, chosen together rather than one at a time, and explains each site with evidence, unknowns and next actions.
 
-> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering: raw demand, access, host, charging-gap and grid-evidence features, [docs/features.md](docs/features.md)) is complete. Milestone 4 (scoring and confidence, [docs/scoring.md](docs/scoring.md)) is complete. Milestone 5 (evaluation) is complete. Milestone 6 (network optimization) is implemented and in review: an exact maximum-coverage selection of 30 sites, compared with a greedy selection and the Top-30 by score ([reports/evaluation.md](reports/evaluation.md), section C).
+> **Status:** Milestones 1 (data ingestion) and 2 (candidate generation: 300 candidates selected from 595 eligible ones) are complete. Milestone 3 (feature engineering: raw demand, access, host, charging-gap and grid-evidence features, [docs/features.md](docs/features.md)) is complete. Milestone 4 (scoring and confidence, [docs/scoring.md](docs/scoring.md)) is complete. Milestone 5 (evaluation) is complete. Milestone 6 (network optimization: an exact maximum-coverage selection of 30 sites, [reports/evaluation.md](reports/evaluation.md) section C) is complete. Milestone 7 (evidence and briefs) is implemented and in review: a Site Evidence Brief for each of the 30 network sites, with every number checked against structured data ([reports/briefs](reports/briefs/README.md)).
 
 ## What it answers
 
@@ -60,6 +60,7 @@ uv run python scripts/candidates.py
 uv run python scripts/features.py
 uv run python scripts/score.py
 uv run python scripts/optimize.py
+uv run python scripts/briefs.py
 uv run python scripts/evaluate.py
 uv run ruff check .
 uv run ruff format --check .
@@ -89,8 +90,8 @@ data/      local data, never committed (raw, manual, processed, export)
 | 3 | Feature engineering | done |
 | 4 | Scoring and confidence | done |
 | 5 | Evaluation | done |
-| 6 | Network optimization | in review |
-| 7 | Evidence and reports | not started |
+| 6 | Network optimization | done |
+| 7 | Evidence and reports | in review |
 | 8 | Export and front end | not started |
 | 9 | Stretch (optional) | not started |
 | 10 | Packaging and demo | not started |

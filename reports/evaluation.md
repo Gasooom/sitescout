@@ -123,4 +123,4 @@ Grid-layer completeness by district (a proxy for how much of the grid is mapped;
 
 ## E. Grounding
 
-Added in Milestone 7 (site briefs).
+30 Site Evidence Briefs ([reports/briefs](briefs/README.md)), one per network site, plus their index. Every number in them was checked against the structured evidence in `data/processed/evidence.json`: **2262 of 2262** grounded (100.0%; target 100%).
