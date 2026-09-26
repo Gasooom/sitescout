@@ -1,0 +1,467 @@
+# Milestone 10, Phase 1 (D-056): the DRAFT retrieval gold set for the project-knowledge index.
+#
+# Each query names the chunks that answer it (`relevant`), by stable chunk id plus a
+# `phrase` that must occur verbatim in that chunk's text, so a document edit that
+# silently invalidates a judgement is caught before any metric is computed. A query with
+# several relevant chunks counts as found when any one is retrieved (Hit@k) and by the
+# fraction found (Recall@k). `out_of_scope` queries have no relevant chunk: nothing in the
+# corpus answers them.
+#
+# Categories (the id's letter): P paraphrase (worded unlike the documents), T terminology
+# (a term or identifier), D definition, M decision or method (why), O out of scope.
+# `author` is who wrote the query. `filters` are optional exact metadata filters.
+#
+# Discipline: these queries were written from the indexed documents BEFORE the first
+# retrieval run. BM25, the tokenizer and the chunking are not tuned on the results; a later
+# change needs a recorded decision and a fresh review. `review.status` stays `draft` until
+# Gasim has reviewed the set and settled the ambiguous labels listed in the review log.
+#
+# Relevance rule (Gasim, review 1): a chunk is relevant only if its content provides
+# substantive information needed to answer the query. It is NOT relevant merely because it
+# contains the query's terminology or mentions the same concept. New labels are marked S
+# (sufficient alone) or P (partial: needed, but not enough alone) in each query's note.
+#
+# Review log 1 (the six queries below marked author: user were written by Gasim; the
+# assistant labelled them by reading the corpus, BEFORE any retrieval run on them, and
+# without using BM25 results):
+#   - Two labels of the original 36 queries were removed under the rule above:
+#       D03: kb/readme/what-it-does-not-claim (names the test, does not say what it is)
+#       M04: kb/decisions/d-027 (states the exclusion, gives no reason)
+#   - Six queries were added: P11, D07, D08, M09, D09, M10 (Gasim's U01 to U06).
+#   - Ambiguous labels kept, and candidate chunks left unlabelled, are listed in the notes.
+#   - The broader top-5 missing-label review has NOT been done.
+# Review log 2 (Gasim): one label added, D07: kb/readme/what-it-does-not-claim (P). No other
+#   ambiguous candidate was added.
+
+version: 1
+review:
+  status: draft
+  reviewed_by: null
+  reviewed_on: null
+
+queries:
+  # --- P: paraphrased methodology ---------------------------------------------------------
+  - id: P01
+    category: paraphrase
+    author: assistant
+    query: "How does SiteScout convert distances and counts into comparable points before they are combined into a score?"
+    relevant:
+      - {chunk: "kb/scoring/method/1-percentile-points-d-040", phrase: "**Percentile** = 100 × (candidates below + 0.5 × candidates equal) / n"}
+      - {chunk: "kb/decisions/d-040#1", phrase: "Each weighted feature becomes percentile points"}
+    note: The percentile-points rule, in the method page and in its decision.
+
+  - id: P02
+    category: paraphrase
+    author: assistant
+    query: "What score does a site get for the power-infrastructure part when nothing is mapped nearby?"
+    relevant:
+      - {chunk: "kb/scoring/method/2-components-spec-5-d-042", phrase: "the grid-evidence component is 0"}
+      - {chunk: "kb/decisions/d-042#1", phrase: "Its component is then 0 and its status UNKNOWN"}
+    note: Missing grid evidence scores 0 and is UNKNOWN.
+
+  - id: P03
+    category: paraphrase
+    author: assistant
+    query: "Why can't two chosen locations be placed very close together in the recommended set of 30?"
+    relevant:
+      - {chunk: "kb/spec/8-network-optimization-mclp#1", phrase: "any pair of sites closer than d_min (default 2 km)"}
+      - {chunk: "kb/decisions/d-046#1", phrase: "cannot both be selected"}
+    note: The minimum-spacing constraint.
+
+  - id: P04
+    category: paraphrase
+    author: assistant
+    query: "How is the number of people living near a candidate worked out?"
+    relevant:
+      - {chunk: "kb/features/demand/pop-1km-pop-5km-pop-10km", phrase: "Sum, in float64, the values of the pixels whose centre is within the radius"}
+      - {chunk: "kb/decisions/d-036#1", phrase: "sum the WorldPop pixel values whose pixel **centre** lies within the radius (inclusive)"}
+    note: Population within a radius is a sum of raster pixel values by pixel centre.
+
+  - id: P05
+    category: paraphrase
+    author: assistant
+    query: "What happens to a candidate that has no business on the spot when the 30 sites are picked?"
+    relevant:
+      - {chunk: "kb/decisions/d-046#1", phrase: "corridor points without a host are never selected"}
+      - {chunk: "kb/spec/3-candidate-generation", phrase: "A site without a host cannot be investigated."}
+    note: Hostless corridor points stay scored but are never selected.
+
+  - id: P06
+    category: paraphrase
+    author: assistant
+    query: "Why does the backtest give every candidate the same value for the part of the score about existing charging stations?"
+    relevant:
+      - {chunk: "kb/scoring/production-and-backtest", phrase: "the charging-gap component is **25** for every candidate"}
+      - {chunk: "kb/decisions/d-042#1", phrase: "so the charging-gap component is **25** for every candidate"}
+    note: With no chargers in backtest mode the charging-gap component is constant.
+
+  - id: P07
+    category: paraphrase
+    author: assistant
+    query: "How does SiteScout express how sure it is about a site, and can that be shown as a percent?"
+    relevant:
+      - {chunk: "kb/scoring/confidence-spec-6-d-041", phrase: "A level, never a percentage"}
+      - {chunk: "kb/spec/6-confidence", phrase: "Never a percentage"}
+    note: Confidence is High, Medium or Low, never a percentage.
+
+  - id: P08
+    category: paraphrase
+    author: assistant
+    query: "What makes the density of mapped power features in a district a weak stand-in for real grid strength?"
+    relevant:
+      - {chunk: "kb/features/grid-evidence/grid-completeness-ratio", phrase: "It measures how much is mapped, not the grid itself."}
+      - {chunk: "kb/scoring/known-limitations", phrase: "**Grid completeness is a proxy**"}
+    note: The completeness ratio is a proxy for how much is mapped.
+
+  - id: P09
+    category: paraphrase
+    author: assistant
+    query: "Why is a high score not the same thing as being the best place to build?"
+    relevant:
+      - {chunk: "kb/scoring/intro", phrase: "A score ranks candidates for **investigation**."}
+      - {chunk: "kb/scoring/known-limitations", phrase: "**Percentiles are relative.**"}
+    note: A score ranks candidates for investigation and is relative to the 300 candidates.
+
+  - id: P10
+    category: paraphrase
+    author: assistant
+    query: "How was the top 30 compared when the input weights were nudged up and down?"
+    relevant:
+      - {chunk: "kb/decisions/d-044#1", phrase: "multiplied by 0.8 and by 1.2 in turn"}
+      - {chunk: "kb/spec/7-evaluation", phrase: "perturb each weight by ±20% and renormalize"}
+    note: The weight-stability test.
+
+  # --- T: terminology ---------------------------------------------------------------------
+  - id: T01
+    category: terminology
+    author: assistant
+    query: "MCLP"
+    relevant:
+      - {chunk: "kb/spec/8-network-optimization-mclp#1", phrase: "8. Network optimization (MCLP)"}
+      - {chunk: "kb/decisions/d-046#1", phrase: "**Exact MCLP:**"}
+      - {chunk: "kb/architecture/milestone-6-network-optimization", phrase: "the exact MCLP (PuLP with its bundled CBC)"}
+    note: The maximum coverage location problem, in the spec, its decision and the architecture.
+
+  - id: T02
+    category: terminology
+    author: assistant
+    query: "log1p"
+    filters: {topic: scoring}
+    relevant:
+      - {chunk: "kb/scoring/method/1-percentile-points-d-040", phrase: "get log1p first"}
+      - {chunk: "kb/decisions/d-040#1", phrase: "log1p is applied before ranking"}
+    note: Where log1p is applied; the topic filter keeps only scoring chunks.
+
+  - id: T03
+    category: terminology
+    author: assistant
+    query: "H3 resolution 7"
+    relevant:
+      - {chunk: "kb/spec/8-network-optimization-mclp#1", phrase: "WorldPop aggregated to H3 resolution 7"}
+      - {chunk: "kb/decisions/d-046#1", phrase: "H3 resolution-7 cell"}
+    note: The demand nodes of the network problem.
+
+  - id: T04
+    category: terminology
+    author: assistant
+    query: "socket:*"
+    relevant:
+      - {chunk: "kb/features/charging-gap/existing-chargers", phrase: "OSM fuel stations tagged `socket:*`"}
+      - {chunk: "kb/decisions/d-034#1", phrase: "fuel stations tagged `socket:*`"}
+    note: Fuel stations tagged with sockets count as chargers in production.
+
+  - id: T05
+    category: terminology
+    author: assistant
+    query: "EPSG:32735"
+    relevant:
+      - {chunk: "kb/decisions/d-018", phrase: "EPSG:32735 stays the metric CRS"}
+      - {chunk: "kb/features/scope", phrase: "Every distance and area is computed in EPSG:32735 (metres)"}
+    note: The metric CRS for distances and areas.
+
+  - id: T06
+    category: terminology
+    author: assistant
+    query: "grid_completeness_ratio"
+    relevant:
+      - {chunk: "kb/features/grid-evidence/grid-completeness-ratio", phrase: "A **proxy** for how completely each district's grid is mapped"}
+      - {chunk: "kb/decisions/d-041", phrase: "`grid_completeness_ratio`"}
+    note: The district mapping-density proxy and the confidence factor that uses it.
+
+  # --- D: definitions ---------------------------------------------------------------------
+  - id: D01
+    category: definition
+    author: assistant
+    query: "What is a universal unknown?"
+    relevant:
+      - {chunk: "kb/spec/6-confidence", phrase: "**Universal unknowns** appear as a fixed list in every output"}
+      - {chunk: "kb/scoring/confidence-spec-6-d-041", phrase: "**Universal unknowns**, the same for every site"}
+    note: The fixed list of things no site's data can answer.
+
+  - id: D02
+    category: definition
+    author: assistant
+    query: "What does grid evidence mean in SiteScout?"
+    relevant:
+      - {chunk: "kb/features/grid-evidence", phrase: "They are evidence that grid infrastructure is mapped nearby."}
+      - {chunk: "kb/readme/what-it-does-not-claim", phrase: "It reports **grid evidence** from public maps"}
+    note: Grid evidence is mapped infrastructure, not a connection decision.
+
+  - id: D03
+    category: definition
+    author: assistant
+    query: "What is a retrospective plausibility test?"
+    relevant:
+      - {chunk: "kb/spec/7-evaluation", phrase: '**"retrospective plausibility test"**'}
+      - {chunk: "kb/decisions/d-044#1", phrase: "**Hits:** a candidate within 1 km (inclusive) of a known charging site"}
+    note: >-
+      The name of the evaluation and how a hit is defined. Review 1 removed
+      kb/readme/what-it-does-not-claim: it only names the test ("Evaluation results are
+      reported as a retrospective plausibility test") and says nothing about what it is.
+
+  - id: D04
+    category: definition
+    author: assistant
+    query: "What is a corridor candidate?"
+    relevant:
+      - {chunk: "kb/spec/3-candidate-generation", phrase: "**Corridor candidates:** points every ~10 km along trunk and primary roads"}
+      - {chunk: "kb/decisions/d-039", phrase: "otherwise it is **corridor**"}
+    note: Corridor candidates and the corridor profile.
+
+  - id: D05
+    category: definition
+    author: assistant
+    query: "What is marginal coverage?"
+    relevant:
+      - {chunk: "kb/spec/8-network-optimization-mclp#2", phrase: "For a selected site this is coverage lost if it is removed"}
+      - {chunk: "kb/decisions/d-046#1", phrase: "for a selected MCLP site, the weighted demand only it covers"}
+      - {chunk: "kb/data-sources/derived-layers/network", phrase: "Share of weighted demand the MCLP network loses without this site"}
+    note: Coverage lost if a selected site is removed, or gained if another is added.
+
+  - id: D06
+    category: definition
+    author: assistant
+    query: "Which kinds of places can host a charging site?"
+    relevant:
+      - {chunk: "kb/spec/3-candidate-generation", phrase: "OSM fuel stations, malls, supermarkets, hotels, logistics and industrial sites"}
+      - {chunk: "kb/decisions/d-027", phrase: "Restaurants, charging stations and other amenities are never hosts."}
+    note: The six host types, and what is never a host.
+
+  # --- M: decision or method (why) --------------------------------------------------------
+  - id: M01
+    category: decision
+    author: assistant
+    query: "Why is the network chosen by an exact optimization rather than by taking the highest-scoring sites?"
+    relevant:
+      - {chunk: "kb/decisions/d-046#1", phrase: "the naive baseline"}
+      - {chunk: "kb/decisions/d-046#2", phrase: "against 24.0% for the Top-30 by score"}
+    note: Top-30 by score is the naive baseline; the exact selection covers more.
+
+  - id: M02
+    category: decision
+    author: assistant
+    query: "Why does the project read OpenStreetMap with pyosmium instead of pyrosm?"
+    filters: {doc_type: decision}
+    relevant:
+      - {chunk: "kb/decisions/d-001", phrase: "pyrosm cannot be installed from wheels on Windows on either version"}
+    note: pyrosm has no Windows wheels; the filter keeps only decisions.
+
+  - id: M03
+    category: decision
+    author: assistant
+    query: "Why is the charger match radius 50 metres and how are nearby charger records merged?"
+    relevant:
+      - {chunk: "kb/decisions/d-034#2", phrase: "so 50 m merges the one cluster and nothing else"}
+      - {chunk: "kb/features/charging-gap/existing-chargers", phrase: "The 50 m is a project data-matching choice, not a definition of a charging site."}
+    note: Records within 50 m are one charging site.
+
+  - id: M04
+    category: decision
+    author: assistant
+    query: "Why were restaurants excluded from the candidate host list?"
+    relevant:
+      - {chunk: "kb/spec/3-candidate-generation", phrase: "**No restaurants** (their size cannot be measured in OSM)"}
+    note: >-
+      A restaurant's size cannot be measured in OSM. Review 1 removed kb/decisions/d-027: it
+      states the exclusion ("Restaurants, charging stations and other amenities are never
+      hosts") but gives no reason, and the query asks why.
+
+  - id: M05
+    category: decision
+    author: assistant
+    query: "Why is the Site Evidence Brief not written by a language model?"
+    filters: {topic: evidence}
+    relevant:
+      - {chunk: "kb/decisions/d-047#1", phrase: "**No LLM.**"}
+      - {chunk: "kb/decisions/d-047#2", phrase: "reports are built from templates with injected values"}
+    note: Briefs come from a template and fixed rules; the topic filter keeps evidence chunks.
+
+  - id: M06
+    category: decision
+    author: assistant
+    query: "Why is model output kept out of the export and the briefs?"
+    relevant:
+      - {chunk: "kb/decisions/d-053", phrase: "Model output is neither, so it stays outside them."}
+    note: D-053 keeps AI output away from decision outputs.
+
+  - id: M07
+    category: decision
+    author: assistant
+    query: "Why does the tool that compares two sites never say which one wins?"
+    relevant:
+      - {chunk: "kb/decisions/d-053", phrase: "`compare_sites` never produces a winner, ranking, preference, total, difference or ratio"}
+      - {chunk: "kb/decisions/d-049#1", phrase: "No winner, ranking, preference, total, difference or ratio."}
+    note: The comparison tool is value-neutral.
+
+  - id: M08
+    category: decision
+    author: assistant
+    query: "Why did the project skip the station-sizing stretch idea?"
+    relevant:
+      - {chunk: "kb/decisions/d-049#1", phrase: "Station sizing is not built"}
+    note: Erlang C needs arrival and service rates that no project dataset holds.
+
+  # --- Review 1: queries written by Gasim (author: user), labelled by the assistant --------
+  # Read from the corpus directly, before any retrieval run on them. S = sufficient alone,
+  # P = partial (needed, not enough alone). Ambiguous candidates are listed, not labelled.
+  - id: P11
+    category: paraphrase
+    author: user
+    query: "How does SiteScout turn individual site scores into a 30-site charging network?"
+    relevant:
+      - {chunk: "kb/decisions/d-046#1", phrase: "**Eligible sites:** production score percentile (D-040) at least `min_score_percentile` (50) across all candidates"}
+      - {chunk: "kb/spec/8-network-optimization-mclp#1", phrase: "eligibility: sites in the top 50% of scores (`min_score_percentile: 50`)"}
+      - {chunk: "kb/data-sources/derived-layers/network", phrase: "In the top half of scores and, with optimization.require_host, has a host."}
+    note: |-
+      Gasim's U01.
+      d-046#1, S: the whole path from score to network: eligibility by score percentile (at least the 50th, across all candidates) and a host, the score entering the objective as score / 100, the exact solve under spacing, and the Top-30 comparison.
+      spec 8 #1, S: the objective adds a site-score term, eligibility is the top 50% of scores, and N = 30, the coverage radius and the spacing are stated.
+      derived-layers/network, P: only its eligible row is substantive (top half of scores and a host); the objective has to come from the other chunks.
+      Ambiguous, not labelled: kb/architecture/milestone-6-network-optimization (overview of the three selection methods, no mention of scores); kb/decisions/open-questions/milestone-6 (restates the score / 100 rule).
+
+  - id: D07
+    category: definition
+    author: user
+    query: "What does the retrospective plausibility test measure, and what does it not establish?"
+    relevant:
+      - {chunk: "kb/spec/7-evaluation", phrase: "A hit is a candidate within 1 km of a known public charger."}
+      - {chunk: "kb/decisions/d-044#1", phrase: "**Precision@k** = hits among the top k ÷ k."}
+      - {chunk: "kb/decisions/d-044#2", phrase: "the intervals are wide; the report says so and draws no strong claim"}
+      - {chunk: "kb/architecture/milestone-5-evaluation", phrase: "computes the retrospective plausibility test (D-043, D-044)"}
+      - {chunk: "kb/decisions/open-questions/milestone-3", phrase: "The backtest ground truth is small."}
+      - {chunk: "kb/features/production-and-backtest", phrase: "**Not removable.** The OSM data is dated 2026-09-23, after the chargers were mapped."}
+      - {chunk: "kb/spec/5-scoring#2", phrase: "so the backtest effectively tests the other four components"}
+      - {chunk: "kb/readme/what-it-does-not-claim", phrase: "its ranking is not ground truth"}
+    note: |-
+      Gasim's U02. Two halves (what it measures, what it does not establish); no single chunk covers both, so every label is P.
+      spec 7, P: names the evaluation, defines a backtest hit (within 1 km of a known public charger), the baselines and weight stability, and says the ground truth is small so estimates are noisy.
+      d-044#1, P: how each measure is defined: hits, Precision@k, Recall@30, the two baselines, the bootstrap, the 44 weight perturbations.
+      d-044#2, P: what the result can support: with 5 known sites and 5 hit candidates the intervals are wide and the report draws no strong claim.
+      architecture milestone 5, P: one paragraph on what the test computes.
+      open-questions milestone 3, P: limits: the ground truth is small (5 known sites at most, very wide intervals) and the OSM data postdates the chargers.
+      features production-and-backtest, P: how backtest mode is built (leakage tests) and the "Not removable" limitation.
+      spec 5 #2, P: with no chargers the charging-gap component is constant, so the backtest tests the other four components.
+      readme what-it-does-not-claim, P (added in review 2 by Gasim): supports the second half, stating that the ranking is not ground truth; it does not define the test itself, so it is not S. (It stays removed from D03, which asks only what the test is.)
+      Ambiguous, not labelled: kb/scoring/production-and-backtest and kb/decisions/d-042#1 (the backtest charging-gap constant of 25, overlapping spec 5 #2).
+
+  - id: D08
+    category: definition
+    author: user
+    query: "What does SiteScout mean by grid evidence, and why is that different from claiming grid feasibility?"
+    relevant:
+      - {chunk: "kb/features/grid-evidence", phrase: "They say nothing about grid capacity, transformer capacity, available voltage, a connection, or the utility's view."}
+      - {chunk: "kb/readme/what-it-does-not-claim", phrase: "never a grid connection decision"}
+    note: |-
+      Gasim's U03.
+      features/grid-evidence, S: defines grid evidence (distances to and counts of mapped OpenStreetMap power infrastructure, evidence that it is mapped nearby) and what it does not say (capacity, transformer capacity, voltage, a connection, the utility's view).
+      readme what-it-does-not-claim, P: states the contrast in the project's own terms (grid evidence from public maps, never a grid connection decision; feasibility requires utility confirmation); its definition of grid evidence is thin, so it needs the features chunk.
+      Ambiguous, not labelled, in three classes: (1) chunks that only repeat the exact disclaimer sentence: scoring/intro, spec 9, d-052#1, architecture milestone 9 #1; (2) detail-level definitions: features dist_substation_m and dist_line_m, d-033#1, scoring method/2, d-042#1; (3) the unknowns list: spec 6.
+
+  - id: M09
+    category: decision
+    author: user
+    query: "Why does SiteScout use network optimization instead of simply selecting the 30 highest-scoring sites?"
+    relevant:
+      - {chunk: "kb/decisions/d-046#2", phrase: "against 24.0% for the Top-30 by score (23 of whose 30 sites are in the City of Kigali)"}
+      - {chunk: "kb/decisions/d-046#1", phrase: "**Top-30 by score:** the 30 highest-scoring eligible sites, with no spacing rule: the naive baseline."}
+      - {chunk: "kb/decisions/d-048#2", phrase: "optimizing 30 sites together covers 49.8% of the modelled population, against 24.0% for the Top-30 by individual score"}
+      - {chunk: "kb/spec/8-network-optimization-mclp#1", phrase: "**Baselines:** greedy selection with the same objective and constraints, and Top-30 by score."}
+    note: |-
+      Gasim's U04.
+      d-046#2, S: the reason itself: the exact MCLP covers 49.8% of the modelled population within 10 km against 24.0% for the Top-30 by score, whose sites cluster (23 of 30 in the City of Kigali).
+      d-046#1, P: defines the alternative (Top-30 by score, no spacing rule, the naive baseline) and the selection it is compared with.
+      d-048#2, P: restates the headline comparison as the motivating result; only its last sentence is substantive.
+      spec 8 #1, P: the objective maximises covered demand jointly under spacing, and Top-30 by score is listed as a baseline.
+      Ambiguous, not labelled: kb/architecture/milestone-6-network-optimization (lists the three selections, gives no reason); kb/spec/7-evaluation and kb/data-sources/derived-layers/network (mention the comparison only).
+
+  - id: D09
+    category: definition
+    author: user
+    query: "How does SiteScout determine the confidence level of a site recommendation?"
+    relevant:
+      - {chunk: "kb/scoring/confidence-spec-6-d-041", phrase: "0 factors → **High**, 1 → **Medium**, 2 or more → **Low**"}
+      - {chunk: "kb/decisions/d-041", phrase: "0 → **High**, 1 → **Medium**, 2 or more → **Low**"}
+      - {chunk: "kb/spec/6-confidence", phrase: "grid evidence missing → Low;"}
+      - {chunk: "kb/features/grid-evidence/grid-completeness-ratio", phrase: 'It is meant for the "sparse public-map coverage" confidence factor (M4)'}
+    note: |-
+      Gasim's U05.
+      scoring confidence, S: the complete rule: a level from factors; missing grid evidence is Low; otherwise count sparse coverage, no host and remote location: 0 High, 1 Medium, 2 or more Low; reasons listed.
+      d-041, S: the same rule as a decision, with the thresholds (0.5 for sparse coverage, 0 mapped POIs within 3 km for remote) and the reasons for them.
+      spec 6, P: names the factors and says a level, never a percentage; gives no thresholds and no way to combine them (D-041 says so).
+      features grid-completeness-ratio, P: defines the ratio behind the sparse-coverage factor and says it is meant for that factor.
+      Ambiguous, not labelled: kb/data-sources/derived-layers/scores-production (confidence and confidence_reasons column entries) and kb/scoring/outputs (a table row): column-level mentions only.
+
+  - id: M10
+    category: decision
+    author: user
+    query: "When important information about a proposed charging site is unknown, what does SiteScout recommend doing next?"
+    relevant:
+      - {chunk: "kb/decisions/d-047#1", phrase: "actions for the universal unknowns (utility, owner, permits)"}
+    note: |-
+      Gasim's U06.
+      d-047#1, S: the only chunk that states what SiteScout recommends: fixed rules produce next actions for the universal unknowns (utility, owner, permits), plus missing grid evidence, sparse mapping, a known charging site within the service radius and cross-border demand.
+      Ambiguous, not labelled: kb/spec/9-evidence-and-reports (the brief has Unknowns and Recommended next actions sections, no content); kb/architecture/milestone-7-evidence-and-briefs and kb/decisions/d-049#1 (mention next actions); kb/readme/what-it-does-not-claim, kb/spec/6-confidence and the scoring confidence chunk (say what stays unknown or that utility confirmation is required, not what to do).
+      Note: the corpus holds the action rules, not the action texts; those are in the excluded briefs and the brief template, so this query is thin by construction.
+
+  # --- O: out of scope --------------------------------------------------------------------
+  - id: O01
+    category: out_of_scope
+    author: assistant
+    query: "What is the capital city of Kenya?"
+    relevant: []
+    note: Nothing in the corpus answers it; Kenya is out of scope for v1.
+
+  - id: O02
+    category: out_of_scope
+    author: assistant
+    query: "How much monthly revenue would a fast charger in Kigali generate?"
+    relevant: []
+    note: SiteScout never claims revenue; the corpus holds no figure.
+
+  - id: O03
+    category: out_of_scope
+    author: assistant
+    query: "Which brand of charger hardware should be installed at a fuel station?"
+    relevant: []
+    note: Equipment and brands are not covered.
+
+  - id: O04
+    category: out_of_scope
+    author: assistant
+    query: "How do I deploy this application to a cloud provider?"
+    relevant: []
+    note: Deployment is not covered.
+
+  - id: O05
+    category: out_of_scope
+    author: assistant
+    query: "What is the current electricity tariff per kilowatt-hour in Rwanda?"
+    relevant: []
+    note: Tariffs are not in the public data SiteScout uses.
+
+  - id: O06
+    category: out_of_scope
+    author: assistant
+    query: "How many electric cars are registered in Rwanda today?"
+    relevant: []
+    note: Vehicle registrations are not covered.

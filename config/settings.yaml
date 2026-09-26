@@ -16,6 +16,9 @@ paths:
   # Milestone 9, phase 3c: the analyst's fixed scenario set and its evaluation report.
   analyst_scenarios: tests/analyst_scenarios.yaml
   analyst_eval_report: reports/analyst_eval.md
+  # Milestone 10, Phase 1 (D-056): the knowledge index's gold queries and its evaluation report.
+  knowledge_gold: tests/knowledge_gold.yaml
+  knowledge_eval_report: reports/knowledge_eval.md
 
 logging:
   level: INFO
@@ -338,3 +341,98 @@ analyst:
   # field for Anthropic, whose SDK 1.8 has no temperature parameter); a model that does not
   # accept it rejects the request, and the run falls back.
   temperature: null
+
+# Milestone 10, Phase 1 (D-055, D-056): the local project-knowledge index, a deterministic
+# lexical retrieval layer over the allow-listed documents below. It never holds structured
+# SiteScout site data (scores, ranks, network coverage): the deterministic tools own those.
+# `include` lists the only `##` headings taken from a document; `exclude` lists the `##`
+# headings left out of an otherwise complete one. `preamble` is the text before the first `##`.
+# CLAUDE.md, config, tests, data, the app, scripts, src and every report are never indexed.
+knowledge:
+  sources:
+    - path: docs/scoring.md
+      doc_type: method
+      topic: scoring
+      preamble: true
+      exclude: ["Results on 2026-09-25"]
+      topics:
+        - {heading: "Confidence (SPEC §6, D-041)", topic: confidence}
+    - path: docs/features.md
+      doc_type: features
+      topic: features
+      preamble: true
+      exclude: ["Data status on 2026-09-25"]
+    - path: docs/decisions.md
+      doc_type: decision
+      topic: project
+      preamble: true
+    - path: docs/architecture.md
+      doc_type: architecture
+      topic: architecture
+      preamble: true
+      exclude: ["Repository layout"]
+    - path: docs/data_sources.md
+      doc_type: data_sources
+      topic: data_sources
+      preamble: true
+      include:
+        - "Sources"
+        - "Manual charger list: `data/manual/chargers.csv`"
+        - "Derived layers"
+        - "The demo export"
+        - "Checks every processed layer passes"
+        - "Sources not used"
+        - "Where files go"
+    - path: docs/SPEC.md
+      doc_type: specification
+      topic: project
+      preamble: false
+      include:
+        - "3. Candidate generation"
+        - "4. Features"
+        - "5. Scoring"
+        - "6. Confidence"
+        - "7. Evaluation"
+        - "8. Network optimization (MCLP)"
+        - "9. Evidence and reports"
+      topics:
+        - {heading: "3. Candidate generation", topic: candidates}
+        - {heading: "4. Features", topic: features}
+        - {heading: "5. Scoring", topic: scoring}
+        - {heading: "6. Confidence", topic: confidence}
+        - {heading: "7. Evaluation", topic: evaluation}
+        - {heading: "8. Network optimization (MCLP)", topic: optimization}
+        - {heading: "9. Evidence and reports", topic: evidence}
+    - path: README.md
+      doc_type: overview
+      topic: project
+      preamble: false
+      include:
+        - "What it answers"
+        - "What it does not claim"
+        - "Independence and data"
+  # Characters. A block (paragraph, table, code fence, list item with its nested lines) is
+  # never split, so one that alone exceeds max_chars stays whole and is flagged oversize.
+  chunk:
+    max_chars: 1500
+    min_chars: 200
+  # Okapi BM25: the standard published defaults, fixed before any measurement.
+  bm25:
+    k1: 1.2
+    b: 0.75
+  retrieval:
+    max_top_k: 10
+    max_query_chars: 500
+  # A section that names its milestone ("Milestone N" in its heading, or in a decision's
+  # Date line) takes that milestone's topic, unless the manifest gives it one.
+  milestone_topics:
+    - {milestone: 1, topic: ingestion}
+    - {milestone: 2, topic: candidates}
+    - {milestone: 3, topic: features}
+    - {milestone: 4, topic: scoring}
+    - {milestone: 5, topic: evaluation}
+    - {milestone: 6, topic: optimization}
+    - {milestone: 7, topic: evidence}
+    - {milestone: 8, topic: export}
+    - {milestone: 9, topic: analyst}
+    - {milestone: 10, topic: investigation}

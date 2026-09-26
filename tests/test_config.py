@@ -7,6 +7,7 @@ import logging
 import pytest
 from pydantic import ValidationError
 
+from knowledge_support import EXPECTED_MILESTONE_TOPICS, EXPECTED_SOURCES
 from sitescout.config import (
     PROJECT_ROOT,
     SETTINGS_FILE,
@@ -328,6 +329,21 @@ EXPECTED_M9_SETTINGS = {
 }
 
 
+# Milestone 10, Phase 1 decisions (D-055, D-056): the local project-knowledge index.
+EXPECTED_M10_SETTINGS = {
+    "paths.knowledge_gold": "tests/knowledge_gold.yaml",
+    "paths.knowledge_eval_report": "reports/knowledge_eval.md",
+    "knowledge.sources": EXPECTED_SOURCES,
+    "knowledge.chunk.max_chars": 1500,
+    "knowledge.chunk.min_chars": 200,
+    "knowledge.bm25.k1": 1.2,
+    "knowledge.bm25.b": 0.75,
+    "knowledge.retrieval.max_top_k": 10,
+    "knowledge.retrieval.max_query_chars": 500,
+    "knowledge.milestone_topics": EXPECTED_MILESTONE_TOPICS,
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -338,7 +354,83 @@ def test_settings_match_spec():
         **EXPECTED_M5_SETTINGS,
         **EXPECTED_M6_SETTINGS,
         **EXPECTED_M9_SETTINGS,
+        **EXPECTED_M10_SETTINGS,
     }
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("knowledge.chunk.max_chars", 0, "greater than 0"),
+        ("knowledge.chunk.min_chars", 1500, "min_chars must be below max_chars"),
+        ("knowledge.chunk.max_chars", "1500", "Input should be a valid integer"),
+        ("knowledge.bm25.k1", 0, "greater than 0"),
+        ("knowledge.bm25.k1", "1.2", "must be a number"),
+        ("knowledge.bm25.b", 1.5, "less than or equal to 1"),
+        ("knowledge.bm25.b", True, "must be a number"),
+        ("knowledge.retrieval.max_top_k", 0, "greater than 0"),
+        ("knowledge.retrieval.max_query_chars", -5, "greater than 0"),
+        ("knowledge.sources", [], "at least 1 item"),
+        ("knowledge.milestone_topics", [], "at least 1 item"),
+        (
+            "knowledge.milestone_topics",
+            [{"milestone": 0, "topic": "scoring"}],
+            "greater than or equal to 1",
+        ),
+        (
+            "knowledge.milestone_topics",
+            [{"milestone": 11, "topic": "scoring"}],
+            "less than or equal to 10",
+        ),
+        ("paths.knowledge_gold", "/etc/gold.yaml", "must be relative"),
+        ("paths.knowledge_eval_report", "reports\\out.md", "use forward slashes"),
+    ],
+)
+def test_knowledge_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+def test_the_knowledge_block_rejects_unknown_keys(settings_data, weights_data):
+    settings_data["knowledge"]["embedding_model"] = "anything"
+    with pytest.raises(ConfigError, match="Extra inputs are not permitted"):
+        build_config(settings_data, weights_data)
+
+
+def test_the_knowledge_manifest_cannot_list_a_document_twice(settings_data, weights_data):
+    sources = settings_data["knowledge"]["sources"]
+    sources.append(dict(sources[0]))
+    with pytest.raises(ConfigError, match="lists a document twice"):
+        build_config(settings_data, weights_data)
+
+
+def test_the_knowledge_manifest_cannot_list_a_milestone_twice(settings_data, weights_data):
+    settings_data["knowledge"]["milestone_topics"].append({"milestone": 1, "topic": "scoring"})
+    with pytest.raises(ConfigError, match="lists a milestone twice"):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    "path", ["CLAUDE.md", "reports/evaluation.md", "tests/notes.md", "data/x.md"]
+)
+def test_the_knowledge_manifest_refuses_a_denied_document(settings_data, weights_data, path):
+    settings_data["knowledge"]["sources"][0]["path"] = path
+    with pytest.raises(ConfigError, match="may never be indexed"):
+        build_config(settings_data, weights_data)
+
+
+def test_the_knowledge_block_is_required(settings_data, weights_data):
+    del settings_data["knowledge"]
+    with pytest.raises(ConfigError, match="knowledge"):
+        build_config(settings_data, weights_data)
+
+
+def test_no_knowledge_setting_is_pending_and_an_override_cannot_index_a_denied_path():
+    assert not any(key.startswith("settings.knowledge") for key in load_config().pending())
+    denied = [{**EXPECTED_SOURCES[0], "path": "CLAUDE.md"}]
+    with pytest.raises(ConfigError, match="may never be indexed"):
+        load_config(overrides={"settings.knowledge.sources": denied})
 
 
 @pytest.mark.parametrize(
