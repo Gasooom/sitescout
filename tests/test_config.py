@@ -348,6 +348,17 @@ EXPECTED_M10_SETTINGS = {
 EXPECTED_M10_PHASE2_SETTINGS = {"investigation.nearby_sites.max_results": 10}
 
 
+# Milestone 10, Phase 3 decision (D-058): the agent loop's hard limits.
+EXPECTED_M10_PHASE3_SETTINGS = {
+    "agent.max_iterations": 12,
+    "agent.max_tool_calls": 10,
+    "agent.max_retrieval_calls": 3,
+    "agent.max_recoverable_errors": 2,
+    "agent.knowledge_top_k": 5,
+    "agent.min_quote_words": 3,
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -360,6 +371,7 @@ def test_settings_match_spec():
         **EXPECTED_M9_SETTINGS,
         **EXPECTED_M10_SETTINGS,
         **EXPECTED_M10_PHASE2_SETTINGS,
+        **EXPECTED_M10_PHASE3_SETTINGS,
     }
 
 
@@ -456,6 +468,52 @@ def test_the_investigation_block_takes_no_radius_setting(settings_data, weights_
 def test_the_investigation_block_is_required(settings_data, weights_data, block):
     delete_path(settings_data, block)
     with pytest.raises(ConfigError, match="investigation"):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("agent.max_iterations", 0, "greater than or equal to 1"),
+        ("agent.max_iterations", 51, "less than or equal to 50"),
+        ("agent.max_iterations", "12", "valid integer"),
+        ("agent.max_iterations", True, "valid integer"),
+        ("agent.max_iterations", 2.5, "valid integer"),
+        ("agent.max_tool_calls", 0, "greater than or equal to 1"),
+        ("agent.max_tool_calls", 51, "less than or equal to 50"),
+        ("agent.max_retrieval_calls", -1, "greater than or equal to 0"),
+        ("agent.max_retrieval_calls", 21, "less than or equal to 20"),
+        ("agent.max_recoverable_errors", -1, "greater than or equal to 0"),
+        ("agent.max_recoverable_errors", 21, "less than or equal to 20"),
+        ("agent.knowledge_top_k", 0, "greater than 0"),
+        ("agent.knowledge_top_k", 11, "must not exceed knowledge.retrieval.max_top_k"),
+        ("agent.min_quote_words", 0, "greater than 0"),
+    ],
+)
+def test_agent_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+def test_zero_retrieval_calls_and_zero_recoverable_errors_are_allowed(settings_data, weights_data):
+    settings_data["agent"].update(max_retrieval_calls=0, max_recoverable_errors=0)
+    agent = build_config(settings_data, weights_data).settings.agent
+    assert (agent.max_retrieval_calls, agent.max_recoverable_errors) == (0, 0)
+
+
+def test_the_agent_top_k_follows_the_knowledge_maximum(settings_data, weights_data):
+    settings_data["knowledge"]["retrieval"]["max_top_k"] = 12
+    settings_data["agent"]["knowledge_top_k"] = 11
+    assert build_config(settings_data, weights_data).settings.agent.knowledge_top_k == 11
+
+
+def test_the_agent_block_takes_no_other_keys_and_is_required(settings_data, weights_data):
+    settings_data["agent"]["api_key"] = "sk-anything"
+    with pytest.raises(ConfigError, match="Extra inputs are not permitted"):
+        build_config(settings_data, weights_data)
+    del settings_data["agent"]
+    with pytest.raises(ConfigError, match="agent"):
         build_config(settings_data, weights_data)
 
 

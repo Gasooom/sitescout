@@ -766,6 +766,21 @@ class InvestigationSettings(_Model):
     nearby_sites: NearbySitesSettings
 
 
+class AgentSettings(_Model):
+    """The M10 agent loop's hard limits (D-058). Each is a ceiling the loop enforces itself; a
+    model can neither see nor raise one. ``max_recoverable_errors`` is how many tool or
+    action errors are returned to the model as observations before the run stops (the next
+    one ends it). ``knowledge_top_k`` is how many chunks one search_knowledge call returns;
+    ``min_quote_words`` is the shortest verbatim quotation that supports a knowledge claim."""
+
+    max_iterations: Annotated[int, Strict(), Field(ge=1, le=50)]
+    max_tool_calls: Annotated[int, Strict(), Field(ge=1, le=50)]
+    max_retrieval_calls: Annotated[int, Strict(), Field(ge=0, le=20)]
+    max_recoverable_errors: Annotated[int, Strict(), Field(ge=0, le=20)]
+    knowledge_top_k: Count
+    min_quote_words: Count
+
+
 class Settings(_Model):
     """config/settings.yaml."""
 
@@ -784,6 +799,13 @@ class Settings(_Model):
     analyst: AnalystSettings
     knowledge: KnowledgeSettings
     investigation: InvestigationSettings
+    agent: AgentSettings
+
+    @model_validator(mode="after")
+    def _agent_top_k_within_the_retrieval_limit(self) -> Self:
+        if self.agent.knowledge_top_k > self.knowledge.retrieval.max_top_k:
+            raise ValueError("agent.knowledge_top_k must not exceed knowledge.retrieval.max_top_k")
+        return self
 
 
 # --- weights.yaml -----------------------------------------------------------------------

@@ -445,3 +445,19 @@ knowledge:
 investigation:
   nearby_sites:
     max_results: 10
+
+# Milestone 10, Phase 3 (D-058): the agent loop. These are hard ceilings the loop enforces
+# itself; the model never sees them and cannot raise them. Nothing here can be set from the
+# environment. Tool calls are the eight deterministic tools; retrieval calls are
+# search_knowledge; every model turn (including an answer attempt) counts as an iteration.
+# `max_recoverable_errors` errors (bad arguments, unknown tool, a refused tool call) are returned
+# to the model as observations; the next one ends the run. `knowledge_top_k` is how many chunks
+# one search returns (at most knowledge.retrieval.max_top_k). `min_quote_words` is the shortest
+# verbatim quotation that counts as support for a claim taken from the knowledge index.
+agent:
+  max_iterations: 12
+  max_tool_calls: 10
+  max_retrieval_calls: 3
+  max_recoverable_errors: 2
+  knowledge_top_k: 5
+  min_quote_words: 3
