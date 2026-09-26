@@ -753,6 +753,19 @@ class KnowledgeSettings(_Model):
         return self
 
 
+class NearbySitesSettings(_Model):
+    """``max_results`` only caps how many neighbours one nearby_sites result lists, to keep a
+    result small; the full count within the radius is always reported (D-057)."""
+
+    max_results: Count
+
+
+class InvestigationSettings(_Model):
+    """The deterministic site investigation tools (Milestone 10, Phase 2, D-057)."""
+
+    nearby_sites: NearbySitesSettings
+
+
 class Settings(_Model):
     """config/settings.yaml."""
 
@@ -770,6 +783,7 @@ class Settings(_Model):
     export: ExportSettings
     analyst: AnalystSettings
     knowledge: KnowledgeSettings
+    investigation: InvestigationSettings
 
 
 # --- weights.yaml -----------------------------------------------------------------------

@@ -437,3 +437,11 @@ def test_the_report_is_written_only_when_asked_and_with_unix_line_endings(temp_d
     run = run_evaluation(config, write=True, report_path=target)
     written = target.read_bytes()
     assert written == run.report.encode("utf-8") and b"\r" not in written
+
+
+def test_the_report_explains_that_the_corpus_moves_with_the_decisions(toy_run):
+    report = toy_run.report
+    assert "## Evaluation context" in report and "historical baseline" in report
+    assert (
+        "D-057" in report and "so any difference from the baseline comes from the corpus" in report
+    )
