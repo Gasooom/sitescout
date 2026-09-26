@@ -6,13 +6,17 @@ This report measures a **deterministic lexical knowledge retrieval layer**: Okap
 
 These are measurements only. No pass or fail gate has been defined for retrieval quality. Grounding and safety invariants, agent behaviour, and the answered, retry and fallback rates are different measurements, reported separately in later phases; nothing here is combined into one score.
 
+## Evaluation context
+
+The corpus includes `docs/decisions.md`, so every new decision changes the indexed corpus. The first Phase 1 evaluation (commit `ba053ac`: 176 chunks, corpus fingerprint `d0f3f884…ac82`, Hit@1/3/5/10 15/22/29/31 of 36, MRR 0.562) is a historical baseline. D-057 (Milestone 10, Phase 2) was added to `docs/decisions.md` afterwards. This report measures the corpus recorded in its Setup table. The retrieval code, BM25 parameters, tokenizer, chunking and gold labels are unchanged, so any difference from the baseline comes from the corpus.
+
 ## 1. Setup
 
 | Item | Value |
 |---|---|
-| Corpus fingerprint (SHA-256) | `d0f3f8840a34cdb47d4a76616f1b5617088812a9d1aa3d17e5e34f9a5cccac82` |
+| Corpus fingerprint (SHA-256) | `6c70a84984ef5b78a7025fc51ac4a634806e89e230467c88d59d9218c2f31bd4` |
 | Documents | 7 |
-| Chunks | 176 |
+| Chunks | 178 |
 | Gold set file | `tests/knowledge_gold.yaml` |
 | Gold set SHA-256 (newlines normalized) | `1fc60a636520a741d273ca76aaa39aea1ec4322affdf1772a17d4e0173adc46f` |
 | Gold set review status | draft |
@@ -32,12 +36,12 @@ These are measurements only. No pass or fail gate has been defined for retrieval
 |---|---|---|---|---|
 | `docs/scoring.md` | method | 9 | 6915 | 0 |
 | `docs/features.md` | features | 21 | 17759 | 3 |
-| `docs/decisions.md` | decision | 91 | 91220 | 15 |
+| `docs/decisions.md` | decision | 93 | 96521 | 16 |
 | `docs/architecture.md` | architecture | 20 | 18264 | 1 |
 | `docs/data_sources.md` | data_sources | 23 | 26447 | 2 |
 | `docs/SPEC.md` | specification | 9 | 7871 | 0 |
 | `README.md` | overview | 3 | 1585 | 0 |
-| **All** |  | 176 | 170061 | 21 |
+| **All** |  | 178 | 175362 | 22 |
 
 ## 3. Retrieval quality (in-scope queries)
 
@@ -48,28 +52,28 @@ Hit@k counts the queries with at least one relevant chunk in the top k. Recall@k
 | paraphrase | 11 | 3 of 11 | 7 of 11 | 7 of 11 | 8 of 11 |
 | terminology | 6 | 2 of 6 | 2 of 6 | 6 of 6 | 6 of 6 |
 | definition | 9 | 5 of 9 | 6 of 9 | 7 of 9 | 7 of 9 |
-| decision | 10 | 5 of 10 | 7 of 10 | 9 of 10 | 10 of 10 |
-| **all in-scope** | 36 | 15 of 36 | 22 of 36 | 29 of 36 | 31 of 36 |
+| decision | 10 | 5 of 10 | 7 of 10 | 8 of 10 | 10 of 10 |
+| **all in-scope** | 36 | 15 of 36 | 22 of 36 | 28 of 36 | 31 of 36 |
 
 | Category | Queries | Recall@1 | Recall@3 | Recall@5 | Recall@10 | MRR | Vocabulary overlap |
 |---|---|---|---|---|---|---|---|
-| paraphrase | 11 | 0.136 | 0.303 | 0.333 | 0.455 | 0.451 | 0.57 |
+| paraphrase | 11 | 0.136 | 0.303 | 0.303 | 0.455 | 0.450 | 0.57 |
 | terminology | 6 | 0.167 | 0.250 | 0.694 | 0.917 | 0.492 | 1.00 |
-| definition | 9 | 0.190 | 0.338 | 0.486 | 0.542 | 0.633 | 0.79 |
-| decision | 10 | 0.350 | 0.550 | 0.750 | 0.900 | 0.661 | 0.62 |
-| **all in-scope** | 36 | 0.214 | 0.372 | 0.547 | 0.677 | 0.562 | 0.71 |
+| definition | 9 | 0.190 | 0.338 | 0.486 | 0.542 | 0.634 | 0.79 |
+| decision | 10 | 0.350 | 0.525 | 0.700 | 0.900 | 0.652 | 0.62 |
+| **all in-scope** | 36 | 0.214 | 0.365 | 0.524 | 0.677 | 0.559 | 0.71 |
 
 ## 4. Queries
 
 | Query | Category | Author | First relevant rank | Relevant in top 10 | Top-1 chunk | Vocabulary overlap |
 |---|---|---|---|---|---|---|
 | P01 | paraphrase | assistant | 1 | 2 of 2 | `kb/scoring/method/1-percentile-points-d-040` | 0.56 |
-| P02 | paraphrase | assistant | 28 | 0 of 2 | `kb/features/grid-evidence` | 0.50 |
+| P02 | paraphrase | assistant | 30 | 0 of 2 | `kb/features/grid-evidence` | 0.50 |
 | P03 | paraphrase | assistant | 25 | 0 of 2 | `kb/readme/what-it-answers` | 0.35 |
 | P04 | paraphrase | assistant | 2 | 1 of 2 | `kb/decisions/d-029#1` | 0.58 |
 | P05 | paraphrase | assistant | 2 | 1 of 2 | `kb/features/intro` | 0.71 |
 | P06 | paraphrase | assistant | 3 | 1 of 2 | `kb/decisions/d-034#1` | 0.59 |
-| P07 | paraphrase | assistant | 20 | 0 of 2 | `kb/decisions/d-055#2` | 0.53 |
+| P07 | paraphrase | assistant | 21 | 0 of 2 | `kb/decisions/d-055#2` | 0.53 |
 | P08 | paraphrase | assistant | 1 | 1 of 2 | `kb/features/grid-evidence/grid-completeness-ratio` | 0.71 |
 | P09 | paraphrase | assistant | 6 | 1 of 2 | `kb/readme/what-it-answers` | 0.53 |
 | P10 | paraphrase | assistant | 1 | 1 of 2 | `kb/decisions/d-044#1` | 0.57 |
@@ -84,14 +88,14 @@ Hit@k counts the queries with at least one relevant chunk in the top k. Recall@k
 | D03 | definition | assistant | 3 | 2 of 2 | `kb/readme/what-it-does-not-claim` | 0.83 |
 | D04 | definition | assistant | 5 | 1 of 2 | `kb/scoring/outputs` | 0.80 |
 | D05 | definition | assistant | 1 | 3 of 3 | `kb/spec/8-network-optimization-mclp#2` | 1.00 |
-| D06 | definition | assistant | 13 | 0 of 2 | `kb/scoring/known-limitations` | 0.67 |
+| D06 | definition | assistant | 12 | 0 of 2 | `kb/scoring/known-limitations` | 0.67 |
 | M01 | decision | assistant | 1 | 1 of 2 | `kb/decisions/d-046#1` | 0.73 |
-| M02 | decision | assistant | 9 | 1 of 1 | `kb/decisions/d-017#1` | 0.27 |
+| M02 | decision | assistant | 10 | 1 of 1 | `kb/decisions/d-017#1` | 0.27 |
 | M03 | decision | assistant | 1 | 2 of 2 | `kb/decisions/d-034#2` | 0.71 |
 | M04 | decision | assistant | 1 | 1 of 1 | `kb/spec/3-candidate-generation` | 0.56 |
 | M05 | decision | assistant | 1 | 2 of 2 | `kb/decisions/d-047#1` | 0.83 |
 | M06 | decision | assistant | 1 | 1 of 1 | `kb/decisions/d-053` | 0.73 |
-| M07 | decision | assistant | 4 | 2 of 2 | `kb/features/production-and-backtest` | 0.69 |
+| M07 | decision | assistant | 6 | 2 of 2 | `kb/decisions/d-057#1` | 0.69 |
 | M08 | decision | assistant | 2 | 1 of 1 | `kb/decisions/d-049#2` | 0.56 |
 | P11 | paraphrase | user | 3 | 3 of 3 | `kb/decisions/d-044#1` | 0.67 |
 | D07 | definition | user | 1 | 5 of 8 | `kb/readme/what-it-does-not-claim` | 0.91 |
@@ -104,25 +108,25 @@ Hit@k counts the queries with at least one relevant chunk in the top k. Recall@k
 
 5 in-scope queries with no relevant chunk in the top 10:
 
-- **P02**, paraphrase: 'What score does a site get for the power-infrastructure part when nothing is mapped nearby?'. `kb/scoring/method/2-components-spec-5-d-042` (rank 34), `kb/decisions/d-042#1` (rank 28)
-- **P03**, paraphrase: "Why can't two chosen locations be placed very close together in the recommended set of 30?". `kb/spec/8-network-optimization-mclp#1` (rank 42), `kb/decisions/d-046#1` (rank 25)
-- **P07**, paraphrase: 'How does SiteScout express how sure it is about a site, and can that be shown as a percent?'. `kb/scoring/confidence-spec-6-d-041` (rank 47), `kb/spec/6-confidence` (rank 20)
+- **P02**, paraphrase: 'What score does a site get for the power-infrastructure part when nothing is mapped nearby?'. `kb/scoring/method/2-components-spec-5-d-042` (rank 34), `kb/decisions/d-042#1` (rank 30)
+- **P03**, paraphrase: "Why can't two chosen locations be placed very close together in the recommended set of 30?". `kb/spec/8-network-optimization-mclp#1` (rank 43), `kb/decisions/d-046#1` (rank 25)
+- **P07**, paraphrase: 'How does SiteScout express how sure it is about a site, and can that be shown as a percent?'. `kb/scoring/confidence-spec-6-d-041` (rank 47), `kb/spec/6-confidence` (rank 21)
 - **D01**, definition: 'What is a universal unknown?'. `kb/spec/6-confidence` (rank 11), `kb/scoring/confidence-spec-6-d-041` (rank 19)
-- **D06**, definition: 'Which kinds of places can host a charging site?'. `kb/spec/3-candidate-generation` (rank 26), `kb/decisions/d-027` (rank 13)
+- **D06**, definition: 'Which kinds of places can host a charging site?'. `kb/spec/3-candidate-generation` (rank 27), `kb/decisions/d-027` (rank 12)
 
 ## 6. Out-of-scope queries
 
 | Query | Text | Chunks matching | Top-1 score | Top-1 chunk |
 |---|---|---|---|---|
-| O01 | What is the capital city of Kenya? | 174 | 9.774 | `kb/features/access/dist-kigali-cbd-m-reported-only` |
-| O02 | How much monthly revenue would a fast charger in Kigali generate? | 168 | 11.490 | `kb/scoring/known-limitations` |
-| O03 | Which brand of charger hardware should be installed at a fuel station? | 166 | 12.053 | `kb/readme/what-it-answers` |
-| O04 | How do I deploy this application to a cloud provider? | 160 | 8.496 | `kb/spec/8-network-optimization-mclp#1` |
-| O05 | What is the current electricity tariff per kilowatt-hour in Rwanda? | 176 | 9.838 | `kb/data-sources/sources/energydata-info-transmission-network` |
-| O06 | How many electric cars are registered in Rwanda today? | 155 | 7.722 | `kb/decisions/d-029#1` |
+| O01 | What is the capital city of Kenya? | 176 | 9.843 | `kb/features/access/dist-kigali-cbd-m-reported-only` |
+| O02 | How much monthly revenue would a fast charger in Kigali generate? | 170 | 11.512 | `kb/scoring/known-limitations` |
+| O03 | Which brand of charger hardware should be installed at a fuel station? | 168 | 12.017 | `kb/features/charging-gap/existing-chargers` |
+| O04 | How do I deploy this application to a cloud provider? | 162 | 8.562 | `kb/spec/8-network-optimization-mclp#1` |
+| O05 | What is the current electricity tariff per kilowatt-hour in Rwanda? | 178 | 9.906 | `kb/data-sources/sources/energydata-info-transmission-network` |
+| O06 | How many electric cars are registered in Rwanda today? | 157 | 7.419 | `kb/decisions/d-029#1` |
 
 0 of 6 out-of-scope queries matched no chunk at all; 6 shared a word with at least one chunk and returned it.
-Top-1 scores: out-of-scope 7.722 to 12.053; in-scope 4.300 to 25.191 (median 12.375). The ranges overlap: a score cut-off alone would not separate them.
+Top-1 scores: out-of-scope 7.419 to 12.017; in-scope 4.210 to 25.314 (median 12.792). The ranges overlap: a score cut-off alone would not separate them.
 BM25 scores depend on the query's length and on how rare its words are, so they are not comparable across queries; this is a diagnostic, and no threshold is chosen.
 
 ## 7. How to read this report

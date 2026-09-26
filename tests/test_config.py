@@ -344,6 +344,10 @@ EXPECTED_M10_SETTINGS = {
 }
 
 
+# Milestone 10, Phase 2 decision (D-057): the investigation tools.
+EXPECTED_M10_PHASE2_SETTINGS = {"investigation.nearby_sites.max_results": 10}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -355,6 +359,7 @@ def test_settings_match_spec():
         **EXPECTED_M6_SETTINGS,
         **EXPECTED_M9_SETTINGS,
         **EXPECTED_M10_SETTINGS,
+        **EXPECTED_M10_PHASE2_SETTINGS,
     }
 
 
@@ -417,6 +422,40 @@ def test_the_knowledge_manifest_cannot_list_a_milestone_twice(settings_data, wei
 def test_the_knowledge_manifest_refuses_a_denied_document(settings_data, weights_data, path):
     settings_data["knowledge"]["sources"][0]["path"] = path
     with pytest.raises(ConfigError, match="may never be indexed"):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("investigation.nearby_sites.max_results", 0, "greater than 0"),
+        ("investigation.nearby_sites.max_results", -3, "greater than 0"),
+        ("investigation.nearby_sites.max_results", "10", "valid integer"),
+        ("investigation.nearby_sites.max_results", 2.5, "valid integer"),
+        ("investigation.nearby_sites.max_results", True, "valid integer"),
+    ],
+)
+def test_investigation_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    "dotted",
+    ["investigation.max_radius_m", "investigation.nearby_sites.radius_m"],
+)
+def test_the_investigation_block_takes_no_radius_setting(settings_data, weights_data, dotted):
+    parents, _, leaf = dotted.rpartition(".")
+    set_path(settings_data, f"{parents}.{leaf}", 5000)
+    with pytest.raises(ConfigError, match="Extra inputs are not permitted"):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize("block", ["investigation", "investigation.nearby_sites"])
+def test_the_investigation_block_is_required(settings_data, weights_data, block):
+    delete_path(settings_data, block)
+    with pytest.raises(ConfigError, match="investigation"):
         build_config(settings_data, weights_data)
 
 

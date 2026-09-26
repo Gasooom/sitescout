@@ -6,6 +6,10 @@ This report measures a **deterministic lexical knowledge retrieval layer**: Okap
 
 These are measurements only. No pass or fail gate has been defined for retrieval quality. Grounding and safety invariants, agent behaviour, and the answered, retry and fallback rates are different measurements, reported separately in later phases; nothing here is combined into one score.
 
+## Evaluation context
+
+The corpus includes `docs/decisions.md`, so every new decision changes the indexed corpus. The first Phase 1 evaluation (commit `ba053ac`: 176 chunks, corpus fingerprint `d0f3f884…ac82`, Hit@1/3/5/10 15/22/29/31 of 36, MRR 0.562) is a historical baseline. D-057 (Milestone 10, Phase 2) was added to `docs/decisions.md` afterwards. This report measures the corpus recorded in its Setup table. The retrieval code, BM25 parameters, tokenizer, chunking and gold labels are unchanged, so any difference from the baseline comes from the corpus.
+
 ## 1. Setup
 
 {setup}

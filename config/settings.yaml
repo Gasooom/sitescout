@@ -436,3 +436,12 @@ knowledge:
     - {milestone: 8, topic: export}
     - {milestone: 9, topic: analyst}
     - {milestone: 10, topic: investigation}
+
+# Milestone 10, Phase 2 (D-057): the deterministic site investigation tools network_summary
+# and nearby_sites. `max_results` is only a cap on the length of one nearby_sites result, to
+# keep it small for a reader; it is not a geographic, business or optimization assumption,
+# and the full count within the radius is always reported. The largest radius nearby_sites
+# accepts is optimization.service_radius_m; there is no separate radius setting.
+investigation:
+  nearby_sites:
+    max_results: 10
