@@ -273,7 +273,8 @@ Work on one milestone at a time. For every milestone:
 | 7 | Evidence + reports | 30 briefs; grounding check at 100% |
 | 8 | Export + front end | Front end runs on the real export |
 | 9 | Stretch (optional) | Station sizing or AI Site Analyst |
-| 10 | Packaging + demo | README, methodology, top-30 map, case study, 2-minute demo script |
+| 10 | Agentic site investigation | Agent over the deterministic tools plus retrieval of project knowledge (RAG); its own evaluation suite passes its defined acceptance criteria; decision outputs unchanged |
+| 11 | Packaging + demo | README, methodology, top-30 map, case study, 2-minute demo script |
 
 ## Stop rule
 
@@ -282,7 +283,8 @@ Day 0 is the day Milestone 0 is committed. If Milestone 5 (evaluation) is not co
 ## Technology discipline
 
 - No microservices, extra databases, extra frameworks or unnecessary abstractions.
-- Out of scope for v1: RAG, LangGraph, PostGIS, Kenya, contract extraction, a site-pipeline tracker, authentication.
+- Out of scope for v1: LangGraph, PostGIS, Kenya, contract extraction, a site-pipeline tracker, authentication.
+- RAG is in scope only as the Milestone 10 local project-knowledge index. It must never contain or replace structured SiteScout site data.
 - A new dependency must solve a named problem; record it in `docs/decisions.md`.
 
 ## Current State

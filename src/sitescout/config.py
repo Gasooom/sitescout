@@ -185,6 +185,8 @@ class PathSettings(_Model):
     evaluation_report: RelativePath
     analyst_scenarios: RelativePath
     analyst_eval_report: RelativePath
+    knowledge_gold: RelativePath
+    knowledge_eval_report: RelativePath
 
 
 class LoggingSettings(_Model):
@@ -629,6 +631,128 @@ class AnalystSettings(_Model):
         return self
 
 
+DocType = Literal[
+    "method", "features", "decision", "architecture", "data_sources", "specification", "overview"
+]
+Topic = Literal[
+    "ingestion",
+    "candidates",
+    "features",
+    "scoring",
+    "confidence",
+    "evaluation",
+    "optimization",
+    "evidence",
+    "export",
+    "analyst",
+    "architecture",
+    "data_sources",
+    "investigation",
+    "project",
+]
+OptionalTexts = Annotated[tuple[Text, ...], AfterValidator(_no_duplicates)]
+
+# Never indexed, whatever the manifest says (D-056): configuration, tests, data, the front
+# end, code, and every generated report (so the Site Evidence Briefs, the evaluation reports
+# and the analyst evaluation are out of the knowledge index by construction).
+KNOWLEDGE_DENIED_ROOTS = ("data", "config", "tests", "app", "scripts", "src", "reports")
+KNOWLEDGE_DENIED_FILES = ("CLAUDE.md",)
+
+
+class SectionTopic(_Model):
+    """The topic of one ``##`` section (and the ``###`` sections below it)."""
+
+    heading: Text
+    topic: Topic
+
+
+class KnowledgeSource(_Model):
+    """One allow-listed Markdown document of the project-knowledge index (Milestone 10).
+
+    ``include`` lists the only ``##`` headings taken (with everything below them); ``exclude``
+    lists the ``##`` headings left out of an otherwise complete document. At most one of the
+    two is given; with neither, every ``##`` section is taken. ``preamble`` says whether the
+    text between the ``#`` title and the first ``##`` is taken.
+    """
+
+    path: RelativePath
+    doc_type: DocType
+    topic: Topic
+    preamble: Flag
+    include: OptionalTexts = ()
+    exclude: OptionalTexts = ()
+    topics: tuple[SectionTopic, ...] = ()
+
+    @model_validator(mode="after")
+    def _allow_listed_document(self) -> Self:
+        posix = PurePosixPath(self.path)
+        if posix.suffix != ".md":
+            raise ValueError(f"{self.path}: only Markdown documents can be indexed")
+        if posix.parts[0] in KNOWLEDGE_DENIED_ROOTS or self.path in KNOWLEDGE_DENIED_FILES:
+            raise ValueError(f"{self.path} may never be indexed (D-056)")
+        if self.include and self.exclude:
+            raise ValueError(f"{self.path}: give include or exclude, not both")
+        headings = [item.heading for item in self.topics]
+        if len(set(headings)) != len(headings):
+            raise ValueError(f"{self.path}: a heading has more than one topic")
+        if self.include and not set(headings) <= set(self.include):
+            raise ValueError(f"{self.path}: topics may only name included headings")
+        if set(headings) & set(self.exclude):
+            raise ValueError(f"{self.path}: topics may not name excluded headings")
+        return self
+
+
+class ChunkSettings(_Model):
+    """Chunk sizes in characters (D-056). A block that alone exceeds ``max_chars`` stays whole."""
+
+    max_chars: Count
+    min_chars: Count
+
+    @model_validator(mode="after")
+    def _min_below_max(self) -> Self:
+        if self.min_chars >= self.max_chars:
+            raise ValueError("min_chars must be below max_chars")
+        return self
+
+
+class Bm25Settings(_Model):
+    """Okapi BM25 parameters: the standard published defaults, never tuned (D-056)."""
+
+    k1: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0)]
+    b: Share
+
+
+class RetrievalSettings(_Model):
+    max_top_k: Count
+    max_query_chars: Count
+
+
+class MilestoneTopic(_Model):
+    milestone: Annotated[int, Strict(), Field(ge=1, le=10)]
+    topic: Topic
+
+
+class KnowledgeSettings(_Model):
+    """The local project-knowledge index (Milestone 10, D-055, D-056): a deterministic lexical
+    retrieval layer over allow-listed project documents. It never holds structured site data."""
+
+    sources: Annotated[tuple[KnowledgeSource, ...], Field(min_length=1)]
+    chunk: ChunkSettings
+    bm25: Bm25Settings
+    retrieval: RetrievalSettings
+    milestone_topics: Annotated[tuple[MilestoneTopic, ...], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def _unique_documents_and_milestones(self) -> Self:
+        paths = [source.path for source in self.sources]
+        if len(set(paths)) != len(paths):
+            raise ValueError("knowledge.sources lists a document twice")
+        milestones = [item.milestone for item in self.milestone_topics]
+        if len(set(milestones)) != len(milestones):
+            raise ValueError("knowledge.milestone_topics lists a milestone twice")
+        return self
+
+
 class Settings(_Model):
     """config/settings.yaml."""
 
@@ -645,6 +769,7 @@ class Settings(_Model):
     optimization: OptimizationSettings
     export: ExportSettings
     analyst: AnalystSettings
+    knowledge: KnowledgeSettings
 
 
 # --- weights.yaml -----------------------------------------------------------------------
