@@ -187,6 +187,8 @@ class PathSettings(_Model):
     analyst_eval_report: RelativePath
     knowledge_gold: RelativePath
     knowledge_eval_report: RelativePath
+    agent_cases: RelativePath
+    agent_eval_report: RelativePath
 
 
 class LoggingSettings(_Model):

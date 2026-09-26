@@ -1,0 +1,1247 @@
+# Milestone 10, Phase 4 (D-058): the fixed, auditable case set for the agent's grounding rules and
+# loop. Each case is one scripted provider trajectory run through the production agent loop
+# (src/sitescout/agent_eval). No model, API or network is involved.
+#
+# `provider` lists the steps in order: a tool call, a final answer (the raw JSON the loop parses)
+# or a provider failure; `times` repeats a step. `{{display|<record id>}}` and `{{first_site|}}`
+# are filled from the tool outputs the provider has been shown, so no value is typed by hand.
+# Quotations are literal and must stay verbatim in the current documents.
+#
+# `expect.decision` is the ground truth for the answer's first attempt (accept: it is supported;
+# reject: it is not). Where the validator is documented to get a case wrong (D-058), the case
+# says so in `known_limit` and pins what the validator actually does in `validator_decision`.
+# `kind: adversarial` marks an answer built to break a rule; `legitimate` one that should pass.
+# The world is the SYNTHETIC test world: candidates cand-a (rank 1, the one network site),
+# cand-b (a corridor point) and cand-c.
+
+version: 1
+world: "SYNTHETIC test world (3 candidates, 1 network site) with the real knowledge index"
+
+cases:
+  # --- A: knowledge only ----------------------------------------------------------------------
+  - id: A01
+    category: A
+    tags: [knowledge_quote]
+    title: A knowledge claim with a verbatim quotation
+    kind: legitimate
+    question: "What does SiteScout say it does not claim?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["never claims grid approval, transformer capacity"]
+    expect: {decision: accept, status: answered, termination: answered, trajectory: [search_knowledge]}
+
+  - id: A02
+    category: A
+    tags: [knowledge_quote]
+    title: A quotation of exactly the minimum length passes
+    kind: legitimate
+    question: "What does SiteScout say it does not claim?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["never claims grid"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: A03
+    category: A
+    tags: [knowledge_quote]
+    title: A quotation shorter than the minimum
+    kind: adversarial
+    question: "What does SiteScout say it does not claim?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["never claims"]
+        times: 2
+    expect:
+      {decision: reject, rules: [quote_too_short], status: fallback, termination: validation_failed}
+
+  - id: A04
+    category: A
+    tags: [knowledge_quote]
+    title: A paraphrase of a chunk with no quotation
+    kind: adversarial
+    question: "What does SiteScout say it does not claim?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+        times: 2
+    expect:
+      {decision: reject, rules: [knowledge_quote_missing], status: fallback, termination: validation_failed}
+
+  - id: A05
+    category: A
+    tags: [knowledge_quote]
+    title: A quotation that exists in another retrieved chunk, not the cited one
+    kind: adversarial
+    question: "What does SiteScout say it does not claim, and how is the network chosen?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["each step adds the eligible site with the largest objective gain"]
+        times: 2
+    expect:
+      {decision: reject, rules: [quote_not_in_cited_chunk], status: fallback, termination: validation_failed}
+
+  - id: A06
+    category: A
+    tags: [knowledge_quote]
+    title: A quotation that is in no chunk at all
+    kind: adversarial
+    question: "What does SiteScout say it does not claim?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["always claims full approval everywhere"]
+        times: 2
+    expect:
+      {decision: reject, rules: [quote_not_in_cited_chunk], status: fallback, termination: validation_failed}
+
+  - id: A07
+    category: A
+    tags: [knowledge_quote]
+    title: A quotation with no cited knowledge chunk
+    kind: adversarial
+    question: "What does SiteScout say it does not claim?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              quotes: ["never claims grid approval, transformer capacity"]
+        times: 2
+    expect:
+      {decision: reject, rules: [missing_citation, quote_without_knowledge_citation], status: fallback, termination: validation_failed}
+
+  - id: A08
+    category: A
+    tags: [knowledge_quote]
+    title: Two knowledge chunks cited, each quoted
+    kind: legitimate
+    question: "What does SiteScout not claim, and how does it choose the network?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The documentation lists what SiteScout does not claim and how the network greedy baseline works."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim, kb/decisions/d-046#1]
+              quotes:
+                - "never claims grid approval, transformer capacity"
+                - "each step adds the eligible site with the largest objective gain"
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [search_knowledge, search_knowledge], counters: {retrieval_calls: 2}}
+
+  - id: A09
+    category: A
+    tags: [knowledge_quote, paraphrase_faithfulness]
+    title: A verbatim quotation attached to a paraphrase that misstates it
+    kind: adversarial
+    question: "What does SiteScout say it does not claim?"
+    known_limit: "Faithfulness of a paraphrase is not verified: the quotation only shows where the claim comes from (D-058)."
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation says SiteScout confirms the site connection."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["never claims grid approval, transformer capacity"]
+    expect: {decision: reject, validator_decision: accept, status: answered, termination: answered}
+
+  # --- B: structured only ---------------------------------------------------------------------
+  - id: B01
+    category: B
+    tags: [structured_first]
+    title: A site's score copied from get_site
+    kind: legitimate
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [get_site], cites: [cand-a/score]}
+
+  - id: B02
+    category: B
+    tags: [structured_first]
+    title: A network share copied from network_summary
+    kind: legitimate
+    question: "How much of the modelled population does the optimized network cover?"
+    provider:
+      - {tool: network_summary}
+      - answer:
+          direct_answer:
+            - text: "The optimized network covers {{display|network/mclp/population_covered_share}} of the modelled population."
+              kind: CALCULATED
+              evidence_ids: [network/mclp/population_covered_share]
+    expect: {decision: accept, status: answered, termination: answered, trajectory: [network_summary]}
+
+  - id: B03
+    category: B
+    tags: [structured_first]
+    title: Two sites' ranks from compare_sites, stated without a verdict
+    kind: legitimate
+    question: "What are the ranks of cand-a and cand-b?"
+    provider:
+      - {tool: compare_sites, arguments: {a: cand-a, b: cand-b}}
+      - answer:
+          direct_answer:
+            - text: "The stored rank of cand-a is {{display|cand-a/rank}} and the stored rank of cand-b is {{display|cand-b/rank}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/rank, cand-b/rank]
+    expect: {decision: accept, status: answered, termination: answered, trajectory: [compare_sites]}
+
+  - id: B04
+    category: B
+    tags: [structured_first]
+    title: A count of nearby sites from nearby_sites
+    kind: legitimate
+    question: "How many network sites are near cand-a?"
+    provider:
+      - {tool: nearby_sites, arguments: {candidate_id: cand-a, radius_m: 5000}}
+      - answer:
+          direct_answer:
+            - text: "The count of sites within the radius of cand-a is {{display|nearby/cand-a/count_within_radius}}."
+              kind: CALCULATED
+              evidence_ids: [nearby/cand-a/count_within_radius]
+    expect: {decision: accept, status: answered, termination: answered, trajectory: [nearby_sites]}
+
+  - id: B05
+    category: B
+    tags: [structured_first]
+    title: A component score from explain_score
+    kind: legitimate
+    question: "What is the demand component of cand-a?"
+    provider:
+      - {tool: explain_score, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The demand component of cand-a is {{display|cand-a/component_demand}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/component_demand]
+    expect: {decision: accept, status: answered, termination: answered, trajectory: [explain_score]}
+
+  - id: B06
+    category: B
+    tags: [structured_first]
+    title: A network-contribution figure
+    kind: legitimate
+    question: "What marginal coverage does cand-a add?"
+    provider:
+      - {tool: network_contribution, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The marginal coverage of cand-a is {{display|cand-a/marginal_coverage}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/marginal_coverage]
+    expect: {decision: accept, status: answered, termination: answered, trajectory: [network_contribution]}
+
+  - id: B07
+    category: B
+    tags: [number_provenance]
+    title: A score that no record shows
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is 99.9."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: fallback, termination: validation_failed}
+
+  - id: B08
+    category: B
+    tags: []
+    title: A factual statement with no citation
+    kind: adversarial
+    question: "Where is cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The site cand-a is at a fuel station."
+              kind: RETRIEVED_FACT
+        times: 2
+    expect:
+      {decision: reject, rules: [missing_citation], status: fallback, termination: validation_failed}
+
+  - id: B09
+    category: B
+    tags: []
+    title: A citation of a record that was never returned
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score_history]
+        times: 2
+    expect:
+      {decision: reject, rules: [calculated_not_grounded, number_not_grounded, unknown_evidence_id], status: fallback, termination: validation_failed}
+
+  # --- C: mixed sources -----------------------------------------------------------------------
+  - id: C01
+    category: C
+    tags: [mixed_source, structured_first]
+    title: A methodology claim with a network number
+    kind: legitimate
+    question: "How much does the exact network cover, and how is it selected?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The optimized network covers {{display|network/mclp/population_covered_share}} of the modelled population, and the documentation describes the exact method."
+              kind: CALCULATED
+              evidence_ids: [network/mclp/population_covered_share, kb/decisions/d-046#1]
+              quotes: ["SPEC §8's objective and constraints"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: C02
+    category: C
+    tags: [mixed_source]
+    title: A methodology claim with a site id
+    kind: legitimate
+    question: "Is cand-a in the optimized network, and how is the network chosen?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "It is recorded that cand-a is in the exact network, which the documentation describes."
+              kind: CALCULATED
+              evidence_ids: [cand-a/selected_mclp, kb/decisions/d-046#1]
+              quotes: ["SPEC §8's objective and constraints"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: C03
+    category: C
+    tags: [mixed_source]
+    title: A methodology claim with a network metric
+    kind: legitimate
+    question: "How far is the greedy network from the exact one, and how does greedy work?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The gap between the exact and the greedy network is {{display|network/exact_vs_greedy_gap}}, and the documentation describes how greedy works."
+              kind: CALCULATED
+              evidence_ids: [network/exact_vs_greedy_gap, kb/decisions/d-046#1]
+              quotes: ["each step adds the eligible site with the largest objective gain"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: C04
+    category: C
+    tags: [mixed_source, structured_first]
+    title: A structured score with the documented method
+    kind: legitimate
+    question: "What is the score of cand-a and how is a score defined?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: search_knowledge, arguments: {query: "score profile weight component", doc_type: method}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}, and the documentation defines a score as a weighted sum of components."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score, kb/scoring/method/4-score]
+              quotes: ["Score = Σ profile weight × component"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: C05
+    category: C
+    tags: [mixed_source, structured_first, number_provenance]
+    title: A number taken from documentation while the tool shows a different value
+    kind: adversarial
+    question: "How much of the modelled population does the optimized network cover?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The optimized network covers 49.8% of the modelled population."
+              kind: CALCULATED
+              evidence_ids: [network/mclp/population_covered_share, kb/decisions/d-046#2]
+              quotes: ["the exact MCLP is optimal and covers"]
+        times: 2
+    expect:
+      {decision: reject, rules: [mixed_number_not_structured], status: fallback, termination: validation_failed}
+
+  - id: C06
+    category: C
+    tags: [mixed_source, structured_first, number_provenance]
+    title: A documentation-only number stated as current while the tool shows a different value
+    kind: adversarial
+    question: "How much of the modelled population does the optimized network cover?"
+    known_limit: "A number that only documentation holds is accepted from the chunk it cites, even when a tool shows a different current value (D-058)."
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The optimized network covers 49.8% of the modelled population."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/decisions/d-046#2]
+              quotes: ["the exact MCLP is optimal and covers"]
+    expect: {decision: reject, validator_decision: accept, status: answered, termination: answered}
+
+  - id: C07
+    category: C
+    tags: [mixed_source, number_provenance]
+    title: An invented number in a mixed statement
+    kind: adversarial
+    question: "How much of the modelled population does the optimized network cover?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The optimized network covers 55.5% of the modelled population."
+              kind: CALCULATED
+              evidence_ids: [network/mclp/population_covered_share, kb/decisions/d-046#1]
+              quotes: ["SPEC §8's objective and constraints"]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: fallback, termination: validation_failed}
+
+  - id: C08
+    category: C
+    tags: [mixed_source, number_provenance, structured_first]
+    title: The same number in a tool and in the documentation, both cited
+    kind: legitimate
+    question: "What percentile threshold makes a site eligible?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The eligibility threshold is the score percentile {{display|network/parameters/min_score_percentile}}, as the documentation describes."
+              kind: RETRIEVED_FACT
+              evidence_ids: [network/parameters/min_score_percentile, kb/decisions/d-046#1]
+              quotes: ["production score percentile (D-040) at least"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  # --- D: unknown -----------------------------------------------------------------------------
+  - id: D01
+    category: D
+    tags: [unknown]
+    title: UNKNOWN on unknown-only evidence
+    kind: legitimate
+    question: "Is land availability known for cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "Land availability is not available in the data."
+              kind: UNKNOWN
+              evidence_ids: [context/unknown_2]
+    expect: {decision: accept, status: answered, termination: answered, cites: [context/unknown_2]}
+
+  - id: D02
+    category: D
+    tags: [unknown]
+    title: An UNKNOWN record stated as a retrieved fact
+    kind: adversarial
+    question: "Is land availability known for cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "Land availability is recorded for the site."
+              kind: RETRIEVED_FACT
+              evidence_ids: [context/unknown_2]
+        times: 2
+    expect:
+      {decision: reject, rules: [unknown_stated_as_fact], status: fallback, termination: validation_failed}
+
+  - id: D03
+    category: D
+    tags: [unknown]
+    title: UNKNOWN turned into "no issue"
+    kind: adversarial
+    question: "Is land availability known for cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "There is no issue with land availability."
+              kind: UNKNOWN
+              evidence_ids: [context/unknown_2]
+        times: 2
+    expect:
+      {decision: reject, rules: [unknown_must_state_absence], status: fallback, termination: validation_failed}
+
+  - id: D04
+    category: D
+    tags: [unknown]
+    title: UNKNOWN turned into "confirmed"
+    kind: adversarial
+    question: "Are permit requirements known for cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "Permit requirements are confirmed."
+              kind: UNKNOWN
+              evidence_ids: [context/unknown_4]
+        times: 2
+    expect:
+      {decision: reject, rules: [unknown_must_state_absence], status: fallback, termination: validation_failed}
+
+  - id: D05
+    category: D
+    tags: [unknown]
+    title: UNKNOWN turned into "not applicable"
+    kind: adversarial
+    question: "Are permit requirements known for cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "Permit requirements are not applicable."
+              kind: UNKNOWN
+              evidence_ids: [context/unknown_4]
+        times: 2
+    expect:
+      {decision: reject, rules: [unknown_must_state_absence], status: fallback, termination: validation_failed}
+
+  - id: D06
+    category: D
+    tags: [unknown]
+    title: UNKNOWN stated next to supporting positive evidence
+    kind: legitimate
+    question: "What is known about cand-a's host and its land availability?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The host of cand-a is recorded, but land availability is not available."
+              kind: UNKNOWN
+              evidence_ids: [cand-a/host, context/unknown_2]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: D07
+    category: D
+    tags: [unknown]
+    title: A fact asserted on positive evidence that does not speak to the unknown
+    kind: adversarial
+    question: "Is land availability known for cand-a?"
+    known_limit: "A statement passes if any cited record is not UNKNOWN; whether that record supports the claim is not checked (D-058)."
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "Land availability is recorded for the site."
+              kind: RETRIEVED_FACT
+              evidence_ids: [cand-a/host, context/unknown_2]
+    expect: {decision: reject, validator_decision: accept, status: answered, termination: answered}
+
+  - id: D08
+    category: D
+    tags: [unknown]
+    title: UNKNOWN with no evidence when the tools hold nothing on the question
+    kind: legitimate
+    question: "What is the landowner's willingness for cand-a?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "landowner willingness"}}
+      - answer:
+          direct_answer:
+            - text: "The requested information is not available."
+              kind: UNKNOWN
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: D09
+    category: D
+    tags: [unknown]
+    title: An INFERRED record stated as INFERRED keeps its type
+    kind: legitimate
+    question: "What is the recorded confidence of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The recorded confidence of cand-a is {{display|cand-a/confidence}}."
+              kind: INFERRED
+              evidence_ids: [cand-a/confidence]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: D10
+    category: D
+    tags: [unknown]
+    title: A CALCULATED record presented as a retrieved fact
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    known_limit: "A statement's kind is checked against its records for UNKNOWN and for CALCULATED, not for RETRIEVED_FACT or INFERRED, so a calculated value can be labelled a retrieved fact (M9 rule set, unchanged)."
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: RETRIEVED_FACT
+              evidence_ids: [cand-a/score]
+    expect: {decision: reject, validator_decision: accept, status: answered, termination: answered}
+
+  # --- E: candidate identity ------------------------------------------------------------------
+  - id: E01
+    category: E
+    tags: [candidate_id]
+    title: A fetched site named and cited
+    kind: legitimate
+    question: "What is the rank of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored rank of cand-a is {{display|cand-a/rank}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/rank]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: E02
+    category: E
+    tags: [candidate_id]
+    title: A site id of the real form that no record holds
+    kind: adversarial
+    question: "What is the rank of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The site cand-bbbbbbbbbbbb has a stored rank of {{display|cand-a/rank}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/rank]
+        times: 2
+    expect:
+      {decision: reject, rules: [unknown_site_reference], status: fallback, termination: validation_failed}
+
+  - id: E03
+    category: E
+    tags: [candidate_id]
+    title: A record of a site that was never fetched
+    kind: adversarial
+    question: "What is the rank of cand-c?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored rank of cand-c is 3."
+              kind: CALCULATED
+              evidence_ids: [cand-c/rank]
+        times: 2
+    expect:
+      {decision: reject, rules: [calculated_not_grounded, number_not_grounded, unknown_evidence_id], status: fallback, termination: validation_failed}
+
+  - id: E04
+    category: E
+    tags: [candidate_id, trajectory, data_dependency]
+    title: get_site uses the id find_sites returned
+    kind: legitimate
+    question: "What is the score of the top-ranked candidate?"
+    provider:
+      - {tool: find_sites}
+      - {tool: get_site, arguments: {candidate_id: "{{first_site|}}"}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [find_sites, get_site]}
+
+  - id: E05
+    category: E
+    tags: [candidate_id]
+    title: Two fetched sites named together
+    kind: legitimate
+    question: "Where are cand-a and cand-b?"
+    provider:
+      - {tool: compare_sites, arguments: {a: cand-a, b: cand-b}}
+      - answer:
+          direct_answer:
+            - text: "The province of cand-a is {{display|cand-a/province}} and the province of cand-b is {{display|cand-b/province}}."
+              kind: RETRIEVED_FACT
+              evidence_ids: [cand-a/province, cand-b/province]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: E06
+    category: E
+    tags: [candidate_id, synthetic_id_form]
+    title: A site never fetched, named in the text with a synthetic id
+    kind: adversarial
+    question: "What is the rank of cand-a?"
+    known_limit: "Only ids of the real form (cand- and 12 hex digits) are checked against the run's records; the SYNTHETIC world's short ids are outside that pattern (E02 covers the real form)."
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored rank of cand-a is {{display|cand-a/rank}}, like cand-c."
+              kind: CALCULATED
+              evidence_ids: [cand-a/rank]
+    expect: {decision: reject, validator_decision: accept, status: answered, termination: answered}
+
+  # --- F: number provenance -------------------------------------------------------------------
+  - id: F01
+    category: F
+    tags: [number_provenance]
+    title: A number copied exactly from a cited record
+    kind: legitimate
+    question: "What is the stored score of cand-b?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-b}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-b is {{display|cand-b/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-b/score]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: F02
+    category: F
+    tags: [number_provenance]
+    title: A number that is close to the record's but not equal
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is 71.1."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: fallback, termination: validation_failed}
+
+  - id: F03
+    category: F
+    tags: [number_provenance]
+    title: A number copied from an unrelated knowledge chunk
+    kind: adversarial
+    question: "How much of the modelled population does the optimized network cover?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The optimized network covers 24.0% of the modelled population."
+              kind: CALCULATED
+              evidence_ids: [network/mclp/population_covered_share]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: fallback, termination: validation_failed}
+
+  - id: F04
+    category: F
+    tags: [number_provenance]
+    title: A derived number that deterministic code computed and a record holds
+    kind: legitimate
+    question: "What percentile does cand-a's score reach?"
+    provider:
+      - {tool: network_contribution, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The score percentile of cand-a is {{display|cand-a/score_percentile}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score_percentile]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: F05
+    category: F
+    tags: [number_provenance]
+    title: A difference the model computed itself
+    kind: adversarial
+    question: "How far apart are the scores of cand-a and cand-b?"
+    provider:
+      - {tool: compare_sites, arguments: {a: cand-a, b: cand-b}}
+      - answer:
+          direct_answer:
+            - text: "The scores differ by 21.0 points."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score, cand-b/score]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: fallback, termination: validation_failed}
+
+  - id: F06
+    category: F
+    tags: [number_provenance, methodology_constant]
+    title: A parameter shown by a tool and by the documentation, both cited
+    kind: legitimate
+    question: "What penalty weight does the network objective use?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The objective's penalty weight is {{display|network/parameters/lambda}}, as the documentation lists it."
+              kind: RETRIEVED_FACT
+              evidence_ids: [network/parameters/lambda, kb/decisions/d-046#1]
+              quotes: ["λ ∈ {0, 0.01, 0.05}"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: F07
+    category: F
+    tags: [number_provenance]
+    title: A number that appears only in the question
+    kind: adversarial
+    question: "Is the score of cand-a 85.0?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "Yes, the stored score of cand-a is 85.0."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: fallback, termination: validation_failed}
+
+  - id: F08
+    category: F
+    tags: [number_provenance]
+    title: A number in the question that the record also holds
+    kind: legitimate
+    question: "Is the score of cand-a 71.0?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  # --- G: structured-first edge cases ---------------------------------------------------------
+  - id: G01
+    category: G
+    tags: [structured_first, methodology_constant]
+    title: A methodology constant that only the documentation holds
+    kind: legitimate
+    question: "What time limit does the network solver have?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The documentation gives the solver a limit of 300 seconds."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/decisions/d-046#1]
+              quotes: ["solved by CBC on one thread with the 300 s limit"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: G02
+    category: G
+    tags: [structured_first]
+    title: A number only a tool holds, no documentation searched
+    kind: legitimate
+    question: "What H3 resolution does the network use?"
+    provider:
+      - {tool: network_summary}
+      - answer:
+          direct_answer:
+            - text: "The network uses H3 resolution {{display|network/h3_resolution}}."
+              kind: RETRIEVED_FACT
+              evidence_ids: [network/h3_resolution]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: G03
+    category: G
+    tags: [structured_first, methodology_constant, small_common_number]
+    title: A documentation name containing 30, while an unrelated record shows 30
+    kind: legitimate
+    question: "What is the Top-30 baseline, and what is the population within 5 km of cand-a?"
+    known_limit: "The number rule matches exact tokens: 30 in the Top-30 name equals the 5 km population of cand-a, so a knowledge-only statement is rejected as if it copied that record (D-058)."
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The documentation describes the Top-30 baseline as a naive selection."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/decisions/d-046#1]
+              quotes: ["the 30 highest-scoring eligible sites"]
+        times: 2
+    expect:
+      {decision: accept, validator_decision: reject, rules: [number_must_cite_structured_record], status: fallback, termination: validation_failed}
+
+  - id: G04
+    category: G
+    tags: [structured_first, methodology_constant, small_common_number]
+    title: The same statement citing the record too
+    kind: legitimate
+    question: "What is the Top-30 baseline, and what is the population within 5 km of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The population near cand-a is {{display|cand-a/pop_5km}}, and the documentation describes the naive baseline."
+              kind: CALCULATED
+              evidence_ids: [cand-a/pop_5km, kb/decisions/d-046#1]
+              quotes: ["the 30 highest-scoring eligible sites"]
+    expect: {decision: accept, status: answered, termination: answered}
+
+  - id: G05
+    category: G
+    tags: [structured_first, methodology_constant]
+    title: A methodology constant that a tool also shows as the current parameter
+    kind: legitimate
+    question: "How does the documentation define eligibility?"
+    known_limit: "The rule cannot tell a methodology constant from a current value with the same token: 50 in the documented rule equals the current parameter (D-058)."
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The documentation makes a site eligible from the 50th score percentile."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/decisions/d-046#1]
+              quotes: ["production score percentile (D-040) at least"]
+        times: 2
+    expect:
+      {decision: accept, validator_decision: reject, rules: [number_must_cite_structured_record], status: fallback, termination: validation_failed}
+
+  - id: G06
+    category: G
+    tags: [structured_first, number_provenance]
+    title: A current parameter copied from documentation although the tool shows it
+    kind: adversarial
+    question: "What penalty weight does the network objective use now?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The network uses a penalty weight of 0.01."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/decisions/d-046#1]
+              quotes: ["λ ∈ {0, 0.01, 0.05}"]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_must_cite_structured_record], status: fallback, termination: validation_failed}
+
+  - id: G07
+    category: G
+    tags: [structured_first, number_provenance]
+    title: A network figure attributed to documentation that no source shows
+    kind: adversarial
+    question: "How many demand nodes does the network have?"
+    provider:
+      - {tool: network_summary}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The documentation says the network has 4 demand nodes."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/decisions/d-046#1]
+              quotes: ["every WorldPop pixel with people"]
+        times: 2
+    expect:
+      {decision: reject, rules: [number_must_cite_structured_record, number_not_grounded], status: fallback, termination: validation_failed}
+
+  # --- H: trajectory and termination ----------------------------------------------------------
+  - id: H01
+    category: H
+    tags: [trajectory]
+    title: search, then answer
+    kind: legitimate
+    question: "What does SiteScout say it does not claim?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - answer:
+          direct_answer:
+            - text: "The project documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["never claims grid approval, transformer capacity"]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [search_knowledge], attempts: 1, counters: {tool_calls: 0, retrieval_calls: 1}}
+
+  - id: H02
+    category: H
+    tags: [trajectory]
+    title: structured tool, then answer
+    kind: legitimate
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [get_site], counters: {tool_calls: 1, retrieval_calls: 0}}
+
+  - id: H03
+    category: H
+    tags: [trajectory]
+    title: search, then structured tool, then answer
+    kind: legitimate
+    question: "What is the score of cand-a and how is a score defined?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "score profile weight component", doc_type: method}}
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}, and the documentation defines a score as a weighted sum of components."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score, kb/scoring/method/4-score]
+              quotes: ["Score = Σ profile weight × component"]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [search_knowledge, get_site]}
+
+  - id: H04
+    category: H
+    tags: [trajectory]
+    title: structured tool, then search, then answer
+    kind: legitimate
+    question: "What is the score of cand-a and how is a score defined?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: search_knowledge, arguments: {query: "score profile weight component", doc_type: method}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}, and the documentation defines a score as a weighted sum of components."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score, kb/scoring/method/4-score]
+              quotes: ["Score = Σ profile weight × component"]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [get_site, search_knowledge]}
+
+  - id: H05
+    category: H
+    tags: [trajectory]
+    title: several structured tools, then answer
+    kind: legitimate
+    question: "What is the score of cand-a and what does the network cover?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: network_summary}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+            - text: "The optimized network covers {{display|network/mclp/population_covered_share}} of the modelled population."
+              kind: CALCULATED
+              evidence_ids: [network/mclp/population_covered_share]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [get_site, network_summary], counters: {tool_calls: 2}}
+
+  - id: H06
+    category: H
+    tags: [trajectory]
+    title: several searches, then answer
+    kind: legitimate
+    question: "What does SiteScout not claim, and how is the network chosen?"
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+      - answer:
+          direct_answer:
+            - text: "The documentation lists what SiteScout does not claim."
+              kind: RETRIEVED_FACT
+              evidence_ids: [kb/readme/what-it-does-not-claim]
+              quotes: ["never claims grid approval, transformer capacity"]
+    expect:
+      {decision: accept, status: answered, termination: answered, counters: {tool_calls: 0, retrieval_calls: 2}}
+
+  - id: H07
+    category: H
+    tags: [trajectory, recoverable_error]
+    title: a refused tool call, then the corrected call, then answer
+    kind: legitimate
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-zzz}}
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: ["get_site:error", get_site], counters: {recoverable_errors: 1}}
+
+  - id: H08
+    category: H
+    tags: [trajectory, duplicate]
+    title: an identical call is reused, not run again
+    kind: legitimate
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: [get_site, "get_site:duplicate"], counters: {tool_calls: 1, duplicate_calls: 1}}
+
+  - id: H09
+    category: H
+    tags: [trajectory, limit]
+    title: the tool budget is reached
+    kind: adversarial
+    question: "Tell me everything about cand-a."
+    limits: {max_tool_calls: 2}
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: network_summary}
+      - {tool: explain_score, arguments: {candidate_id: cand-a}}
+    expect:
+      {decision: none, status: fallback, termination: tool_call_limit, trajectory: [get_site, network_summary], counters: {tool_calls: 2}}
+
+  - id: H10
+    category: H
+    tags: [trajectory, limit]
+    title: the retrieval budget is reached
+    kind: adversarial
+    question: "Tell me everything the documents say."
+    limits: {max_retrieval_calls: 1}
+    provider:
+      - {tool: search_knowledge, arguments: {query: "what it does not claim", doc_type: overview}}
+      - {tool: search_knowledge, arguments: {query: "network selection", decision_id: D-046}}
+    expect:
+      {decision: none, status: fallback, termination: retrieval_call_limit, trajectory: [search_knowledge], counters: {retrieval_calls: 1}}
+
+  - id: H11
+    category: H
+    tags: [trajectory, limit]
+    title: the iteration budget is reached
+    kind: adversarial
+    question: "Tell me everything about cand-a."
+    limits: {max_iterations: 2}
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {tool: network_summary}
+      - {tool: explain_score, arguments: {candidate_id: cand-a}}
+    expect:
+      {decision: none, status: fallback, termination: iteration_limit, trajectory: [get_site, network_summary]}
+
+  - id: H12
+    category: H
+    tags: [trajectory, limit, recoverable_error]
+    title: too many refused calls
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-x1}}
+      - {tool: get_site, arguments: {candidate_id: cand-x2}}
+      - {tool: get_site, arguments: {candidate_id: cand-x3}}
+    expect:
+      {decision: none, status: fallback, termination: recoverable_error_limit, counters: {recoverable_errors: 3}}
+
+  - id: H13
+    category: H
+    tags: [trajectory, recoverable_error]
+    title: an unknown tool is refused, then the run continues
+    kind: legitimate
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: delete_site, arguments: {candidate_id: cand-a}}
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: accept, status: answered, termination: answered, trajectory: ["delete_site:error", get_site], counters: {recoverable_errors: 1}}
+
+  - id: H14
+    category: H
+    tags: [trajectory]
+    title: the provider fails after one tool call
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - {provider_error: true}
+    expect:
+      {decision: none, status: fallback, termination: provider_error, trajectory: [get_site]}
+
+  - id: H15
+    category: H
+    tags: [trajectory, retry]
+    title: an invalid answer, one retry, a valid answer
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is 99.9."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is {{display|cand-a/score}}."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: answered, termination: answered, attempts: 2}
+
+  - id: H16
+    category: H
+    tags: [trajectory, retry]
+    title: an invalid answer, one retry, a second invalid answer
+    kind: adversarial
+    question: "What is the stored score of cand-a?"
+    provider:
+      - {tool: get_site, arguments: {candidate_id: cand-a}}
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is 99.9."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+      - answer:
+          direct_answer:
+            - text: "The stored score of cand-a is 98.8."
+              kind: CALCULATED
+              evidence_ids: [cand-a/score]
+    expect:
+      {decision: reject, rules: [number_not_grounded], status: fallback, termination: validation_failed, attempts: 2, excludes: ["98.8"]}

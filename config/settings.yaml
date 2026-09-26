@@ -19,6 +19,9 @@ paths:
   # Milestone 10, Phase 1 (D-056): the knowledge index's gold queries and its evaluation report.
   knowledge_gold: tests/knowledge_gold.yaml
   knowledge_eval_report: reports/knowledge_eval.md
+  # Milestone 10, Phase 4 (D-058): the agent's fixed evaluation cases and their report.
+  agent_cases: tests/agent_cases.yaml
+  agent_eval_report: reports/agent_eval.md
 
 logging:
   level: INFO

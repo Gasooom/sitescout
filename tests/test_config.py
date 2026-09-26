@@ -333,6 +333,8 @@ EXPECTED_M9_SETTINGS = {
 EXPECTED_M10_SETTINGS = {
     "paths.knowledge_gold": "tests/knowledge_gold.yaml",
     "paths.knowledge_eval_report": "reports/knowledge_eval.md",
+    "paths.agent_cases": "tests/agent_cases.yaml",
+    "paths.agent_eval_report": "reports/agent_eval.md",
     "knowledge.sources": EXPECTED_SOURCES,
     "knowledge.chunk.max_chars": 1500,
     "knowledge.chunk.min_chars": 200,
