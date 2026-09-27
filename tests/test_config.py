@@ -371,6 +371,18 @@ EXPECTED_M10_PHASE5_SETTINGS = {
 }
 
 
+# Milestone 10, Phase 6 decision (D-060): the live evaluation's own, tighter ceilings.
+EXPECTED_M10_PHASE6_SETTINGS = {
+    "paths.agent_live_cases": "tests/agent_live_cases.yaml",
+    "paths.agent_live_eval_report": "reports/agent_live_eval.md",
+    "agent.live_eval.max_iterations": 6,
+    "agent.live_eval.max_tool_calls": 5,
+    "agent.live_eval.max_retrieval_calls": 2,
+    "agent.live_eval.max_cases": 12,
+    "agent.live_eval.price_table": None,
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -385,6 +397,7 @@ def test_settings_match_spec():
         **EXPECTED_M10_PHASE2_SETTINGS,
         **EXPECTED_M10_PHASE3_SETTINGS,
         **EXPECTED_M10_PHASE5_SETTINGS,
+        **EXPECTED_M10_PHASE6_SETTINGS,
     }
 
 
@@ -588,6 +601,69 @@ def test_agent_provider_temperature_may_be_left_out_of_requests(settings_data, w
 def test_the_agent_provider_block_is_required(settings_data, weights_data):
     del settings_data["agent"]["model_provider"]
     with pytest.raises(ConfigError, match="model_provider"):
+        build_config(settings_data, weights_data)
+
+
+# Milestone 10, Phase 6 (D-060): the live evaluation's own, tighter ceilings.
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("agent.live_eval.max_iterations", 0, "greater than or equal to 1"),
+        ("agent.live_eval.max_iterations", 21, "less than or equal to 20"),
+        ("agent.live_eval.max_tool_calls", 0, "greater than or equal to 1"),
+        ("agent.live_eval.max_tool_calls", 21, "less than or equal to 20"),
+        ("agent.live_eval.max_retrieval_calls", -1, "greater than or equal to 0"),
+        ("agent.live_eval.max_retrieval_calls", 11, "less than or equal to 10"),
+        ("agent.live_eval.max_cases", 0, "greater than or equal to 1"),
+        ("agent.live_eval.max_cases", 51, "less than or equal to 50"),
+        ("agent.live_eval.api_key", "sk-anything", "Extra inputs are not permitted"),
+    ],
+    ids=[
+        "no-iterations",
+        "too-many-iterations",
+        "no-tool-calls",
+        "too-many-tool-calls",
+        "negative-retrieval-calls",
+        "too-many-retrieval-calls",
+        "no-cases",
+        "too-many-cases",
+        "no-key-in-yaml",
+    ],
+)
+def test_live_eval_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+def test_the_live_eval_block_is_required(settings_data, weights_data):
+    del settings_data["agent"]["live_eval"]
+    with pytest.raises(ConfigError, match="live_eval"):
+        build_config(settings_data, weights_data)
+
+
+def test_a_price_table_may_be_configured_for_a_best_effort_cost_estimate(
+    settings_data, weights_data
+):
+    settings_data["agent"]["live_eval"]["price_table"] = {
+        "gpt-5.6-luna": {"input_per_1k": 0.001, "output_per_1k": 0.002}
+    }
+    prices = build_config(settings_data, weights_data).settings.agent.live_eval.price_table
+    assert prices["gpt-5.6-luna"].input_per_1k == 0.001
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("input_per_1k", 0, "greater than 0"),
+        ("output_per_1k", -1, "greater than 0"),
+        ("input_per_1k", "cheap", "must be a number"),
+    ],
+)
+def test_a_price_table_entry_is_checked(settings_data, weights_data, field, value, message):
+    price = {"input_per_1k": 0.001, "output_per_1k": 0.002, field: value}
+    settings_data["agent"]["live_eval"]["price_table"] = {"gpt-5.6-luna": price}
+    with pytest.raises(ConfigError, match=message):
         build_config(settings_data, weights_data)
 
 

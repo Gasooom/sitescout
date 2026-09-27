@@ -189,6 +189,8 @@ class PathSettings(_Model):
     knowledge_eval_report: RelativePath
     agent_cases: RelativePath
     agent_eval_report: RelativePath
+    agent_live_cases: RelativePath
+    agent_live_eval_report: RelativePath
 
 
 class LoggingSettings(_Model):
@@ -797,6 +799,30 @@ class AgentProviderSettings(_Model):
         return self
 
 
+class LivePriceSettings(_Model):
+    """One model's approximate price per 1,000 tokens (M10 Phase 6, D-060): an optional,
+    best-effort figure for the live evaluation report only. It is never authoritative, never
+    required, and never used to gate anything; when a model has no entry, the report states
+    that its cost is not available rather than guessing."""
+
+    input_per_1k: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0)]
+    output_per_1k: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0)]
+
+
+class LiveEvalSettings(_Model):
+    """M10 Phase 6 (D-060): the live evaluation's own, tighter ceilings, kept separate from
+    the loop's normal limits below: Phase 4's offline evaluation and every other use of the
+    loop keep ``AgentSettings``'s own limits exactly as they are. ``max_cases`` bounds how
+    many of ``tests/agent_live_cases.yaml``'s cases one run may spend a real call on. The
+    model never sees any of these. ``price_table`` is optional (see ``LivePriceSettings``)."""
+
+    max_iterations: Annotated[int, Strict(), Field(ge=1, le=20)]
+    max_tool_calls: Annotated[int, Strict(), Field(ge=1, le=20)]
+    max_retrieval_calls: Annotated[int, Strict(), Field(ge=0, le=10)]
+    max_cases: Annotated[int, Strict(), Field(ge=1, le=50)]
+    price_table: dict[Text, LivePriceSettings] | None = None
+
+
 class AgentSettings(_Model):
     """The M10 agent loop's hard limits (D-058). Each is a ceiling the loop enforces itself; a
     model can neither see nor raise one. ``max_recoverable_errors`` is how many tool or
@@ -805,7 +831,8 @@ class AgentSettings(_Model):
     ``min_quote_words`` is the shortest verbatim quotation that supports a knowledge claim.
     ``model_provider`` (D-059) is the optional real provider that can drive the loop; it is
     configuration only and is never read unless a caller builds it
-    (``sitescout.agent_provider``)."""
+    (``sitescout.agent_provider``). ``live_eval`` (D-060) is the live evaluation's own,
+    separate ceilings; it does not change any of the fields above."""
 
     max_iterations: Annotated[int, Strict(), Field(ge=1, le=50)]
     max_tool_calls: Annotated[int, Strict(), Field(ge=1, le=50)]
@@ -814,6 +841,7 @@ class AgentSettings(_Model):
     knowledge_top_k: Count
     min_quote_words: Count
     model_provider: AgentProviderSettings
+    live_eval: LiveEvalSettings
 
 
 class Settings(_Model):

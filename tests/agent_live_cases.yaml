@@ -1,0 +1,165 @@
+# Milestone 10, Phase 6 (D-060): the live evaluation's bounded, unscripted case set.
+#
+# Each case is a single free-text question. The model chooses every tool call and its order
+# for itself; nothing here scripts a step. `sites` names zero or more site selectors (a
+# subset of find_sites' own filters), resolved against the real processed data before any
+# API call, filling the matching `{{name}}` placeholder in `question` with a real candidate
+# id; a case whose selector matches no site is skipped, never run, never counted as a
+# failure. `expect` is soft and reported, never a pass/fail gate: the model may take an
+# equally valid path that does not match it.
+#
+# scripts/agent_live_eval.py runs at most agent.live_eval.max_cases of these against one
+# configured provider; no case here is ever run by pytest.
+
+version: 1
+world: "The real SiteScout pipeline output in data/processed/ (never SYNTHETIC data)."
+
+cases:
+  - id: A01
+    category: A
+    title: Grid evidence and the exact disclaimer
+    notes: >
+      A pure knowledge question: no current site or network number is needed, so the answer
+      should come from search_knowledge alone. Every statement that mentions the grid must
+      carry the exact disclaimer (the M9 validator, unchanged, enforces this regardless of
+      what this case expects).
+    question: >
+      What does SiteScout mean by "grid evidence", and what exact sentence must appear
+      wherever the grid is discussed?
+    expect:
+      tools_any: [search_knowledge]
+      contains_any:
+        - ["Actual grid connection feasibility requires utility confirmation."]
+
+  - id: A02
+    category: A
+    title: What confidence does not represent
+    notes: >
+      Tests that the model can retrieve and quote methodology text (the quote rule) without
+      touching a structured tool at all.
+    question: >
+      How is a site's confidence level computed, and what is it explicitly not a measure of?
+    expect:
+      tools_any: [search_knowledge]
+
+  - id: B01
+    category: B
+    title: A real site's stored score and rank
+    notes: >
+      A structured-only question about one real, currently-selected site. The score and rank
+      must be copied exactly from get_site's own record, never recomputed.
+    sites:
+      site:
+        selected_mclp: true
+    question: "What is the stored score and rank of {{site}}?"
+    expect:
+      tools_include: [get_site]
+
+  - id: B02
+    category: B
+    title: The exact network's coverage share
+    notes: A structured-only network question; no site is needed.
+    question: >
+      What share of the modelled population does the exact optimized network cover?
+    expect:
+      tools_include: [network_summary]
+
+  - id: C01
+    category: C
+    title: The exact network against the Top-30 baseline, and how it is chosen
+    notes: >
+      Mixes a current structured number (the coverage share) with a knowledge claim (how the
+      network is selected). The agent's mixed-source rule requires the number to come from
+      the structured record even though the same figure may also appear in documentation.
+    question: >
+      How does the exact optimized network's coverage compare with the naive Top-30 baseline
+      by score, and how is the exact network actually chosen?
+    expect:
+      tools_include: [network_summary]
+      tools_any: [search_knowledge]
+
+  - id: D01
+    category: D
+    title: What SiteScout can never determine
+    notes: >
+      A universal-unknowns question with no site attached; the answer should be UNKNOWN,
+      using one of the validator's exact absence phrases, not a paraphrase.
+    question: >
+      What does SiteScout say can never be determined for any site, regardless of the data
+      available?
+    expect:
+      expect_unknown: true
+
+  - id: D02
+    category: D
+    title: Land, permits and ownership at a real site
+    notes: >
+      Land availability, ownership and permits are unknown for every site (README, "what it
+      does not claim"), independent of which site is picked; this checks UNKNOWN survives a
+      structured-tool call rather than being invented from it.
+    sites:
+      site:
+        rank: 1
+    question: "Is land available at {{site}}, and has the owner agreed to it?"
+    expect:
+      expect_unknown: true
+
+  - id: E01
+    category: E
+    title: A neutral comparison of two real sites
+    notes: >
+      Tests candidate-identity grounding (no third, invented id) and the no-verdict rule
+      together: the model must compare two real sites without declaring a winner.
+    sites:
+      site_a:
+        selected_mclp: true
+      site_b:
+        selected_mclp: false
+    question: >
+      Compare {{site_a}} and {{site_b}}. Do not say which one is better; just state what is
+      recorded about each.
+    expect:
+      tools_any: [compare_sites]
+
+  - id: F01
+    category: F
+    title: A derived percentile, grounded in a tool's own record
+    notes: >
+      network_contribution computes a score percentile; the number must be copied from that
+      record, never worked out by the model from the raw score.
+    sites:
+      site:
+        rank: 1
+    question: "What percentile does {{site}}'s score reach among all eligible candidates?"
+    expect:
+      tools_include: [network_contribution]
+
+  - id: G01
+    category: G
+    title: A site's marginal contribution to network coverage
+    notes: >
+      A number a deterministic tool provides directly; documentation may describe the concept
+      of marginal coverage without giving this site's current value, which the structured-
+      first rule requires the model to prefer over any documentation figure.
+    sites:
+      site:
+        selected_mclp: true
+    question: "What is {{site}}'s marginal contribution to the network's coverage?"
+    expect:
+      tools_any: [network_contribution, get_site]
+
+  - id: H01
+    category: H
+    title: Investigate a real site end to end
+    notes: >
+      Deliberately open-ended: a well-behaved run should use several tools in whichever
+      order it chooses (structured facts, the network's own view of the site, and, if
+      relevant, documentation) before answering. The trajectory is observed, not scripted.
+    sites:
+      site:
+        selected_mclp: true
+    question: >
+      Investigate {{site}} and tell me what supports, and what does not support, including
+      it in the optimized network.
+    expect:
+      tools_any: [get_site, network_contribution, explain_score, search_knowledge]
