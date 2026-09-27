@@ -361,6 +361,16 @@ EXPECTED_M10_PHASE3_SETTINGS = {
 }
 
 
+# Milestone 10, Phase 5 decision (D-059): the agent's optional real provider.
+EXPECTED_M10_PHASE5_SETTINGS = {
+    "agent.model_provider.provider": "openai",
+    "agent.model_provider.model": "gpt-5.6-luna",
+    "agent.model_provider.max_tokens": 4096,
+    "agent.model_provider.timeout_s": 60.0,
+    "agent.model_provider.temperature": None,
+}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -374,6 +384,7 @@ def test_settings_match_spec():
         **EXPECTED_M10_SETTINGS,
         **EXPECTED_M10_PHASE2_SETTINGS,
         **EXPECTED_M10_PHASE3_SETTINGS,
+        **EXPECTED_M10_PHASE5_SETTINGS,
     }
 
 
@@ -516,6 +527,67 @@ def test_the_agent_block_takes_no_other_keys_and_is_required(settings_data, weig
         build_config(settings_data, weights_data)
     del settings_data["agent"]
     with pytest.raises(ConfigError, match="agent"):
+        build_config(settings_data, weights_data)
+
+
+# Milestone 10, Phase 5 (D-059): the agent's optional real provider, checked the same way as
+# the M9 analyst's own provider block.
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("agent.model_provider.provider", "gemini", "Input should be 'anthropic' or 'openai'"),
+        ("agent.model_provider.model", "", "at least 1 character"),
+        ("agent.model_provider.max_tokens", 0, "greater than 0"),
+        ("agent.model_provider.timeout_s", 0, "greater than 0"),
+        ("agent.model_provider.timeout_s", "60", "must be a number"),
+        ("agent.model_provider.temperature", 1.5, "less than or equal to 1"),
+        ("agent.model_provider.temperature", True, "must be a number"),
+        ("agent.model_provider.api_key", "sk-anything", "Extra inputs are not permitted"),
+    ],
+    ids=[
+        "unknown-provider",
+        "empty-model",
+        "no-tokens",
+        "zero-timeout",
+        "string-timeout",
+        "temperature-above-one",
+        "boolean-temperature",
+        "no-key-in-yaml",
+    ],
+)
+def test_agent_provider_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    ("provider", "model"),
+    [("openai", "claude-sonnet-5"), ("anthropic", "gpt-any")],
+    ids=["openai-with-a-claude-model", "anthropic-with-a-non-claude-model"],
+)
+def test_agent_provider_and_model_must_match(settings_data, weights_data, provider, model):
+    settings_data["agent"]["model_provider"].update(provider=provider, model=model)
+    with pytest.raises(ConfigError, match=f"does not belong to provider {provider!r}"):
+        build_config(settings_data, weights_data)
+
+
+def test_the_agent_can_select_anthropic_in_yaml(settings_data, weights_data):
+    # Independent of the M9 analyst's own provider (D-054 lets either block name either one).
+    settings_data["agent"]["model_provider"].update(provider="anthropic", model="claude-sonnet-5")
+    provider = build_config(settings_data, weights_data).settings.agent.model_provider
+    assert (provider.provider, provider.model) == ("anthropic", "claude-sonnet-5")
+
+
+def test_agent_provider_temperature_may_be_left_out_of_requests(settings_data, weights_data):
+    settings_data["agent"]["model_provider"]["temperature"] = None
+    settings = build_config(settings_data, weights_data).settings
+    assert settings.agent.model_provider.temperature is None
+
+
+def test_the_agent_provider_block_is_required(settings_data, weights_data):
+    del settings_data["agent"]["model_provider"]
+    with pytest.raises(ConfigError, match="model_provider"):
         build_config(settings_data, weights_data)
 
 

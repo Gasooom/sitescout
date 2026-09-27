@@ -464,3 +464,12 @@ agent:
   max_recoverable_errors: 2
   knowledge_top_k: 5
   min_quote_words: 3
+  # Milestone 10, Phase 5 (D-059): the optional real provider that can drive the agent loop
+  # through sitescout.agent_provider. Read the same way as analyst: (D-051, D-054); the API
+  # key comes from ANTHROPIC_API_KEY or OPENAI_API_KEY only, never from this file.
+  model_provider:
+    provider: openai
+    model: gpt-5.6-luna
+    max_tokens: 4096
+    timeout_s: 60
+    temperature: null

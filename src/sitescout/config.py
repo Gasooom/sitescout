@@ -768,12 +768,44 @@ class InvestigationSettings(_Model):
     nearby_sites: NearbySitesSettings
 
 
+class AgentProviderSettings(_Model):
+    """M10 Phase 5 (D-059): the optional real provider that can drive the agent loop over its
+    nine capabilities, read the same way as the M9 analyst's (D-051, D-054): its one secret,
+    the chosen provider's API key (``ANTHROPIC_API_KEY`` or ``OPENAI_API_KEY``), is read by
+    ``sitescout.analyst.credentials``; every value here comes from YAML only. The loop's own
+    limits (``max_iterations``, the tool and retrieval budgets, ``max_recoverable_errors``)
+    stay in ``AgentSettings`` unchanged: they bound the loop, not one provider call."""
+
+    provider: Literal["anthropic", "openai"]
+    model: Text
+    max_tokens: Count
+    timeout_s: Annotated[float, BeforeValidator(_reject_non_numbers), Field(gt=0, le=600)]
+    # null leaves the parameter out of the request; a number is sent to the provider, and a
+    # model that does not accept it rejects the request (the run then falls back).
+    temperature: Share | None
+
+    @model_validator(mode="after")
+    def _model_matches_provider(self) -> AgentProviderSettings:
+        # The same check as AnalystSettings, kept separate: each provider block validates
+        # its own provider/model pair, and the two need not name the same provider.
+        is_claude = self.model.startswith("claude-")
+        if (self.provider == "anthropic") != is_claude:
+            raise ValueError(
+                f"model {self.model!r} does not belong to provider {self.provider!r}; "
+                "set agent.model_provider.provider and .model together"
+            )
+        return self
+
+
 class AgentSettings(_Model):
     """The M10 agent loop's hard limits (D-058). Each is a ceiling the loop enforces itself; a
     model can neither see nor raise one. ``max_recoverable_errors`` is how many tool or
     action errors are returned to the model as observations before the run stops (the next
     one ends it). ``knowledge_top_k`` is how many chunks one search_knowledge call returns;
-    ``min_quote_words`` is the shortest verbatim quotation that supports a knowledge claim."""
+    ``min_quote_words`` is the shortest verbatim quotation that supports a knowledge claim.
+    ``model_provider`` (D-059) is the optional real provider that can drive the loop; it is
+    configuration only and is never read unless a caller builds it
+    (``sitescout.agent_provider``)."""
 
     max_iterations: Annotated[int, Strict(), Field(ge=1, le=50)]
     max_tool_calls: Annotated[int, Strict(), Field(ge=1, le=50)]
@@ -781,6 +813,7 @@ class AgentSettings(_Model):
     max_recoverable_errors: Annotated[int, Strict(), Field(ge=0, le=20)]
     knowledge_top_k: Count
     min_quote_words: Count
+    model_provider: AgentProviderSettings
 
 
 class Settings(_Model):
