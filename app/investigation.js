@@ -38,11 +38,13 @@ window.SiteScoutInvestigation = (function () {
     INFERRED: ["Inferred", "An interpretation of the evidence"],
     UNKNOWN: ["Unknown", "Not established by the public evidence"],
   };
+  // The report's sections, in the order an analyst reads them. Unknowns carry the same VERIFY
+  // marker as the rest of the page; next checks are numbered.
   const BLOCKS = [
     ["Key finding", (a) => a.direct_answer, "finding"],
-    ["Supporting evidence", (a) => [...a.evidence, ...a.interpretation], ""],
-    ["What remains unknown", (a) => a.unknowns, ""],
-    ["Recommended next checks", (a) => a.next_investigation, ""],
+    ["Supporting evidence", (a) => [...a.evidence, ...a.interpretation], "support"],
+    ["What remains unknown", (a) => a.unknowns, "unknown"],
+    ["Recommended next checks", (a) => a.next_investigation, "next"],
   ];
   const LIMIT = "The investigation reached its step limit before producing a validated answer.";
   const PROVIDER = "The model provider did not return a usable response.";
@@ -86,6 +88,9 @@ window.SiteScoutInvestigation = (function () {
     const [label, meaning] = PROVENANCE[type] || [type, ""];
     return el("span", { class: `prov p-${type}`, title: meaning }, label);
   }
+
+  // The boundary of the evidence: something to verify outside SiteScout, not a failure.
+  const verifyTag = () => el("span", { class: "verify-tag", title: "Not established by the evidence; to be verified" }, "Verify");
 
   // One status request per page load, and none at all when the page is opened from disk.
   function status() {
@@ -207,15 +212,15 @@ window.SiteScoutInvestigation = (function () {
       "div",
       { class: "inv-answer" },
       el("p", { class: "inv-verdict" }, VALIDATED),
-      BLOCKS.map(([name, pick, extra]) => [name, pick(a), extra])
+      BLOCKS.map(([name, pick, kind]) => [name, pick(a), kind])
         .filter(([, statements]) => statements.length)
-        .map(([name, statements, extra]) =>
-          el("section", { class: `inv-block ${extra}` }, el("h5", {}, name),
-            el("ul", { class: "stmts" }, statements.map((s) => statement(s, data))))),
+        .map(([name, statements, kind]) =>
+          el("section", { class: `inv-block ${kind}` }, el("h5", {}, name),
+            el(kind === "next" ? "ol" : "ul", { class: "stmts" }, statements.map((s) => statement(s, data, kind))))),
     );
   }
 
-  function statement(s, data) {
+  function statement(s, data, kind) {
     const cites = s.evidence_ids.map((id) => citation(id, data)).filter(Boolean);
     return el(
       "li",
@@ -223,7 +228,7 @@ window.SiteScoutInvestigation = (function () {
       el(
         "div",
         { class: "stmt-body" },
-        el("p", {}, s.text),
+        el("div", { class: "stmt-line" }, el("p", {}, s.text), kind === "unknown" ? verifyTag() : null),
         s.quotes.map((q) => el("blockquote", {}, q)),
         el("div", { class: "stmt-meta" }, provenance(s.kind),
           cites.length ? el("div", { class: "cites" }, cites) : null),
@@ -274,7 +279,8 @@ window.SiteScoutInvestigation = (function () {
           el("summary", {}, TYPE_TITLES[type], " ", el("span", { class: "count" }, byType[type].length)),
           el("ul", { class: "recs" }, byType[type].map((r) =>
             el("li", {}, el("span", {}, r.id.startsWith("kb/") ? r.evidence.metric : r.claim),
-              el("span", { class: "v" }, r.id.startsWith("kb/") ? r.claim : r.display))))));
+              type === "UNKNOWN" ? verifyTag()
+                : el("span", { class: "v" }, r.id.startsWith("kb/") ? r.claim : r.display))))));
     return el(
       "div",
       { class: "inv-fallback" },

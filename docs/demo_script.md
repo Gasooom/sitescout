@@ -22,7 +22,7 @@ On the overview, with *Optimized network* selected in the map's *Network strateg
 
 ## 03:00–04:00 · Top-30 versus optimized
 
-Click *Top-30 by score*, then *Greedy network*, then back to *Optimized network*. Scroll to *Compare strategies*: the *Network insight* panel shows the same trade-off side by side.
+Click *Top-30 by score*, then *Greedy network*, then back to *Optimized network*. Scroll to the *Network* section: the comparison table and its *Observation* show the same trade-off side by side.
 
 - "The obvious method, taking the 30 best-scoring sites, piles 23 of them into the City of Kigali and reaches 24.0%. The optimized network reaches 49.8% across 22 districts and all 5 provinces."
 - "The trade-off is shown, not hidden: mean site score 64.6 against 73.8. The network accepts individually weaker sites because they serve people nobody else reaches."
@@ -33,12 +33,12 @@ Click *Top-30 by score*, then *Greedy network*, then back to *Optimized network*
 Open the rank-2 site, Fuel station, Musanze (`#cand-3a8fa00f876a`).
 
 - "Score, rank of 300 and a confidence level, never a percentage. Under *Network role*, its place in each of the three selections, and how much coverage the network would lose without it."
-- "*Evidence behind this location* shows one key value per group; *View all evidence* opens the full table. Every value has a provenance label: retrieved fact, calculated, inferred or unknown. Grid evidence means mapped infrastructure nearby, not a connection decision."
-- Scroll to *What we still need to verify* and *Next investigation*: "Grid capacity, land, landowner willingness and permits are unknown for every site. SiteScout says so rather than guessing, and turns them into next steps."
+- "*Evidence* shows one key value per group; *View all evidence* opens the full table. Every value says how SiteScout knows it: retrieved fact, calculated, inferred or unknown. Grid evidence means mapped infrastructure nearby, not a connection decision."
+- Scroll to *What we don't know yet* (each item marked VERIFY) and *Next checks*: "Grid capacity, land, landowner willingness and permits are unknown for every site. SiteScout says so rather than guessing, and turns them into next steps."
 
 ## 05:00–06:00 · AI-assisted investigation
 
-Back to *Compare strategies*. Under *Network investigation*, click **Investigate network difference**.
+Back to the *Network* section. Under *Network investigation*, click **Investigate network difference**.
 
 - "There is no chat box. The page sends a fixed investigation type; the server writes the question: how does the optimized network differ from the Top-30 by score, and why?"
 - When the report appears: "It opens with the key finding. Each statement carries a provenance label and cites the records it came from; open one to see the value and its source. Documentation claims quote the document verbatim."
