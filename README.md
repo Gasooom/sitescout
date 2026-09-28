@@ -97,7 +97,8 @@ data/      local data, never committed (raw, manual, processed, export)
 | 7 | Evidence and reports | done |
 | 8 | Export and front end | done |
 | 9 | Stretch (optional): AI Site Analyst | done — scenario evaluation 98.1% (153/156, target ≥90%) |
-| 10 | Packaging and demo | not started |
+| 10 | Agentic site investigation | done — offline agent evaluation 73 of 73 cases as expected ([reports/agent_eval.md](reports/agent_eval.md)); one bounded live run, observational only ([reports/agent_live_eval.md](reports/agent_live_eval.md)) |
+| 11 | Packaging and demo | not started |
 
 ## Data credits
 
