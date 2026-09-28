@@ -20,7 +20,7 @@ from typing import Any
 
 from pydantic import SecretStr
 
-from sitescout.agent_provider.common import check_agent_tools
+from sitescout.agent_provider.common import agent_retry_note, check_agent_tools
 from sitescout.agent_provider.prompt import build_system_prompt
 from sitescout.analyst.anthropic_provider import to_step  # reused unchanged (D-059)
 from sitescout.analyst.credentials import read_api_key
@@ -29,7 +29,6 @@ from sitescout.analyst.provider_common import (
     ProviderError,
     ProviderUnavailable,
     question_text,
-    retry_note,
     tool_output,
 )
 from sitescout.config import AgentProviderSettings
@@ -81,7 +80,9 @@ def build_request(
         messages[-1]["content"].append(
             {
                 "type": "text",
-                "text": retry_note(context.validation_errors, context.previous_answer_json),
+                "text": agent_retry_note(
+                    context.validation_errors, context.previous_answer_json, context.transcript
+                ),
             }
         )
     request: dict[str, Any] = {

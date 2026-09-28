@@ -107,7 +107,10 @@ def test_the_client_shows_only_what_the_server_returns():
     # The loading line is the one honest state while a request runs; results are rendered only
     # from the response, and a fallback shows retrieved records, never generated text.
     assert CLIENT.count("Investigating…") == 1
-    assert "Validated summary unavailable." in CLIENT
+    assert (
+        '"Investigation unavailable in this view. The SiteScout decision above is complete '
+        'without it."' in CLIENT
+    )
     for field in ("data.answer", "data.records", "data.trace", "data.validation"):
         assert field in CLIENT
     assert "reason" not in CLIENT  # the server never sends a fallback's reason

@@ -35,7 +35,7 @@ from sitescout.ingest.metadata import read_json, write_atomically
 
 logger = logging.getLogger(__name__)
 
-INDEPENDENT = "An independent portfolio project built on public data."
+INDEPENDENT = "An independent project built on public data."
 MAX_BYTES = 1_000_000  # each export file; far below the 5 MB repository limit
 BOUNDARY_TOLERANCE_M = 250  # outline simplification for drawing only (EPSG:32735)
 COORDINATE_DECIMALS = 5  # about 1 m

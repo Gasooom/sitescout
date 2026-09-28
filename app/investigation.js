@@ -46,7 +46,7 @@ window.SiteScoutInvestigation = (function () {
     tool_failure: "A SiteScout tool failed during the investigation.",
   };
   const UNAVAILABLE =
-    "AI investigation unavailable in this view. The decision above is complete without it.";
+    "Investigation unavailable in this view. The SiteScout decision above is complete without it.";
   const UNAFFECTED = "The decision above is unaffected.";
 
   let availability = null;
@@ -161,11 +161,10 @@ window.SiteScoutInvestigation = (function () {
     const head = el("h4", { class: "inv-title", tabindex: "-1" }, title(request));
     if (data.status === "answered" && data.answer) return el("div", {}, head, answered(data), trace(data));
     if (data.status === "fallback") return el("div", {}, head, fallback(data), trace(data));
-    const messages = {
-      busy: "Another investigation is running. Try again when it finishes.",
-      unavailable: UNAVAILABLE,
-    };
-    const text = messages[data.status] || "The investigation request could not be completed.";
+    if (data.status === "unavailable") return el("div", {}, head, el("p", { class: "inv-message" }, UNAVAILABLE));
+    const text = data.status === "busy"
+      ? "Another investigation is running. Try again when it finishes."
+      : "The investigation request could not be completed.";
     return el("div", {}, head, el("p", { class: "inv-message" }, text, " ", UNAFFECTED));
   }
 
@@ -251,12 +250,11 @@ window.SiteScoutInvestigation = (function () {
     return el(
       "div",
       { class: "inv-fallback" },
-      el("p", { class: "inv-verdict warn" }, "Validated summary unavailable."),
-      el("p", {}, ENDINGS[data.termination] || "The investigation ended without a validated answer."),
+      el("p", { class: "inv-verdict warn" }, UNAVAILABLE),
+      el("p", { class: "note" }, ENDINGS[data.termination] || "The investigation ended without a validated answer."),
       groups.length ? el("h5", {}, "Evidence retrieved during this investigation") : null,
       groups,
       gridDisclaimer ? el("p", { class: "disclaimer" }, gridDisclaimer) : null,
-      el("p", { class: "inv-message" }, UNAFFECTED),
     );
   }
 

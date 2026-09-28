@@ -43,6 +43,8 @@ log = logging.getLogger(__name__)
 HOST = "127.0.0.1"  # D-062: loopback only, never a setting
 CANDIDATE_ID = re.compile(r"^cand-[0-9a-f]{12}$")
 MAX_BODY_BYTES = 2048  # an investigation request is a kind and two identifiers
+DRAIN_BYTES = 65536  # at most this much of a refused request's body is read and dropped
+SOCKET_TIMEOUT_S = 30  # a client that stops sending mid-request cannot hold a handler
 
 Kind = Literal["site_investigation", "network_comparison", "unknowns", "evidence_explanation"]
 Group = Literal["demand", "access", "host", "charging_gap", "grid_evidence"]
@@ -63,9 +65,10 @@ QUESTIONS: dict[str, str] = {
         "stored score, rank and network contribution, and name what remains unknown."
     ),
     "network_comparison": (
-        "How does the exact optimized network compare with the Top-30 by individual score in "
-        "modelled population coverage and in spread across districts and provinces, and how is "
-        "the optimized network chosen?"
+        "How does the optimized network differ from the Top-30 by score, and why? Answer from "
+        "the stored network results: what differs in modelled population coverage, spread "
+        "across districts and provinces and mean site score; how the optimized network is "
+        "chosen; the trade-off this involves; and what remains unknown."
     ),
     "unknowns": (
         "What is not known about candidate site {candidate_id} from public data, and what would "
@@ -379,6 +382,12 @@ class _Handler(BaseHTTPRequestHandler):
     server: SiteScoutServer
     server_version = "SiteScout"
     sys_version = ""
+    timeout = SOCKET_TIMEOUT_S
+    # HTTP/1.1 lets the client close the connection. Under HTTP/1.0 the server closed it right
+    # after writing, and on Windows loopback the tail of a large reply (the 0.6 MB export) was
+    # then often never delivered, so the page loaded without its data. Every reply here sends
+    # Content-Length, which keep-alive needs.
+    protocol_version = "HTTP/1.1"
 
     # -- helpers --
 
@@ -399,6 +408,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         if no_store:
             self.send_header("Cache-Control", "no-store")
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
@@ -447,28 +458,41 @@ class _Handler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:
         self.do_GET()
 
+    def _refuse(self, code: int, status: str) -> None:
+        """Refuse a POST before reading its body. The unread body (at most ``DRAIN_BYTES``) is
+        read and dropped first: closing a socket with unread data resets the connection, and
+        the client could then lose the reply (seen on Windows)."""
+        try:
+            pending = max(0, int(self.headers.get("Content-Length", "0")))
+        except ValueError:
+            pending = 0
+        if pending:
+            self.rfile.read(min(pending, DRAIN_BYTES))
+        self.close_connection = True  # a body left unread must never be read as a request
+        self._json(code, {"status": status})
+
     def do_POST(self) -> None:
         if not self._host_allowed():
-            self._json(403, {"status": "forbidden"})
+            self._refuse(403, "forbidden")
             return
         if urlsplit(self.path).path != "/api/investigate":
-            self._json(404, {"status": "not_found"})
+            self._refuse(404, "not_found")
             return
         origin = self.headers.get("Origin")
         if origin is not None and origin not in {f"http://{h}" for h in self.server.allowed_hosts}:
-            self._json(403, {"status": "forbidden"})
+            self._refuse(403, "forbidden")
             return
         content_type = self.headers.get("Content-Type", "").split(";")[0].strip().lower()
         if content_type != "application/json":
-            self._json(415, {"status": "invalid_request"})
+            self._refuse(415, "invalid_request")
             return
         try:
             length = int(self.headers.get("Content-Length", ""))
         except ValueError:
-            self._json(400, {"status": "invalid_request"})
+            self._refuse(400, "invalid_request")
             return
         if length < 0 or length > MAX_BODY_BYTES:
-            self._json(413, {"status": "invalid_request"})
+            self._refuse(413, "invalid_request")
             return
         try:
             payload = json.loads(self.rfile.read(length).decode("utf-8"))

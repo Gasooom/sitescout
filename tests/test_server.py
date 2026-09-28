@@ -292,6 +292,39 @@ def test_allow_listed_files_are_served_with_their_types(context, config, path, c
     assert body == (PROJECT_ROOT / path.lstrip("/")).read_bytes()
 
 
+def test_the_export_always_arrives_whole(context, config):
+    # Under HTTP/1.0 the server closed the socket right after the 0.6 MB export, and on
+    # Windows loopback its tail was often lost (about 1 request in 3), so the page loaded
+    # without data. The server now speaks HTTP/1.1 and the client closes.
+    path = PROJECT_ROOT / "data" / "export" / "sitescout.js"
+    if not path.is_file():
+        pytest.skip("the export is not in this checkout")
+    expected = path.read_bytes()
+    with serving(config, service(context, config, NeverCalled())) as client:
+        bodies = {client.request("GET", "/data/export/sitescout.js")[2] for _ in range(30)}
+    assert bodies == {expected}
+
+
+def test_a_connection_is_kept_open_between_requests(context, config):
+    with serving(config, service(context, config, NeverCalled())) as client:
+        connection = http.client.HTTPConnection("127.0.0.1", client.port, timeout=30)
+        host = {"Host": f"127.0.0.1:{client.port}"}
+        for _ in range(2):
+            connection.request("GET", "/api/status", headers=host)
+            response = connection.getresponse()
+            assert response.version == 11 and response.status == 200
+            assert json.loads(response.read()) == {"investigation_available": True}
+        connection.close()
+
+
+def test_a_refused_post_closes_its_connection(context, config):
+    # Part of a refused body may stay unread; it must never be parsed as a next request.
+    with serving(config, service(context, config, NeverCalled())) as client:
+        code, headers, _ = client.request("POST", "/api/investigate", "x" * 5000,
+                                          {"Content-Type": "application/json"})  # fmt: skip
+    assert code == 413 and headers.get("Connection") == "close"
+
+
 @pytest.mark.parametrize(
     "path",
     [
@@ -348,6 +381,23 @@ def test_malformed_posts_are_refused_before_the_provider(context, config, body, 
         code, _, response = client.request("POST", "/api/investigate", body, headers)
     assert code == expected
     assert json.loads(response) == {"status": "invalid_request"}
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected"),
+    [
+        ({"Content-Type": "application/json"}, 413),
+        ({"Content-Type": "text/plain"}, 415),
+        ({"Content-Type": "application/json", "Origin": "http://attacker.example"}, 403),
+    ],
+)
+def test_a_refused_post_always_reaches_the_client(context, config, headers, expected):
+    # Refusing without reading the body used to reset the connection now and then (about 3%
+    # of runs on Windows), so the client lost the reply; the server now drains it first.
+    body = "x" * 5000 if expected == 413 else "x" * 1500
+    with serving(config, service(context, config, NeverCalled())) as client:
+        codes = {client.request("POST", "/api/investigate", body, headers)[0] for _ in range(200)}
+    assert codes == {expected}
 
 
 def test_an_unavailable_service_answers_unavailable(config):

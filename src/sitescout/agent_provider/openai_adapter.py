@@ -17,7 +17,7 @@ from typing import Any
 
 from pydantic import SecretStr
 
-from sitescout.agent_provider.common import check_agent_tools
+from sitescout.agent_provider.common import agent_retry_note, check_agent_tools
 from sitescout.agent_provider.prompt import build_system_prompt
 from sitescout.analyst.credentials import read_openai_api_key
 from sitescout.analyst.openai_provider import to_step  # reused unchanged (D-059)
@@ -28,7 +28,6 @@ from sitescout.analyst.provider_common import (
     ProviderUnavailable,
     question_text,
     redact,
-    retry_note,
     tool_output,
 )
 from sitescout.config import AgentProviderSettings
@@ -75,7 +74,9 @@ def build_request(
             {"type": "function_call_output", "call_id": call_id, "output": tool_output(call.result)}
         )
     if context.validation_errors:
-        note = retry_note(context.validation_errors, context.previous_answer_json)
+        note = agent_retry_note(
+            context.validation_errors, context.previous_answer_json, context.transcript
+        )
         items.append({"role": "user", "content": note})
     request: dict[str, Any] = {
         "model": settings.model,
