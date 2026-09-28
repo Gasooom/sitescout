@@ -1,38 +1,80 @@
-# Case study: choosing 30 charging sites for Rwanda as a network
+# SiteScout: an engineering case study
 
-*An independent portfolio project built on public data. All figures come from [reports/evaluation.md](../reports/evaluation.md) and the committed export.*
+*An independent project built on public data. Figures come from [reports/evaluation.md](../reports/evaluation.md) and the committed export; design decisions are in [decisions.md](decisions.md).*
 
-## The problem
+## Problem
 
-An EV charging company expanding in Rwanda has to decide where its next 30 sites go. The obvious approach, score every location and take the top 30, has a hidden flaw: the best-scoring locations sit next to each other, so the network serves the same people many times.
+**Where should an EV charging company expand next in Rwanda?** SiteScout proposes 30 sites, explains each one with typed evidence, states what is still unknown, and says what to investigate next.
 
-## The approach
+## Why ranking alone is not enough
 
-SiteScout builds 300 candidates from real host locations and road corridors, scores each one on demand, access, host activity, charging gap and grid evidence from public data, and then selects the 30 sites **together**, as an exact Maximum Coverage Location Problem: the 30 sites that bring the most modelled population within 10 km of a charger.
+The obvious method is to score every location and take the top 30. But high scores cluster: the 30 best-scoring sites put 23 sites in the City of Kigali, so the network serves the same people many times. A charging network is judged as a whole, so SiteScout selects the 30 sites **jointly**, as a Maximum Coverage Location Problem (MCLP): maximize the modelled population within 10 km of a selected site, subject to eligibility (score in the top half, with a host) and at least 2 km between sites, solved exactly with PuLP and CBC.
 
-## The result
+## Architecture
 
-| | Exact network | Greedy | Top-30 by score |
+I did not start with a language model. The decision system came first, and each stage validates its schema before the next one runs:
+
+```
+Public data -> Ingestion -> Features -> Candidates -> Scoring -> Optimization -> Evidence -> Evaluation -> AI investigation
+```
+
+1. **Ingestion:** OpenStreetMap, WorldPop 2025 and geoBoundaries into validated GeoParquet; distances in EPSG:32735, never in degrees.
+2. **Candidates:** 300, generated in code from real host locations (fuel stations, malls, supermarkets, hotels, logistics and industrial sites) and road-corridor points; none placed by hand.
+3. **Scoring:** demand, access, host activity, charging gap and grid evidence as percentile points, weighted by an urban or a corridor profile; missing data never raises a score.
+4. **Optimization:** the exact MCLP, with a greedy solution and the Top-30 by score always reported next to it.
+5. **Evidence:** every value is a record typed RETRIEVED_FACT, CALCULATED, INFERRED or UNKNOWN, with its source; 30 site briefs are filled from templates.
+6. **Evaluation:** a retrospective plausibility test, weight stability, the network comparison, data-quality checks and a grounding check.
+7. **AI investigation:** added last, as a read-only layer over the tools above.
+
+The rule behind the last step: **AI explains the decision; it does not make the decision.** Deterministic Python computes every score, selection and number; the page renders the export and computes nothing.
+
+## Key result
+
+| | Optimized (exact MCLP) | Greedy | Top-30 by score |
 |---|---|---|---|
 | Modelled population within 10 km | **49.8%** | 49.2% | 24.0% |
-| Districts with a site | 22 | 23 | 8 |
 | Provinces with a site | 5 | 5 | 4 |
+| Districts with a site | 22 | 23 | 8 |
 | Sites in City of Kigali | 3 | 4 | 23 |
 | Mean site score | 64.6 | 65.3 | 73.8 |
 
-Choosing sites together roughly doubles the population within reach of the network. The Top-30 by score puts 23 of its 30 sites in the City of Kigali; the exact network spreads across 22 districts and all 5 provinces. The price is a lower mean site score, 64.6 against 73.8: individually weaker sites that serve people nobody else reaches. A greedy heuristic comes within 0.64% of the exact objective.
+The coverage figures are modelled population within the service radius under the stated assumptions, not people who will use a charger. The trade-off is explicit: the optimized network accepts a lower mean site score (64.6 against 73.8) for individually weaker sites that reach people no other site reaches. CBC reports the MCLP solution optimal; the greedy solution comes within 0.64% of its objective.
 
-## How far to trust it
+## Reliability: how SiteScout avoids making things up
 
-- **The ranking is plausible, not proven.** In a backtest with existing chargers removed, SiteScout's top 30 holds 4 of the 5 candidates near known charging sites (Precision@30 0.133 against 0.067 for population alone and 0.017 for random). But the 95% interval of the difference, [0.000, 0.167], includes 0: with 5 known charging sites the data cannot tell SiteScout apart from population alone.
-- **The ranking is stable.** Changing any single weight by ±20% keeps on average 98% of the Top-30, and never less than 87% (target 70%).
-- **Every number is grounded.** 2262 of 2262 numbers in the 30 site briefs trace to structured evidence.
-- **What it cannot know.** Grid connection capacity, transformer capacity, land availability, landowner willingness and permit requirements are unknown for every site. SiteScout reports grid evidence from public maps. Actual grid connection feasibility requires utility confirmation.
+- **Grounded briefs.** 2262 of 2262 numbers in the 30 briefs trace to structured evidence, checked automatically.
+- **A validated agent.** The agent can call eight read-only deterministic tools and search an index of the project's own documents. Before anything is shown, a deterministic validator checks every statement: each number must be copied from a record that statement cites, each documentation claim must quote its source verbatim, candidate ids must come from fetched records, UNKNOWN stays unknown, comparative and evaluative words are refused, and any mention of the grid carries the exact disclaimer. A rejected answer gets one retry; if that fails too, the page shows the evidence the run retrieved and no generated text.
+- **Contextual, not a chatbot.** The page sends a fixed investigation type and a site id; the server writes the question. The key stays on the local server, and nothing an investigation returns is saved.
+- **Tested.** 73 scripted agent cases run offline ([reports/agent_eval.md](../reports/agent_eval.md)); a demo-readiness gate ran the page's own path live ([reports/demo_gate.md](../reports/demo_gate.md)).
 
-## The investigation layer
+## An engineering failure and its fix
 
-A decision-maker will ask *why*. SiteScout's agent answers on the decision page, next to the site it explains, by calling the same deterministic tools and searching the project's method documents. Every statement is checked against the records the run actually fetched; an answer that fails twice is replaced by the evidence itself. Before the layer was shown, a readiness gate ran each investigation kind twice with the real provider: all 6 runs ended validated, 4 of them after the validator rejected a first draft and the agent corrected it ([reports/demo_gate.md](../reports/demo_gate.md)). That is a readiness check on one day, not a reliability claim.
+The network-comparison investigation, the centre of the demo, sometimes ended with no answer. The model wrote plausible answers that SiteScout's validator rejected, and the single retry did not repair them (D-064).
 
-## What this demonstrates
+Reproducing it live and reading the rejected attempts showed three causes:
 
-A decision system in which the numbers and the selection are deterministic and reproducible, the uncertainty is explicit, and a language model is integrated as an accountable analyst: constrained to tools, grounded in citations, bounded by budgets, validated, and replaced by evidence when it cannot be trusted.
+- **Number-like language.** A statement saying selected sites cannot be closer than 2 km to "one another" was rejected: the validator treats "one" as a number word wherever it appears. The retry advice said to write digits, which cannot fix an idiom, so the model sent it back unchanged.
+- **Quotations losing formatting.** The model quoted `Objective: maximize …` where the document reads `**Objective:** maximize …`. The validator requires an exact quotation, and correctly refused it.
+- **Unhelpful retry feedback.** The rejection named the statement but not which of its quotations failed, so the retry repeated the same one.
+
+The fix was **not** to relax the validator. The prompt now names every word the validator rejects (a test keeps the list identical to the validator's), and the retry note explains each rule that failed, names each quotation it could not find, and shows the exact text of the cited document when the quotation differs only in Markdown, case or spacing. The retried quotation still has to be verbatim. The same demo also exposed a transport bug: on Windows loopback, the local server's close-after-write sometimes lost the tail of the 0.6 MB export, so the page loaded without data. Letting the client close the connection (HTTP/1.1) fixed it: on a plain Python server, 38 of 60 large replies arrived whole under HTTP/1.0 and 60 of 60 under HTTP/1.1, and SiteScout's server then delivered 80 of 80.
+
+Result, measured live on 2026-09-28: the network comparison validated in 3 of 3 runs after the fix, then at the first attempt in the final end-to-end check. That is a few runs on one day, not a reliability rate.
+
+## What the system does not know
+
+For every site: grid connection capacity, transformer capacity, land availability, landowner willingness and permit requirements. SiteScout reports grid evidence from public maps. Actual grid connection feasibility requires utility confirmation. It makes no claim about revenue, commercial viability or how many people would actually charge at a site.
+
+## Limitations
+
+- **The evaluation is weak by necessity.** Only 5 known charging sites exist in the public data. In a backtest with them removed from every feature, SiteScout's top 30 holds 4 of the 5 candidates near them (Precision@30 0.133, against 0.067 for population alone and 0.017 for random), but the 95% interval of the difference with population alone, [0.000, 0.167], includes 0. This is a retrospective plausibility test, not proof that the ranking is right.
+- **The ranking is stable** under ±20% changes to each weight (mean Top-30 overlap 0.98, minimum 0.87, target 0.70), which says the result is not an artifact of one weight, not that the weights are right.
+- **Public data has gaps.** Mapping density varies by district (the grid-mapping proxy ranges from 0.12 to 6.62 times the national median), and the 128 road-corridor candidates have no host.
+- **Modelled assumptions.** Demand is modelled population (WorldPop) within 10 km; traffic, vehicle ownership and trip patterns are not modelled. Changing the radius to 5 or 15 km changes coverage to 26.3% or 68.9%.
+- **The agent is observed, not certified.** Its live runs are few, and the model is not deterministic between runs.
+
+## What I would build next
+
+1. A reviewed manual list of existing chargers, which would make the backtest meaningful and the charging-gap feature sharper.
+2. Traffic or trip data as a demand layer next to population.
+3. A site-by-site checklist export for field verification of the unknowns above.

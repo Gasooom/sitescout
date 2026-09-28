@@ -1,25 +1,55 @@
-# Two-minute demo script
+# Demo script (about 7 minutes)
 
-Two parts: the **static demo** anyone can open from the repository, and the **local investigation**, which needs the pipeline outputs and a provider key ([README](../README.md#run-the-demo)). No recorded model output is committed; the investigation part is always shown live.
+**Before you start.** Run `uv run --env-file .env python scripts/serve.py` and open http://127.0.0.1:8765/. The investigation needs the pipeline outputs in `data/processed/` and a provider key ([README](../README.md#run-the-demo)); everything else also works from `app/index.html` opened from disk. Run the network investigation once beforehand: it takes under a minute. No model output is recorded or committed; the investigation is always shown live.
 
-## Part 1: the decision (about 90 seconds)
+## 00:00–00:45 · Problem
 
-Open `app/index.html` from disk.
+"An EV charging company expanding in Rwanda has to decide where its next 30 sites go. SiteScout answers that from public data only: OpenStreetMap, WorldPop population and geoBoundaries. It proposes 30 sites chosen as a network, explains each one, says what is still unknown, and says what to check next. It is an independent project; no company data is used."
 
-1. **The question (10 s).** "SiteScout answers one question: where should an EV charging company put its next 30 sites in Rwanda? Everything here comes from public data."
-2. **The headline (20 s).** Point at the two figures. "Taking the 30 best-scoring sites covers 24.0% of the modelled population within 10 km. Choosing 30 sites together, as an exact maximum-coverage problem, covers 49.8%. Same budget, about twice the reach."
-3. **The map (20 s).** Toggle *Optimized network*, *Greedy network*, *Top-30 by score*. "The Top-30 piles into Kigali: 23 of 30 sites. The optimized network reaches 22 districts. Greedy is within 0.64% of the exact answer."
-4. **One site (30 s).** Click the rank-2 site (Fuel station, Musanze). "Score, rank and confidence; why it was selected, its unique contribution to the network, and every piece of evidence typed as retrieved, calculated, inferred or unknown, with the grid evidence stated as evidence, not approval. And what we don't know: grid capacity, land, permits."
-5. **Trust (10 s).** Scroll to the footer. "The ranking is checked with a retrospective plausibility test against random and population-only baselines, and it reports honestly that 5 known chargers are too few to separate them."
+## 00:45–01:30 · Architecture
 
-## Part 2: the investigation (about 30 seconds)
+Show the diagram in the README.
 
-Run `uv run --env-file .env python scripts/serve.py` beforehand and open http://127.0.0.1:8765/#cand-3a8fa00f876a.
+"I didn't start with a language model. First the data pipeline: ingestion with schema checks, geospatial features in a metric projection, 300 candidates generated in code from real host locations, deterministic scoring, and an exact optimization. Then evidence and evaluation. The AI came last, as a read-only layer. The rule: AI explains the decision; it does not make it. The page you'll see renders one exported file and computes nothing."
 
-1. **Ask (10 s).** Under *Unknown*, click *What would we need to verify?* "The page sends a fixed investigation type and the site id, never free text. The server writes the question; the key never reaches the browser."
-2. **Read the answer (15 s).** "Each statement is typed and cites the records it came from; open a citation to see the value and its source. *How this was investigated* lists the tools the agent actually called and whether the validator accepted the first draft."
-3. **The boundary (5 s).** "If no answer passes validation, the page shows the retrieved evidence instead of generated text. The decision above never changes."
+## 01:30–03:00 · Map and the optimized network
+
+On the overview, with *Optimized network* selected.
+
+- "Each dot is one of the 300 candidates; the teal points are the 30 selected sites, with their 10 km service radius shaded."
+- "They were selected together as a maximum coverage problem: the 30 sites that bring the most modelled population within 10 km, at least 2 km apart, among sites in the top half by score that have a host. CBC solves it exactly and reports the solution optimal."
+- Point at 49.8%: "That is modelled population within 10 km under these assumptions, not people who will charge there."
+
+## 03:00–04:00 · Top-30 versus optimized
+
+Click *Top-30 by score*, then *Greedy network*, then back to *Optimized network*.
+
+- "The obvious method, taking the 30 best-scoring sites, piles 23 of them into the City of Kigali and reaches 24.0%. The optimized network reaches 49.8% across 22 districts and all 5 provinces."
+- "The trade-off is shown, not hidden: mean site score 64.6 against 73.8. The network accepts individually weaker sites because they serve people nobody else reaches."
+- "Greedy is the heuristic baseline: within 0.64% of the exact objective, so the exact solver is a check more than a large gain."
+
+## 04:00–05:00 · Site evidence
+
+Open the rank-2 site, Fuel station, Musanze (`#cand-3a8fa00f876a`).
+
+- "Score, rank of 300 and a confidence level, never a percentage. Its role in each of the three selections, and how much coverage the network would lose without it."
+- "Every value in the evidence table has a type: retrieved fact, calculated, inferred or unknown. Grid evidence means mapped infrastructure nearby, not a connection decision."
+- Scroll to *Unknown* and *Next investigation*: "Grid capacity, land, landowner willingness and permits are unknown for every site. SiteScout says so rather than guessing, and turns them into next steps."
+
+## 05:00–06:00 · AI Analyst investigation
+
+Back to the overview. Under *Investigation*, click **Investigate network difference**.
+
+- "There is no chat box. The page sends a fixed investigation type; the server writes the question: how does the optimized network differ from the Top-30 by score, and why?"
+- When the answer appears: "Each statement is typed and cites the records it came from; open one to see the value and its source. Documentation claims quote the document verbatim."
+- Open *How this was investigated*: "These are the tools the agent actually called, and whether the validator accepted the first draft. If no answer passes validation after one retry, the page shows the retrieved evidence instead, and the decision above never changes."
+
+## 06:00–07:00 · Reliability and limitations
+
+- "Every number in the 30 briefs is checked against structured data: 2262 of 2262."
+- "A debugging story: the network investigation used to fail validation. The model wrote 'one another', which the validator counts as a number word, and quoted a document without its Markdown. I didn't loosen the validator; I made its feedback precise: which rule, which quotation, and the exact text it should have quoted. After the fix it validated 3 of 3 live runs."
+- "The honest limit: only 5 known charging sites exist in public data. In a backtest SiteScout's top 30 finds 4 of the 5 candidates near them, but the interval against population alone includes zero. It's a retrospective plausibility test, not proof. The ranking is stable under ±20% weight changes."
 
 ## If the provider is unavailable
 
-Say so and show the static demo: the investigation block reads "AI investigation unavailable in this view", and the decision view is complete without it.
+Say so and continue. The investigation block reads "Investigation unavailable in this view. The SiteScout decision above is complete without it.", and every other step works as shown.
