@@ -83,6 +83,32 @@ def _expectations(e: LiveEvaluation) -> str:
     return _table(("Case", "Expectation", "Result"), rows) if rows else "No case declared one."
 
 
+def _validation_detail(e: LiveEvaluation) -> str:
+    """Rendered only when at least one attempt actually failed (D-060 diagnostics addendum):
+    the rule, the flagged statement and the validator's own message for every failed attempt,
+    from the same unchanged ``sitescout.agent.validate`` issues already behind §3's counts.
+    Passed attempts, and cases with none failed, are omitted; an all-passing run renders no
+    section at all, never an empty one."""
+    rows = [
+        (r.id, index, issue.rule, issue.statement_id, issue.message)
+        for r in e.cases
+        for index, attempt in enumerate(r.validation_attempts_detail, start=1)
+        if not attempt.passed
+        for issue in attempt.errors
+    ]
+    if not rows:
+        return ""
+    header = ("Case", "Attempt", "Rule", "Statement", "Message")
+    return (
+        "\n## 8. Validation detail (failed attempts)\n\n"
+        "For every attempt that failed the agent validator (`sitescout.agent.validate`, "
+        "unchanged): the rule it flagged, the statement, and the validator's own message. "
+        "A passed attempt, and a case where every attempt passed, is omitted. This adds no "
+        "rule and changes no outcome; see §3 for the failure category each case actually "
+        "ended in.\n\n" + _table(header, rows) + "\n"
+    )
+
+
 def _or_unavailable(value: int | None) -> str:
     return str(value) if value is not None else "not available"
 
@@ -111,12 +137,16 @@ def _usage(e: LiveEvaluation, price_table: dict[str, LivePriceSettings] | None) 
 def render_report(
     evaluation: LiveEvaluation, price_table: dict[str, LivePriceSettings] | None = None
 ) -> str:
-    return TEMPLATE.read_text(encoding="utf-8").format(
+    rendered = TEMPLATE.read_text(encoding="utf-8").format(
         setup=_setup(evaluation),
         categories=_categories(evaluation),
         failures=_failure_categories(evaluation),
         cases=_cases(evaluation),
         expectations=_expectations(evaluation),
         usage=_usage(evaluation, price_table),
+        validation_detail=_validation_detail(evaluation),
         caveat=CAVEAT,
     )
+    # Strips the blank line the {validation_detail} placeholder leaves behind when it renders
+    # empty, so a clean run's report is byte-identical to one with no diagnostics section.
+    return rendered.rstrip("\n") + "\n"

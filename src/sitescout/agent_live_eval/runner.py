@@ -22,6 +22,7 @@ from sitescout.agent import AgentContext, AgentLimits, AgentResult, run_agent
 from sitescout.agent_live_eval.cases import LiveCase, LiveCaseSet, LiveExpectation
 from sitescout.agent_live_eval.instrumentation import CallUsage, FailureCategory, classify_result
 from sitescout.analyst.provider import Provider
+from sitescout.analyst.validate import ValidationResult
 from sitescout.config import AgentSettings
 
 EVAL_VERSION = "agent-live-eval-v1"
@@ -41,6 +42,11 @@ class LiveCaseResult(_Model):
     skip_reason: str | None = None
     termination: str | None = None
     validation_attempts: int = 0
+    # The structured issues behind each attempt counted above (D-060 diagnostics addendum):
+    # exactly ``result.state.validation_attempts`` from the unmodified loop, kept instead of
+    # discarded. Never the rejected answer's own text (only the rule/statement/message the
+    # validator already produces) and never a request body or credential.
+    validation_attempts_detail: tuple[ValidationResult, ...] = ()
     trajectory: tuple[str, ...] = ()
     counters: dict[str, int] = {}
     calls: tuple[CallUsage, ...] = ()
@@ -170,6 +176,7 @@ def run_live_case(
         failure_category=classify_result(result),
         termination=result.termination,
         validation_attempts=len(result.state.validation_attempts),
+        validation_attempts_detail=result.state.validation_attempts,
         trajectory=tuple(o.tool for o in result.state.observations),
         counters={
             "tool_calls": result.state.tool_calls,

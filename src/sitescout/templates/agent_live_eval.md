@@ -40,3 +40,4 @@ Each case may declare a few properties it expects (which tools were used, at som
 - Estimated cost, where shown, is a best-effort figure from a price table the operator configured; it is not authoritative and is absent when no price is configured for the model tested.
 - A skipped case (its `site_selector` matched no real candidate) spent no call and is not counted as a failure.
 - Actual grid connection feasibility requires utility confirmation.
+{validation_detail}

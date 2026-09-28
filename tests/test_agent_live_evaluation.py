@@ -10,13 +10,24 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from agent_support import call, final, limits, make_context, script, stmt
+from agent_support import (
+    call,
+    final,
+    limits,
+    make_context,
+    quote_from,
+    reactive,
+    script,
+    seen,
+    stmt,
+)
 from sitescout.agent import AgentResult, AgentState, Observation, ObservationError
 from sitescout.agent_live_eval import (
     CATEGORIES,
     EVAL_VERSION,
     LiveCase,
     LiveCaseError,
+    LiveCaseResult,
     LiveCaseSet,
     LiveEvaluation,
     RecordingAnthropicClient,
@@ -32,6 +43,7 @@ from sitescout.agent_live_eval import (
 )
 from sitescout.agent_live_eval import runner as runner_module
 from sitescout.agent_provider.anthropic_adapter import AgentAnthropicProvider
+from sitescout.analyst.validate import ValidationIssue, ValidationResult
 from sitescout.config import PROJECT_ROOT, AgentProviderSettings, load_config
 
 CASE_FILE = PROJECT_ROOT / "tests" / "agent_live_cases.yaml"
@@ -253,6 +265,154 @@ def test_calls_are_attributed_to_the_case_that_made_them(context):
     result = run_live_case(context, case, model, limits(), recorder=recorder)
     assert len(result.calls) == 2  # this case's two turns only, not the earlier one
     assert len(recorder.calls) == 3  # the earlier call plus this case's two
+
+
+# --- Structured validation diagnostics (D-060 addendum) --------------------------------------
+# ``run_live_case`` now keeps the unmodified loop's own ``state.validation_attempts`` instead
+# of discarding all but its length; these tests are the offline, deterministic proof of that,
+# built the same way ``test_agent_loop.py`` already proves ``knowledge_quote_missing`` fires:
+# no scripted trajectory is added, no rule is added or relaxed, and no real provider is called.
+
+
+def _knowledge_case(**changes):
+    raw = {
+        "question": "How is confidence computed?",
+        "sites": {},
+        "expect": {"tools_any": ["search_knowledge"]},
+    }
+    raw.update(changes)
+    return make_case(**raw)
+
+
+def _without_quote(ctx):
+    chunk = next(r for r in seen(ctx).values() if r.id.startswith("kb/"))
+    return final(stmt("The documentation describes this.", "RETRIEVED_FACT", (chunk.id,)))
+
+
+def _with_quote(ctx):
+    chunk = next(r for r in seen(ctx).values() if r.id.startswith("kb/"))
+    return final(
+        stmt(
+            "The documentation describes this.",
+            "RETRIEVED_FACT",
+            (chunk.id,),
+            (quote_from(chunk),),
+        )
+    )
+
+
+def _retrying_model(ctx):
+    if not ctx.transcript:
+        return call("search_knowledge", query="how confidence is determined")
+    return _with_quote(ctx) if ctx.validation_errors else _without_quote(ctx)
+
+
+def _always_rejecting_model(ctx):
+    if not ctx.transcript:
+        return call("search_knowledge", query="how confidence is determined")
+    return _without_quote(ctx)
+
+
+def test_a_retried_case_records_structured_diagnostics_for_both_attempts(context):
+    result = run_live_case(context, _knowledge_case(), reactive(_retrying_model), limits())
+
+    assert result.status == "answered" and result.failure_category == "answered_after_retry"
+    assert result.validation_attempts == 2  # the existing count field is preserved unchanged
+    detail = result.validation_attempts_detail
+    assert len(detail) == 2
+    assert detail[0].passed is False
+    assert [issue.rule for issue in detail[0].errors] == ["knowledge_quote_missing"]
+    assert detail[0].errors[0].statement_id == "direct_answer[0]"
+    assert "quote it verbatim" in detail[0].errors[0].message
+    assert detail[1].passed is True and detail[1].errors == ()
+
+
+def test_a_rejected_case_records_structured_diagnostics_for_both_failed_attempts(context):
+    result = run_live_case(context, _knowledge_case(), reactive(_always_rejecting_model), limits())
+
+    assert result.status == "fallback" and result.failure_category == "validator_rejected"
+    assert result.validation_attempts == 2
+    detail = result.validation_attempts_detail
+    assert len(detail) == 2
+    assert all(attempt.passed is False for attempt in detail)
+    assert all(
+        [issue.rule for issue in attempt.errors] == ["knowledge_quote_missing"]
+        for attempt in detail
+    )
+    # Neither the rejected answer's own text nor any request body or credential is retained.
+    assert result.answer_excerpt is None
+
+
+def test_validation_attempts_detail_survives_a_json_round_trip(context):
+    cases = LiveCaseSet(version=1, world="w", cases=(_knowledge_case(id="A01", category="A"),))
+    evaluation = evaluate_live(
+        context,
+        cases,
+        reactive(_retrying_model),
+        limits(),
+        generated_at="2026-09-28T00:00:00+00:00",
+    )
+
+    restored = LiveEvaluation.model_validate_json(evaluation.model_dump_json())
+    assert restored == evaluation
+    original_detail = evaluation.cases[0].validation_attempts_detail
+    restored_detail = restored.cases[0].validation_attempts_detail
+    assert restored_detail == original_detail
+    assert restored_detail[0].errors[0].rule == "knowledge_quote_missing"
+
+
+def test_the_report_shows_a_validation_detail_section_when_an_attempt_failed():
+    failed = ValidationResult(
+        passed=False,
+        errors=(
+            ValidationIssue(
+                rule="knowledge_quote_missing",
+                statement_id="direct_answer[0]",
+                message="a statement citing a knowledge chunk must quote it verbatim (quotes)",
+            ),
+        ),
+    )
+    case = LiveCaseResult(
+        id="A02", category="A", title="t", question="q", status="fallback",
+        failure_category="validator_rejected", termination="validation_failed",
+        validation_attempts=2, validation_attempts_detail=(failed, failed),
+    )  # fmt: skip
+    evaluation = LiveEvaluation(
+        version=EVAL_VERSION, provider="p", model="m", case_set_version=1, case_count=1,
+        generated_at=None, limits={}, cases=(case,), by_category={"A": 1},
+        by_failure_category={"validator_rejected": 1}, skipped=0, infra_errors=0,
+        total_latency_s=0.0, total_input_tokens=None, total_output_tokens=None,
+    )  # fmt: skip
+
+    report = render_report(evaluation)
+    assert "## 8. Validation detail" in report
+    assert "knowledge_quote_missing" in report
+    assert "direct_answer[0]" in report
+    assert "A02" in report
+
+
+def test_the_report_omits_the_validation_detail_section_when_nothing_failed():
+    passed = ValidationResult(passed=True, errors=())
+    case = LiveCaseResult(
+        id="B01", category="B", title="t", question="q", status="answered",
+        failure_category="answered_grounded", termination="answered",
+        validation_attempts=1, validation_attempts_detail=(passed,),
+    )  # fmt: skip
+    evaluation = LiveEvaluation(
+        version=EVAL_VERSION, provider="p", model="m", case_set_version=1, case_count=1,
+        generated_at=None, limits={}, cases=(case,), by_category={"B": 1},
+        by_failure_category={"answered_grounded": 1}, skipped=0, infra_errors=0,
+        total_latency_s=0.0, total_input_tokens=None, total_output_tokens=None,
+    )  # fmt: skip
+
+    report = render_report(evaluation)
+    assert "## 8. Validation detail" not in report
+
+
+def test_the_small_evaluation_fixture_has_no_validation_detail_section(small_evaluation):
+    # None of its three cases (skipped, answered_grounded, budget_exhausted) ever fails
+    # validation, so the new section must not appear at all.
+    assert "## 8. Validation detail" not in render_report(small_evaluation)
 
 
 # --- Failure classification -----------------------------------------------------------------
