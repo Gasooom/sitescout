@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SiteScout · EV charging network intelligence · Rwanda</title>
+<title>SiteScout · Charging network expansion intelligence · Rwanda</title>
 <!--
   SiteScout decision page (Milestones 8 and 11). A read-only view over data/export/sitescout.js,
   which scripts/export.py writes from the pipeline's outputs. This page computes nothing: every
@@ -13,320 +13,773 @@
 -->
 <style>
   :root {
-    --bg: #f5f3ee; --panel: #ffffff; --ink: #17212b; --muted: #5a6571; --faint: #8a94a0;
-    --line: #e3ded4; --soft: #f0ede6;
-    --mclp: #0f766e; --mclp-soft: rgba(15, 118, 110, 0.08);
-    --greedy: #4b5d73; --greedy-soft: rgba(75, 93, 115, 0.08);
-    --top30: #b45309; --top30-soft: rgba(180, 83, 9, 0.08);
-    --candidate: #b6bec8; --charger: #1f2937; --district: #e9e5dc; --province: #a39b8b;
-    --warn: #9a3412; --focus: #1d4ed8;
-    --sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto,
-      "Helvetica Neue", Arial, sans-serif;
+    --bg: #f6f5f1; --surface: #ffffff; --surface-2: #fafaf7; --ink: #1b2127; --ink-2: #39434d;
+    --muted: #65707a; --faint: #98a1a9; --line: #e5e2da; --line-2: #efece6;
+    --accent: #0e6b5c; --accent-strong: #0a5247; --accent-soft: #e7f1ee; --accent-ring: rgba(14, 107, 92, 0.09);
+    --mclp: var(--accent); --mclp-soft: var(--accent-soft); --mclp-ring: var(--accent-ring);
+    --greedy: #4d5b6b; --greedy-soft: #edf0f3; --greedy-ring: rgba(77, 91, 107, 0.09);
+    --top30: #9a5b0b; --top30-soft: #f7efe2; --top30-ring: rgba(154, 91, 11, 0.09);
+    --candidate: #bcc3cb; --charger: #26303a; --district: #edebe5; --province: #b3ab9b;
+    --calc: #46586c; --calc-soft: #eef1f4; --infer: #8a650f; --infer-soft: #faf3e2;
+    --warn: #a0431a; --warn-soft: #fbefe8; --focus: #1d4ed8;
+    --radius: 12px; --shadow: 0 1px 2px rgba(27, 33, 39, 0.04);
+    --sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   html, body { margin: 0; }
-  body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans);
-    -webkit-font-smoothing: antialiased; }
-  button { font: inherit; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01"; overflow-x: hidden; }
+  button { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  a { color: var(--mclp); text-underline-offset: 2px; }
-
-  /* --- Top bar --- */
-  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px;
-    padding: 0 24px; height: 56px; background: var(--panel); border-bottom: 1px solid var(--line); }
-  .brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
-  .brand strong { font-size: 14px; letter-spacing: 0.18em; font-weight: 750; text-transform: uppercase; }
-  .brand strong::before { content: ""; display: inline-block; width: 9px; height: 9px;
-    background: var(--mclp); margin-right: 9px; vertical-align: 1px; }
-  .brand span { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; }
-  .independent { color: var(--faint); font-size: 12px; text-align: right; }
-  .banner { background: #fff4e5; border-bottom: 1px solid #f0c48a; padding: 8px 24px; font-size: 13px; }
-
-  /* --- Shell: map pane and dossier --- */
-  .shell { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .mappane, .dossier { min-width: 0; }
-  .mappane { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 18px;
-    display: flex; flex-direction: column; gap: 10px; }
-  .maptools { display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    flex-wrap: wrap; }
-  .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 3px;
-    background: var(--soft); gap: 3px; }
-  .toggle button { font-size: 13px; padding: 6px 12px; border: 0; border-radius: 6px;
-    background: transparent; color: var(--muted); cursor: pointer; }
-  .toggle button:hover { color: var(--ink); }
-  .toggle button[aria-pressed="true"] { color: #fff; }
-  .toggle button.mclp[aria-pressed="true"] { background: var(--mclp); }
-  .toggle button.greedy[aria-pressed="true"] { background: var(--greedy); }
-  .toggle button.top30[aria-pressed="true"] { background: var(--top30); }
-  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px;
-    vertical-align: -1px; border-radius: 50%; }
-  .legend .c { background: var(--candidate); }
-  .legend .s.mclp { background: var(--mclp); } .legend .s.greedy { background: var(--greedy); }
-  .legend .s.top30 { background: var(--top30); }
-  .legend .k { border: 1.5px solid var(--charger); border-radius: 0; width: 9px; height: 9px; }
-  .mapwrap { position: relative; flex: 1; min-height: 0; display: flex; }
-  #map { width: 100%; height: 100%; display: block; }
-  .mapnote { margin: 0; font-size: 12px; color: var(--faint); }
-  .district { fill: var(--district); stroke: #fff; stroke-width: 0.8; }
-  .province { fill: none; stroke: var(--province); stroke-width: 1.1; }
-  .plabel { fill: var(--faint); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
-    pointer-events: none; font-family: var(--sans); }
-  .cand { fill: var(--candidate); cursor: pointer; }
-  .cand:hover { fill: var(--ink); }
-  .ring { stroke: none; pointer-events: none; }
-  .ring.mclp { fill: var(--mclp-soft); } .ring.greedy { fill: var(--greedy-soft); }
-  .ring.top30 { fill: var(--top30-soft); }
-  .site { stroke: #fff; stroke-width: 1.5; cursor: pointer; }
-  .site.mclp { fill: var(--mclp); } .site.greedy { fill: var(--greedy); }
-  .site.top30 { fill: var(--top30); }
-  .site:hover, .site:focus { stroke: var(--ink); stroke-width: 2.5; outline: none; }
-  .site.active { stroke: var(--ink); stroke-width: 3.5; }
-  .cand:focus { outline: none; stroke: var(--ink); stroke-width: 2; }
-  .charger { fill: #fff; stroke: var(--charger); stroke-width: 1.5; pointer-events: none; }
-
-  .dossier { padding: 22px 20px 32px; }
-  .dossier > * { max-width: 760px; }
-  .eyebrow { margin: 0 0 6px; font-size: 11px; font-weight: 650; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--muted); }
-  h1 { font-size: clamp(22px, 2.3vw, 30px); line-height: 1.22; letter-spacing: -0.01em;
-    margin: 0 0 8px; font-weight: 700; }
-  .lede { color: var(--muted); margin: 0 0 18px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    padding: 16px 18px; margin: 0 0 14px; }
-  .card h2, .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
-    color: var(--muted); margin: 0 0 10px; font-weight: 650; }
-
-  /* Headline result */
-  .hero { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 14px;
-    margin: 0 0 14px; }
-  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    padding: 14px 16px; }
-  .stat b { display: block; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.05;
-    font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-  .stat.mclp b { color: var(--mclp); } .stat.top30 b { color: var(--top30); }
-  .stat span { display: block; font-size: 13px; font-weight: 600; margin-top: 4px; }
-  .stat small { display: block; font-size: 12px; color: var(--muted); }
-  .vs { color: var(--faint); font-size: 13px; padding-bottom: 26px; }
-  .bar { display: grid; grid-template-columns: 150px 1fr 60px; align-items: center; gap: 12px;
-    margin: 8px 0; }
-  .bar .name { font-size: 13px; }
-  .bar .track { height: 10px; background: var(--soft); border-radius: 5px; position: relative;
-    overflow: hidden; }
-  .bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; }
-  .bar.mclp .fill { background: var(--mclp); } .bar.greedy .fill { background: var(--greedy); }
-  .bar.top30 .fill { background: var(--top30); }
-  .bar .value { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
-  .note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; font-size: 13px;
-    margin-top: 14px; border-top: 1px solid var(--soft); padding-top: 12px; }
-  .split h3 { font-size: 13px; margin: 0 0 6px; }
-  .split .mclp h3 { color: var(--mclp); } .split .top30 h3 { color: var(--top30); }
-  .split dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0; }
-  .split dt { color: var(--muted); }
-  .split dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-  .unknowns { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
-  .unknowns strong { color: var(--ink); }
-
-  /* List of sites */
-  .list { list-style: none; margin: 0; padding: 0; }
-  .list button { width: 100%; display: grid; grid-template-columns: 42px 1fr auto; gap: 10px;
-    align-items: center; font-size: 14px; text-align: left; background: none; border: 0;
-    border-top: 1px solid var(--soft); padding: 9px 4px; cursor: pointer; color: var(--ink); }
-  .list li:first-child button { border-top: 0; }
-  .list button:hover { background: var(--soft); }
-  .list .rank { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
-  .list .meta { color: var(--muted); font-size: 12px; }
-  .badge { font-size: 11px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
-    white-space: nowrap; }
-  .badge.High { border-color: #9cc9b8; color: #0f5a45; }
-  .badge.Medium { border-color: #e2c98f; color: #7a5a12; }
-  .badge.Low { border-color: #e6a99a; color: var(--warn); }
-
-  /* Site dossier */
-  .back { background: none; border: 0; color: var(--mclp); cursor: pointer; padding: 0;
-    margin: 0 0 14px; font-size: 13px; }
-  .decision { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--mclp);
-    border-radius: 10px; padding: 18px 20px; }
-  .decision.out { border-top-color: var(--candidate); }
-  .decision h2 { font-size: 22px; line-height: 1.25; margin: 2px 0 4px; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  h1, h2, h3, h4, h5 { margin: 0; }
+  p { margin: 0; }
+  .num { font-variant-numeric: tabular-nums; }
   .mono { font-family: var(--mono); font-size: 12px; }
-  .facts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line);
-    border-radius: 8px; margin: 14px 0; overflow: hidden; }
-  .facts div { padding: 10px 12px; border-right: 1px solid var(--line); }
-  .facts div:last-child { border-right: 0; }
-  .facts b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.2; }
-  .facts span { font-size: 12px; color: var(--muted); }
-  .roles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
-  .role { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line);
-    color: var(--muted); }
-  .role.on.mclp { border-color: var(--mclp); color: var(--mclp); background: var(--mclp-soft); }
-  .role.on.greedy { border-color: var(--greedy); color: var(--greedy); background: var(--greedy-soft); }
-  .role.on.top30 { border-color: var(--top30); color: var(--top30); background: var(--top30-soft); }
-  .decision h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
-    color: var(--muted); margin: 20px 0 8px; font-weight: 650; display: flex;
-    justify-content: space-between; align-items: center; gap: 10px; }
-  .decision p { margin: 0 0 8px; }
-  .comp { display: grid; grid-template-columns: 130px 1fr 44px; gap: 10px; align-items: center;
-    font-size: 13px; margin: 5px 0; }
-  .comp .track { height: 7px; background: var(--soft); border-radius: 4px; position: relative;
-    overflow: hidden; }
-  .comp .fill { position: absolute; inset: 0 auto 0 0; background: var(--mclp); border-radius: 4px; }
-  .comp .v { text-align: right; font-variant-numeric: tabular-nums; }
-  .ev { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .ev td { padding: 5px 0; border-bottom: 1px solid var(--soft); vertical-align: top; }
-  .ev td.v { text-align: right; font-variant-numeric: tabular-nums; padding-left: 10px; }
-  .ev td.t { width: 1%; padding-left: 10px; text-align: right; }
-  .ev .group td { color: var(--ink); font-weight: 650; padding-top: 12px; border-bottom: 0; }
-  .ev .group .cell { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .type { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.02em;
-    padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted);
-    white-space: nowrap; }
-  .t-RETRIEVED_FACT { border-color: #9cc9b8; color: #0f5a45; }
-  .t-CALCULATED { border-color: #b9c3d0; color: #3c4a5c; }
-  .t-INFERRED { border-color: #e2c98f; color: #7a5a12; }
-  .t-UNKNOWN { border-color: #e6a99a; color: var(--warn); }
-  .missing { color: var(--warn); font-weight: 650; }
-  .disclaimer { font-size: 12px; color: var(--muted); border-left: 2px solid var(--line);
-    padding-left: 10px; margin: 10px 0; }
-  .notselected { border: 1px solid var(--line); background: var(--soft); padding: 10px 12px;
-    border-radius: 8px; font-size: 14px; margin: 12px 0; }
-  ul.plain { margin: 0; padding-left: 18px; } ul.plain li { margin: 3px 0; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; }
+    html { scroll-behavior: auto; } }
 
-  /* Investigation layer: separate from the decision, quieter, never mixed into it */
-  .investigation { margin: 14px 0; border: 1px dashed #cfc8ba; border-radius: 10px;
-    padding: 14px 18px; background: #faf8f4; }
-  .inv-head { display: flex; align-items: center; gap: 10px; }
-  .inv-head h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
-    color: var(--muted); font-weight: 650; }
-  .inv-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
-    padding: 1px 8px; background: var(--panel); }
-  .inv-intro { font-size: 13px; color: var(--muted); margin: 6px 0 10px; }
+  /* --- Application shell ------------------------------------------------------------------ */
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: var(--surface);
+    border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 14px 16px;
+    z-index: 40; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 22px; }
+  .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); position: relative;
+    flex: none; }
+  .mark::before { content: ""; position: absolute; left: 7px; top: 7px; width: 14px; height: 14px;
+    border: 2px solid #fff; border-radius: 50%; box-sizing: border-box; }
+  .mark::after { content: ""; position: absolute; left: 12px; top: 12px; width: 4px; height: 4px;
+    background: #fff; border-radius: 50%; }
+  .brand strong { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.16em; }
+  .brand small { display: block; font-size: 11px; line-height: 1.35; color: var(--muted); margin-top: 1px; }
+  .navlabel { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--faint); padding: 14px 10px 6px; }
+  .nav { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0;
+    background: none; padding: 7px 10px; border-radius: 8px; color: var(--ink-2); cursor: pointer;
+    font-size: 13.5px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+  .nav svg { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round; color: var(--faint); transition: color 0.15s; }
+  .nav:hover { background: var(--line-2); color: var(--ink); }
+  .nav[aria-current="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+  .nav[aria-current="true"] svg { color: var(--accent); }
+  .side-foot { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid var(--line-2); font-size: 12px;
+    color: var(--muted); }
+  .side-foot strong { display: block; color: var(--ink); font-size: 13px; }
+  .side-foot small { display: block; color: var(--faint); margin-top: 8px; line-height: 1.4; }
+  .scrim { position: fixed; inset: 0; background: rgba(27, 33, 39, 0.28); z-index: 35; opacity: 0;
+    transition: opacity 0.2s; }
+  .scrim.show { opacity: 1; }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { position: sticky; top: 0; z-index: 30; height: 56px; display: flex; align-items: center;
+    gap: 14px; padding: 0 28px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .menu { display: none; border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+    width: 34px; height: 34px; padding: 0; cursor: pointer; align-items: center; justify-content: center; }
+  .menu svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; }
+  .context { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .context strong { font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .context span { color: var(--muted); font-size: 13px; }
+  .topmeta { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 12.5px;
+    color: var(--muted); white-space: nowrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line);
+    background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--ink-2); }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .banner { background: #fff4e5; border-bottom: 1px solid #f0c48a; padding: 8px 28px; font-size: 13px; }
+
+  .content { padding: 26px 28px 40px; display: flex; flex-direction: column; gap: 18px; width: 100%;
+    max-width: 1520px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); }
+  .eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent); }
+  .eyebrow.muted { color: var(--muted); }
+  [data-section] { scroll-margin-top: 72px; }
+
+  /* --- Page head and expansion workflow ---------------------------------------------------- */
+  .pagehead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 500px); gap: 28px; align-items: end; }
+  .pagehead h1 { font-size: clamp(22px, 1.9vw, 27px); line-height: 1.2; letter-spacing: -0.015em;
+    font-weight: 650; margin: 6px 0 6px; }
+  .pagehead .support { font-size: 15px; color: var(--ink-2); }
+  .pagehead .lede { font-size: 13px; color: var(--muted); margin-top: 4px; max-width: 640px; }
+  .flow { display: grid; grid-template-columns: repeat(4, minmax(128px, 1fr)); gap: 0; list-style: none;
+    margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+    overflow: hidden; }
+  .flow li { padding: 9px 13px 10px; border-left: 1px solid var(--line-2); position: relative; }
+  .flow li:first-child { border-left: 0; }
+  .flow .n { font-size: 11px; font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .flow b { display: block; font-size: 13px; font-weight: 600; margin-top: 1px; }
+  .flow span { display: block; font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .flow li.here .n { color: var(--accent); }
+  .flow li.outside { background: var(--surface-2); }
+  .flow li.outside b { color: var(--ink-2); }
+
+  /* --- Strategy selector and headline metrics --------------------------------------------- */
+  .strategy { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .label { font-size: 11.5px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase;
+    white-space: nowrap; }
+  .seg { display: inline-flex; background: var(--line-2); border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: transparent; border-radius: 7px; padding: 6px 12px; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--muted); display: flex; flex-direction: column;
+    align-items: flex-start; line-height: 1.25; transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+  .seg button small { font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink);
+    box-shadow: 0 1px 2px rgba(27, 33, 39, 0.1); }
+  .seg button[aria-pressed="true"] small { color: var(--muted); }
+  .seg button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; margin-bottom: 3px;
+    background: var(--candidate); transition: background 0.15s; }
+  .seg button.mclp[aria-pressed="true"]::before { background: var(--mclp); }
+  .seg button.greedy[aria-pressed="true"]::before { background: var(--greedy); }
+  .seg button.top30[aria-pressed="true"]::before { background: var(--top30); }
+  .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; }
+  .kpi { padding: 12px 18px 13px; border-left: 1px solid var(--line-2); min-width: 0; }
+  .kpi:first-child { border-left: 0; }
+  .kpi dt { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .kpi dd { margin: 1px 0 0; font-size: 25px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15;
+    font-variant-numeric: tabular-nums; transition: opacity 0.25s, transform 0.25s, color 0.25s; }
+  .kpi small { display: block; font-size: 11.5px; color: var(--faint); margin-top: 2px; line-height: 1.3; }
+  .kpi.lead dd { color: var(--mclp); }
+  .kpis[data-mode="greedy"] .kpi.lead dd { color: var(--greedy); }
+  .kpis[data-mode="top30"] .kpi.lead dd { color: var(--top30); }
+  .enter .fade, .enter.fade { opacity: 0; transform: translateY(4px); transition: none; }
+  .fade { transition: opacity 0.25s, transform 0.25s; }
+
+  /* --- Workspace: map and opportunity panel ------------------------------------------------ */
+  .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 410px; gap: 16px;
+    height: clamp(520px, calc(100vh - 336px), 900px); }
+  .mapcard { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+  .maphead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 14px; border-bottom: 1px solid var(--line-2); }
+  .legend { position: absolute; left: 12px; top: 12px; display: grid; gap: 4px; font-size: 11.5px;
+    color: var(--ink-2); background: rgba(255, 255, 255, 0.94); border: 1px solid var(--line); border-radius: 9px;
+    padding: 8px 10px; z-index: 1; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+  .legend .c { background: var(--candidate); width: 7px; height: 7px; }
+  .legend .s { background: var(--mclp); border: 1.5px solid #fff; box-shadow: 0 0 0 1px var(--mclp); }
+  .legend .s.greedy { background: var(--greedy); box-shadow: 0 0 0 1px var(--greedy); }
+  .legend .s.top30 { background: var(--top30); box-shadow: 0 0 0 1px var(--top30); }
+  .legend .r { width: 12px; height: 12px; background: var(--mclp-ring); border: 1px solid rgba(14, 107, 92, 0.3); }
+  .legend .r.greedy { background: var(--greedy-ring); border-color: rgba(77, 91, 107, 0.3); }
+  .legend .r.top30 { background: var(--top30-ring); border-color: rgba(154, 91, 11, 0.3); }
+  .legend .k { border: 1.5px solid var(--charger); border-radius: 1px; width: 9px; height: 9px; background: #fff; }
+  .mapwrap { position: relative; flex: 1; min-height: 0; display: flex; background: var(--surface-2); }
+  #map { width: 100%; height: 100%; display: block; }
+  .district { fill: var(--district); stroke: #fff; stroke-width: 1; transition: fill 0.2s; }
+  .district:hover { fill: #e6e3db; }
+  .province { fill: none; stroke: var(--province); stroke-width: 1.2; pointer-events: none; }
+  .plabel { fill: #8f97a0; font-size: 19px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    pointer-events: none; font-family: var(--sans); paint-order: stroke; stroke: var(--district); stroke-width: 5px; }
+  .cand { fill: var(--candidate); cursor: pointer; transition: fill 0.15s; }
+  .cand:hover, .cand:focus { fill: var(--ink-2); outline: none; }
+  .ring { pointer-events: none; stroke-width: 1; }
+  .ring.mclp { fill: var(--mclp-ring); stroke: rgba(14, 107, 92, 0.22); }
+  .ring.greedy { fill: var(--greedy-ring); stroke: rgba(77, 91, 107, 0.22); }
+  .ring.top30 { fill: var(--top30-ring); stroke: rgba(154, 91, 11, 0.22); }
+  .site { stroke: #fff; stroke-width: 2; cursor: pointer; transition: r 0.15s, stroke-width 0.15s; }
+  .site.mclp { fill: var(--mclp); } .site.greedy { fill: var(--greedy); } .site.top30 { fill: var(--top30); }
+  .site:hover, .site:focus { r: 12px; outline: none; }
+  .charger { fill: #fff; stroke: var(--charger); stroke-width: 1.8; pointer-events: none; }
+  .halo { fill: none; stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
+  .halo-fill { fill: rgba(27, 33, 39, 0.08); stroke: none; pointer-events: none; }
+  .focusdot { fill: var(--ink); stroke: #fff; stroke-width: 2.5; pointer-events: none; }
+  .maptip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; border-radius: 8px;
+    padding: 7px 10px; font-size: 12px; line-height: 1.35; transform: translate(-50%, calc(-100% - 12px));
+    white-space: nowrap; opacity: 0; transition: opacity 0.12s; z-index: 2; }
+  .maptip.show { opacity: 1; }
+  .maptip b { display: block; font-weight: 600; font-size: 12.5px; }
+  .maptip span { color: #c9d0d6; }
+
+  .panel { min-height: 0; overflow-y: auto; position: relative; overscroll-behavior: contain; }
+  .panelhead { padding: 16px 18px 12px; border-bottom: 1px solid var(--line-2); position: sticky; top: 0;
+    background: var(--surface); z-index: 1; }
+  .panelhead h2 { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; margin-top: 2px; }
+  .panelhead p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .hint { font-size: 12.5px; color: var(--muted); padding: 10px 18px; background: var(--surface-2);
+    border-bottom: 1px solid var(--line-2); transition: background 0.4s, color 0.4s; }
+  .hint.flash { background: var(--accent-soft); color: var(--accent-strong); }
+  .opps { list-style: none; margin: 0; padding: 4px 8px 10px; }
+  .opps button { width: 100%; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px;
+    align-items: center; text-align: left; background: none; border: 0; border-radius: 8px; padding: 7px 10px;
+    cursor: pointer; transition: background 0.12s; }
+  .opps button:hover { background: var(--line-2); }
+  .opps .rank { color: var(--faint); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .opps .name { font-weight: 550; font-size: 13.5px; display: block; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .opps .meta { color: var(--muted); font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .opps .right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  .opps .score { font-weight: 600; font-variant-numeric: tabular-nums; font-size: 13.5px; }
+  .panelnote { font-size: 12px; color: var(--faint); padding: 0 18px 16px; }
+
+  .conf { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500;
+    white-space: nowrap; color: var(--ink-2); }
+  .conf::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .conf.High::before { background: var(--accent); } .conf.Medium::before { background: #c2911f; }
+  .conf.Low::before { background: var(--warn); }
+
+  /* Provenance labels: what kind of statement a value is, never a decoration */
+  .prov { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 550;
+    padding: 1px 7px 1px 6px; border-radius: 5px; white-space: nowrap; line-height: 1.6; cursor: help; }
+  .prov::before { content: ""; width: 6px; height: 6px; flex: none; }
+  .p-RETRIEVED_FACT { background: var(--accent-soft); color: var(--accent-strong); }
+  .p-RETRIEVED_FACT::before { background: var(--accent); border-radius: 50%; }
+  .p-CALCULATED { background: var(--calc-soft); color: var(--calc); }
+  .p-CALCULATED::before { background: var(--calc); border-radius: 1px; }
+  .p-INFERRED { background: var(--infer-soft); color: var(--infer); }
+  .p-INFERRED::before { border: 1.5px solid var(--infer); border-radius: 50%; width: 5px; height: 5px; }
+  .p-UNKNOWN { background: var(--warn-soft); color: var(--warn); }
+  .p-UNKNOWN::before { border: 1.5px dashed var(--warn); border-radius: 50%; width: 5px; height: 5px; }
+
+  /* --- Site opportunity dossier ------------------------------------------------------------ */
+  .dossier { padding: 0 0 20px; }
+  .dossier.enter { opacity: 0; transform: translateX(8px); transition: none; }
+  .dossier { transition: opacity 0.22s, transform 0.22s; }
+  .back { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; color: var(--accent);
+    cursor: pointer; padding: 0; font-size: 12.5px; font-weight: 550; }
+  .back:hover { color: var(--accent-strong); }
+  .dhead { padding: 14px 18px 16px; border-bottom: 1px solid var(--line-2); }
+  .dhead .eyerow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+  .status { font-size: 11.5px; font-weight: 550; border-radius: 999px; padding: 2px 9px;
+    background: var(--accent-soft); color: var(--accent-strong); white-space: nowrap; }
+  .status.out { background: var(--line-2); color: var(--muted); }
+  .dhead h2 { font-size: 20px; line-height: 1.25; font-weight: 650; letter-spacing: -0.015em; margin-top: 4px; }
+  .dhead .sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px;
+    margin-top: 14px; overflow: hidden; }
+  .facts div { padding: 9px 12px; border-left: 1px solid var(--line); }
+  .facts div:first-child { border-left: 0; }
+  .facts b { display: block; font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.2;
+    letter-spacing: -0.01em; }
+  .facts b small { font-size: 12px; font-weight: 500; color: var(--faint); letter-spacing: 0; }
+  .facts span { font-size: 11.5px; color: var(--muted); }
+  .facts .conf { font-size: 16px; font-weight: 650; gap: 7px; }
+  .facts .conf::before { width: 9px; height: 9px; }
+  .block { padding: 16px 18px 4px; }
+  .block + .block { border-top: 1px solid var(--line-2); margin-top: 12px; }
+  .bh { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bh h3 { font-size: 11.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+  .block p { font-size: 13.5px; color: var(--ink-2); }
+  .roles { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .roles li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px;
+    font-size: 13px; border-top: 1px solid var(--line-2); }
+  .roles li:first-child { border-top: 0; }
+  .roles .tick { display: inline-flex; align-items: center; gap: 9px; }
+  .roles .tick i { width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center;
+    justify-content: center; font-style: normal; font-size: 10px; font-weight: 700; flex: none;
+    background: var(--line-2); color: var(--faint); }
+  .roles li.on .tick i { color: #fff; }
+  .roles li.on.mclp .tick i { background: var(--mclp); } .roles li.on.greedy .tick i { background: var(--greedy); }
+  .roles li.on.top30 .tick i { background: var(--top30); }
+  .roles li.off { color: var(--muted); }
+  .roles .st { font-size: 12px; color: var(--muted); }
+  .contrib { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center;
+    margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: var(--accent-soft); }
+  .contrib b { font-size: 24px; font-weight: 650; color: var(--accent-strong); letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums; }
+  .contrib p { font-size: 12.5px; color: var(--accent-strong); line-height: 1.45; }
+  .notice { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2);
+    border: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+  .comps { margin-top: 14px; }
+  .comp { display: grid; grid-template-columns: 118px minmax(0, 1fr) 38px 46px; gap: 10px; align-items: center;
+    font-size: 12.5px; padding: 4px 0; }
+  .comp.head { color: var(--faint); font-size: 11px; padding-bottom: 2px; }
+  .comp .lab { display: flex; flex-direction: column; line-height: 1.25; }
+  .comp .lab em { font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; }
+  .comp .lab em.s { color: var(--accent); } .comp .lab em.w { color: var(--warn); }
+  .track { height: 6px; background: var(--line-2); border-radius: 3px; position: relative; overflow: hidden; }
+  .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 3px;
+    transition: width 0.35s; }
+  .comp .v { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .comp .w { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .evgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .evcard { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex;
+    flex-direction: column; gap: 3px; min-width: 0; background: var(--surface); transition: border-color 0.15s; }
+  .evcard:hover { border-color: #d3cfc5; }
+  .evcard:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .evcard .g { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .evcard b { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+    line-height: 1.25; overflow-wrap: anywhere; }
+  .evcard b.missing { color: var(--warn); }
+  .evcard .c { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .evcard .f { display: flex; justify-content: flex-start; align-items: center; gap: 8px; margin-top: auto;
+    padding-top: 4px; font-size: 11px; color: var(--faint); flex-wrap: wrap; }
+  details.allev { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; }
+  details.allev > summary { cursor: pointer; padding: 9px 12px; font-size: 13px; font-weight: 550; color: var(--accent);
+    list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details.allev > summary::-webkit-details-marker { display: none; }
+  details.allev > summary::after { content: "+"; font-size: 16px; color: var(--muted); transition: transform 0.2s; }
+  details.allev[open] > summary::after { transform: rotate(45deg); }
+  details.allev[open] > summary { border-bottom: 1px solid var(--line-2); }
+  .ev { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .ev td { padding: 6px 12px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .ev tr:last-child td { border-bottom: 0; }
+  .ev td.v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 550; padding-left: 6px;
+    overflow-wrap: anywhere; }
+  .ev td.t { width: 1%; padding-left: 0; text-align: right; }
+  .ev .group td { background: var(--surface-2); font-weight: 650; font-size: 11.5px; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--ink-2); }
+  .ev .group .cell { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .ev .missing { color: var(--warn); }
+  .disclaimer { font-size: 12px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 10px;
+    margin-top: 10px; }
+  .verify { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .verify li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px;
+    border: 1px dashed #e2c7b8; border-radius: 9px; background: #fdf8f5; font-size: 13px; }
+  .risks { margin: 12px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--ink-2); }
+  .risks li { padding: 4px 0 4px 16px; position: relative; }
+  .risks li::before { content: ""; position: absolute; left: 2px; top: 11px; width: 6px; height: 6px;
+    border-radius: 1px; background: #c2911f; }
+  .subh { font-size: 11.5px; font-weight: 600; color: var(--muted); margin-top: 14px; }
+  .steps-next { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .steps-next li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 8px 0;
+    border-top: 1px solid var(--line-2); counter-increment: step; }
+  .steps-next li:first-child { border-top: 0; }
+  .steps-next li::before { content: counter(step); width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: var(--accent); background: var(--surface); }
+  .steps-next b { display: block; font-size: 13px; font-weight: 600; }
+  .steps-next span { display: block; font-size: 12.5px; color: var(--muted); }
+  .brieflink { display: inline-block; margin: 14px 18px 0; font-size: 12.5px; font-weight: 550; }
+
+  /* --- Investigation layer: an accelerator inside the product, not the product ------------ */
+  .investigation { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--surface-2);
+    transition: border-color 0.2s; }
+  .investigation.busy { border-color: #c9d6d2; }
+  .block .investigation { margin: 0; }
+  .inv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .inv-head h3 { font-size: 11.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+  .inv-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
+    background: var(--surface); white-space: nowrap; }
+  .inv-questions { list-style: none; margin: 10px 0 0; padding: 0; }
+  .inv-questions li { font-size: 14px; font-weight: 550; color: var(--ink); padding: 2px 0 2px 14px; position: relative; }
+  .inv-questions li::before { content: ""; position: absolute; left: 0; top: 11px; width: 6px; height: 1.5px;
+    background: var(--accent); }
+  .inv-intro { font-size: 12.5px; color: var(--muted); margin: 8px 0 10px; }
+  .inv-intro.off { color: var(--faint); }
   .inv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  button.inv-action { font-size: 13px; padding: 6px 12px; border-radius: 6px; cursor: pointer;
-    border: 1px solid var(--ink); background: var(--ink); color: #fff; }
-  button.inv-action.quiet { background: var(--panel); color: var(--ink); border-color: var(--line);
-    padding: 2px 9px; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
-  button.inv-action:hover { opacity: 0.88; }
+  button.inv-action { font-size: 13px; font-weight: 550; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: #fff; transition: background 0.15s, opacity 0.15s; }
+  button.inv-action:hover { background: var(--accent-strong); }
+  button.inv-action.quiet { background: var(--surface); color: var(--accent); border-color: var(--line);
+    padding: 3px 10px; font-size: 12px; font-weight: 550; letter-spacing: 0; text-transform: none; }
+  button.inv-action.quiet:hover { border-color: var(--accent); background: var(--accent-soft); }
   button.inv-action:disabled { opacity: 0.45; cursor: default; }
-  .inv-line { margin: 8px 0 0; font-size: 13px; color: var(--muted); min-height: 0; }
-  .inv-line:empty { display: none; }
-  .inv-result:empty { display: none; }
-  .inv-result { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
-  .inv-title { font-size: 15px; margin: 0 0 6px; }
+  .inv-line { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+  .inv-line:empty, .inv-result:empty { display: none; }
+  .inv-result { margin-top: 14px; }
+  .report { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .inv-title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
   .inv-title:focus { outline: none; }
-  .inv-verdict { font-size: 12px; color: #0f5a45; margin: 0 0 10px; }
-  .inv-verdict.warn { color: var(--warn); font-size: 14px; font-weight: 650; }
-  .inv-block h5, .inv-fallback h5 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--muted); margin: 14px 0 6px; }
+  .inv-verdict { font-size: 12px; color: var(--accent-strong); margin: 4px 0 4px; display: flex; gap: 6px; align-items: baseline; }
+  .inv-verdict::before { content: "✓"; font-weight: 700; }
+  .inv-verdict.warn { color: var(--warn); font-size: 13px; font-weight: 600; }
+  .inv-verdict.warn::before { content: "!"; }
+  .inv-block { margin-top: 14px; }
+  .inv-block h5, .inv-fallback h5 { font-size: 11px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 6px; }
+  .inv-fallback h5 { margin-top: 14px; }
+  .inv-block.finding { padding: 12px 14px; border-radius: 9px; background: var(--accent-soft); }
+  .inv-block.finding h5 { color: var(--accent-strong); }
+  .inv-block.finding .stmt-body > p { font-size: 14.5px; font-weight: 550; color: var(--ink); line-height: 1.5; }
   .stmts { list-style: none; margin: 0; padding: 0; }
-  .stmt { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin: 0 0 10px; align-items: start; }
-  .stmt .type { margin-top: 3px; }
-  .stmt-body p { margin: 0; }
-  blockquote { margin: 6px 0 0; padding: 4px 10px; border-left: 2px solid var(--mclp);
-    background: var(--panel); font-size: 13px; color: var(--muted); }
-  .cites { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
-  details.cite { font-size: 12px; border: 1px solid var(--line); border-radius: 6px;
-    background: var(--panel); padding: 4px 8px; }
-  details.cite summary { cursor: pointer; color: var(--muted); }
-  details dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 6px 0 2px; }
+  .stmt { padding: 7px 0; border-top: 1px solid var(--line-2); }
+  .stmt:first-child { border-top: 0; padding-top: 0; }
+  .inv-block.finding .stmt { border-top-color: rgba(14, 107, 92, 0.15); }
+  .stmt-body > p { font-size: 13.5px; color: var(--ink-2); }
+  .stmt-meta { display: flex; align-items: flex-start; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+  blockquote { margin: 6px 0 0; padding: 4px 10px; border-left: 2px solid var(--accent); background: var(--surface-2);
+    font-size: 12.5px; color: var(--muted); }
+  .cites { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+  details.cite { font-size: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 3px 8px; }
+  details.cite summary { cursor: pointer; color: var(--muted); overflow-wrap: anywhere; }
+  details dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 6px 0 2px; }
   details dt { color: var(--faint); } details dd { margin: 0; overflow-wrap: anywhere; }
   .inv-group { font-size: 13px; margin: 4px 0; }
   .inv-group summary { cursor: pointer; font-weight: 600; }
+  .inv-group .count { color: var(--faint); font-weight: 500; }
   .recs { list-style: none; margin: 4px 0 8px; padding: 0; }
-  .recs li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;
-    border-bottom: 1px solid var(--soft); }
+  .recs li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line-2); }
   .recs .v { text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
   .inv-message { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
-  details.trace { margin-top: 12px; font-size: 13px; }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  details.trace { margin-top: 14px; font-size: 12.5px; border-top: 1px solid var(--line-2); padding-top: 10px; }
   details.trace summary { cursor: pointer; color: var(--muted); }
   .steps, .checks { margin: 8px 0 0; padding-left: 20px; }
   .steps li, .checks li { margin: 3px 0; }
   .checks { list-style: none; padding-left: 0; }
-  .checks li.pass .step { color: #0f5a45; } .checks li.fail .step { color: var(--warn); }
+  .checks li.pass .step { color: var(--accent-strong); } .checks li.fail .step { color: var(--warn); }
   .step { margin-right: 8px; } .args { color: var(--muted); overflow-wrap: anywhere; }
 
-  footer { margin-top: 24px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line);
-    padding-top: 14px; }
+  /* --- Document sections -------------------------------------------------------------------- */
+  .section { padding: 22px 24px 24px; }
+  .shead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 18px; }
+  .shead h2 { font-size: 20px; font-weight: 650; letter-spacing: -0.015em; margin-top: 4px; }
+  .shead p { color: var(--muted); font-size: 13.5px; margin-top: 3px; max-width: 720px; }
+  .tag { font-size: 11.5px; font-weight: 550; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px;
+    color: var(--ink-2); background: var(--surface-2); white-space: nowrap; }
+  .strategies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .strat { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; display: flex; flex-direction: column;
+    gap: 10px; transition: border-color 0.2s, box-shadow 0.2s; min-width: 0; }
+  .strat.current { border-color: var(--ink-2); box-shadow: 0 0 0 1px var(--ink-2); }
+  .strat.mclp.current { border-color: var(--mclp); box-shadow: 0 0 0 1px var(--mclp); }
+  .strat.top30.current { border-color: var(--top30); box-shadow: 0 0 0 1px var(--top30); }
+  .strat .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .strat h3 { font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .strat h3::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--mclp); }
+  .strat.greedy h3::before { background: var(--greedy); } .strat.top30 h3::before { background: var(--top30); }
+  .role-chip { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .strat.mclp .role-chip { color: var(--accent-strong); font-weight: 600; }
+  .big { font-size: 34px; font-weight: 650; letter-spacing: -0.025em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .strat.mclp .big { color: var(--mclp); } .strat.greedy .big { color: var(--greedy); } .strat.top30 .big { color: var(--top30); }
+  .strat .cap { font-size: 12px; color: var(--muted); margin-top: -4px; }
+  .strat .track { height: 8px; border-radius: 4px; }
+  .strat.greedy .fill { background: var(--greedy); } .strat.top30 .fill { background: var(--top30); }
+  .strat dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin: 0; font-size: 13px;
+    border-top: 1px solid var(--line-2); padding-top: 10px; }
+  .strat dt { color: var(--muted); } .strat dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .strat .prov-list { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .strat .prov-list span { white-space: nowrap; }
+  .strat .prov-list b { color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .showbtn { align-self: flex-start; border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+    padding: 5px 11px; font-size: 12.5px; font-weight: 550; cursor: pointer; margin-top: auto; transition: border-color 0.15s; }
+  .showbtn:hover { border-color: var(--ink-2); }
+  .insight { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; margin-top: 16px;
+    padding: 18px 20px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line-2); }
+  .insight h3 { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; margin: 4px 0 8px; }
+  .insight p { font-size: 13.5px; color: var(--ink-2); }
+  .insight p + p { margin-top: 8px; }
+  .insight .solver { font-size: 12.5px; color: var(--muted); }
+  .tradeoff { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-content: center; }
+  .tradeoff h4 { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+  .tbar { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; align-items: center; margin: 7px 0; }
+  .tbar .nm { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); margin-bottom: -5px; }
+  .tbar .track { height: 10px; border-radius: 5px; }
+  .tbar.greedy .fill { background: var(--greedy); } .tbar.top30 .fill { background: var(--top30); }
+  .tbar .v { font-size: 12.5px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+  .netinv { margin-top: 16px; }
+
+  .trust { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; }
+  .tcard { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .tcard h3 { font-size: 13px; font-weight: 650; }
+  .tcard .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric b { display: block; font-size: 26px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1;
+    font-variant-numeric: tabular-nums; }
+  .metric span { display: block; font-size: 12px; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+  .metric.lead b { color: var(--accent); }
+  .caveat { font-size: 12.5px; color: var(--infer); background: var(--infer-soft); border-radius: 8px; padding: 8px 10px; }
+  .tcard .foot { font-size: 12px; color: var(--muted); }
+  .tcard a { margin-top: auto; font-size: 12.5px; font-weight: 550; }
+
+  .pipeline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .pipeline li { border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; position: relative; background: var(--surface); }
+  .pipeline .n { font-size: 11px; color: var(--faint); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pipeline b { display: block; font-size: 13.5px; font-weight: 600; }
+  .pipeline span { display: block; font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+  .pipeline li.decides { border-color: #b9d3cc; background: var(--accent-soft); }
+  .pipeline li.explains { border-style: dashed; }
+  .methodgrid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; margin-top: 18px; }
+  .principle { font-size: 13.5px; color: var(--ink-2); border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; margin-top: 16px; }
+  .legendlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .legendlist li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; color: var(--ink-2); }
+  .legendlist .prov { justify-self: start; }
+  .weights { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .weights th, .weights td { padding: 6px 8px; border-bottom: 1px solid var(--line-2); text-align: right; font-variant-numeric: tabular-nums; }
+  .weights th:first-child, .weights td:first-child { text-align: left; }
+  .weights th { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .h4 { font-size: 12px; font-weight: 650; color: var(--ink-2); margin-bottom: 10px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .sources { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .src { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .src b { display: block; font-size: 14px; font-weight: 650; }
+  .src p { font-size: 12.5px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+  .src .lic { display: inline-block; margin-top: 8px; font-size: 11.5px; }
+  .facts-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+  .facts-row div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 0; }
+  .facts-row b { display: block; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .facts-row span { font-size: 12px; color: var(--muted); }
+  .srcnote { font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+
+  .limits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; list-style: none; margin: 0; padding: 0; }
+  .limits li { border: 1px dashed #dcc9bd; background: #fdf9f6; border-radius: 10px; padding: 11px 13px; }
+  .limits b { display: block; font-size: 13.5px; font-weight: 600; }
+  .limits span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .verifyline { margin-top: 14px; font-size: 14px; font-weight: 550; color: var(--ink); }
+  .operator { margin-top: 22px; border-top: 1px solid var(--line-2); padding-top: 20px; }
+  .opgrid { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 2.2fr); gap: 10px; align-items: stretch; margin-top: 12px; }
+  .opbox { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
+  .opbox b { display: block; font-size: 13.5px; font-weight: 600; }
+  .opbox span { font-size: 12px; color: var(--muted); }
+  .opbox.now { border-color: #b9d3cc; background: var(--accent-soft); }
+  .plus { display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--faint); }
+  .future { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .future div { border: 1px dashed #cfcac0; border-radius: 9px; padding: 9px 11px; font-size: 12.5px; color: var(--ink-2);
+    background: var(--surface-2); }
+  .future small { display: block; font-size: 11px; color: var(--faint); }
+  .down { text-align: center; color: var(--faint); font-size: 18px; margin: 8px 0; }
+  .opresult { border: 1px dashed #b9c1c9; border-radius: 10px; padding: 12px 14px; text-align: center; font-weight: 600;
+    font-size: 14px; color: var(--ink-2); background: var(--surface-2); }
+  .conceptual { font-size: 12.5px; color: var(--muted); margin-top: 10px; font-style: italic; }
+
+  footer { font-size: 12px; color: var(--muted); padding: 6px 4px 0; }
   footer p { margin: 0 0 6px; }
 
-  /* Desktop: the map fills the left pane, the dossier scrolls on the right */
-  @media (min-width: 1100px) {
-    body { overflow: hidden; }
-    .shell { grid-template-columns: minmax(0, 1.2fr) minmax(420px, 1fr); height: calc(100vh - 56px); }
-    .mappane { border-bottom: 0; border-right: 1px solid var(--line); padding: 16px 20px; }
-    .dossier { overflow-y: auto; padding: 26px 30px 40px; }
+  /* --- Responsive --------------------------------------------------------------------------- */
+  @media (max-width: 1279px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 260px; transform: translateX(-100%);
+      transition: transform 0.22s; box-shadow: none; }
+    .sidebar.open { transform: none; box-shadow: 0 10px 30px rgba(27, 33, 39, 0.18); }
+    .menu { display: inline-flex; }
+    .workspace { grid-template-columns: minmax(0, 1fr) 370px; }
   }
-  @media (max-width: 1099px) { .mapwrap { flex: none; height: 58vh; } }
+  @media (max-width: 1180px) {
+    .pagehead { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .insight { grid-template-columns: minmax(0, 1fr); }
+    .trust { grid-template-columns: 1fr 1fr; } .trust .tcard:first-child { grid-column: 1 / -1; }
+    .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .methodgrid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 1023px) {
+    .workspace { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .mapwrap { flex: none; aspect-ratio: 1.12; }
+    .panel { overflow: visible; }
+    .panelhead { position: static; }
+    .strategies { grid-template-columns: minmax(0, 1fr); }
+    .sources { grid-template-columns: minmax(0, 1fr); }
+    .facts-row { grid-template-columns: 1fr 1fr; }
+    .limits { grid-template-columns: 1fr 1fr; }
+    .opgrid { grid-template-columns: minmax(0, 1fr); } .plus { padding: 2px 0; }
+  }
   @media (max-width: 700px) {
-    .topbar { padding: 0 14px; } .independent { display: none; }
-    .brand span { display: none; }
-    .mappane { padding: 10px 12px; } .mapwrap { height: auto; aspect-ratio: 8 / 7; }
-    .toggle { width: 100%; }
-    .toggle button { flex: 1; padding: 6px 2px; font-size: 12px; white-space: nowrap; }
-    .dossier { padding: 18px 14px 28px; }
-    .hero { grid-template-columns: 1fr 1fr; } .vs { display: none; }
-    .bar { grid-template-columns: 96px 1fr 52px; gap: 8px; }
-    .split { grid-template-columns: 1fr; }
-    .comp { grid-template-columns: 104px 1fr 40px; }
-    .facts b { font-size: 19px; }
-    .decision, .card, .investigation { padding: 14px; }
+    .topbar { padding: 0 14px; gap: 10px; }
+    .context span, .topmeta .through { display: none; }
+    .banner { padding: 8px 14px; }
+    .content { padding: 18px 14px 32px; gap: 14px; }
+    .flow { grid-template-columns: 1fr 1fr; }
+    .flow li:nth-child(3) { border-left: 0; }
+    .flow li:nth-child(n + 3) { border-top: 1px solid var(--line-2); }
+    .strategy { flex-direction: column; align-items: stretch; gap: 6px; width: 100%; }
+    .seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .legend { position: static; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; grid-template-columns: 1fr 1fr;
+      background: var(--surface); }
+    .mapwrap { flex-direction: column; aspect-ratio: auto; }
+    #map { aspect-ratio: 1.12; height: auto; }
+    .seg button { padding: 6px 8px; font-size: 12px; }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi { border-left: 0; border-top: 1px solid var(--line-2); padding: 11px 14px; }
+    .kpi:nth-child(even) { border-left: 1px solid var(--line-2); }
+    .kpi.lead { grid-column: 1 / -1; border-top: 0; }
+    .kpi dd { font-size: 22px; }
+    .maphead { padding: 10px 12px; }
+    .legend { gap: 6px 12px; }
+    .section { padding: 18px 14px 18px; }
+    .evgrid { grid-template-columns: minmax(0, 1fr); }
+    .comp { grid-template-columns: 96px minmax(0, 1fr) 36px 40px; gap: 8px; }
+    .tradeoff { grid-template-columns: minmax(0, 1fr); }
+    .trust { grid-template-columns: minmax(0, 1fr); }
+    .pipeline { grid-template-columns: minmax(0, 1fr); }
+    .facts-row, .limits, .future { grid-template-columns: minmax(0, 1fr); }
+    .legendlist li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+    .block, .dhead { padding-left: 14px; padding-right: 14px; }
   }
 </style>
 </head>
 <body>
-<header class="topbar">
-  <div class="brand"><strong>SiteScout</strong><span>EV charging network intelligence · Rwanda</span></div>
-  <div class="independent" id="independent"></div>
-</header>
-<div id="banner" class="banner" hidden></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Navigation">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div><strong>SITE SCOUT</strong><small>Charging network expansion intelligence</small></div>
+    </div>
+    <nav id="nav">
+      <p class="navlabel">Workspace</p>
+      <button class="nav" type="button" data-nav="overview"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>Overview</button>
+      <button class="nav" type="button" data-nav="network"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="4" r="1.7"/><circle cx="12.5" cy="3.5" r="1.7"/><circle cx="8" cy="12.5" r="1.7"/><path d="M5 5l2 6M11.3 5L9 11M5.2 4h5.6"/></svg>Network</button>
+      <button class="nav" type="button" data-nav="opportunities"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5s4.5-4.2 4.5-8a4.5 4.5 0 0 0-9 0c0 3.8 4.5 8 4.5 8z"/><circle cx="8" cy="6.5" r="1.6"/></svg>Opportunities</button>
+      <button class="nav" type="button" data-nav="evidence"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M9.5 1.8V5h3M6.2 8h4.2M6.2 10.6h4.2"/></svg>Evidence</button>
+      <button class="nav" type="button" data-nav="investigate"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.3"/><path d="M10.2 10.2l3.6 3.6"/></svg>Investigate</button>
+      <button class="nav" type="button" data-nav="evaluation"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8l5.2 2v4c0 3.1-2.3 5.4-5.2 6.4-2.9-1-5.2-3.3-5.2-6.4v-4z"/><path d="M5.8 8l1.6 1.6 3-3.2"/></svg>Evaluation</button>
+      <p class="navlabel">Method</p>
+      <button class="nav" type="button" data-nav="sources"><svg viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="3.8" rx="5" ry="1.9"/><path d="M3 3.8v8.4c0 1 2.2 1.9 5 1.9s5-.9 5-1.9V3.8M3 8c0 1 2.2 1.9 5 1.9S13 9 13 8"/></svg>Data sources</button>
+      <button class="nav" type="button" data-nav="method"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.2" width="4.4" height="3.6" rx="1"/><rect x="9.8" y="10.2" width="4.4" height="3.6" rx="1"/><path d="M6.2 4h3.3a1.5 1.5 0 0 1 1.5 1.5v4.7"/></svg>Methodology</button>
+      <button class="nav" type="button" data-nav="limitations"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2l6 10.6H2z"/><path d="M8 6.6v2.9M8 11.2v.1"/></svg>Limitations</button>
+    </nav>
+    <div class="side-foot">
+      <strong>Rwanda</strong>
+      <span>Public-data demonstration</span>
+      <small id="independent"></small>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
 
-<div class="shell">
-  <section class="mappane" aria-label="Map of Rwanda">
-    <div class="maptools">
-      <div class="toggle" role="group" aria-label="Which 30 sites to show" id="toggle"></div>
-      <div class="legend">
-        <span><i class="c"></i>Candidate</span>
-        <span><i class="s" id="legend-site"></i><span id="legend-site-label"></span></span>
-        <span><i class="k"></i>Known charging site</span>
-      </div>
-    </div>
-    <div class="mapwrap">
-      <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"
-        preserveAspectRatio="xMidYMid meet"></svg>
-    </div>
-    <p class="mapnote" id="mapnote"></p>
-  </section>
+  <div class="main">
+    <header class="topbar">
+      <button class="menu" id="menu" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+        <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
+      </button>
+      <div class="context"><strong>Charging Network Expansion</strong><span>Rwanda</span></div>
+      <div class="topmeta"><span class="through" id="through"></span><span class="pill">Public-data model</span></div>
+    </header>
+    <div id="banner" class="banner" hidden></div>
 
-  <main class="dossier" id="dossier">
-    <div id="overview">
-      <p class="eyebrow">The decision</p>
-      <h1 id="question"></h1>
-      <p class="lede" id="lede"></p>
-      <div class="hero" id="hero"></div>
-      <section class="card" aria-labelledby="bars-title">
-        <h2 id="bars-title"></h2>
-        <div id="bars"></div>
-        <p class="note" id="bars-note"></p>
-        <div class="split" id="split"></div>
+    <main class="content" id="content">
+      <section class="pagehead" id="overview" data-section="overview" aria-labelledby="question">
+        <div>
+          <p class="eyebrow">Network expansion</p>
+          <h1 id="question"></h1>
+          <p class="support">Find, compare and investigate the next charging sites worth pursuing.</p>
+          <p class="lede" id="lede"></p>
+        </div>
+        <ol class="flow" id="flow" aria-label="Expansion workflow"></ol>
       </section>
-      <div id="network-investigation"></div>
-      <p class="unknowns" id="unknowns"></p>
-      <section class="card" aria-labelledby="list-title">
-        <h2 id="list-title"></h2>
-        <ul class="list" id="list"></ul>
-        <p class="note">Select a site on the map or in the list. # is the site's rank by score among all candidates.</p>
+
+      <section class="card kpiband" aria-label="Headline metrics for the selected network strategy">
+        <dl class="kpis" id="kpis" aria-live="polite"></dl>
       </section>
-    </div>
-    <div id="site" hidden></div>
-    <footer>
-      <div id="footer-eval"></div>
-      <div id="footer-legal"></div>
-    </footer>
-  </main>
+
+      <section class="workspace" id="workspace" data-section="opportunities" aria-label="Map and opportunities">
+        <div class="card mapcard">
+          <div class="maphead">
+            <div class="strategy">
+              <span class="label">Network strategy</span>
+              <div class="seg" role="group" aria-label="Network strategy" id="toggle"></div>
+            </div>
+          </div>
+          <div class="mapwrap" id="mapwrap">
+            <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"
+              preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="legend" id="legend" aria-label="Map legend"></div>
+            <div class="maptip" id="maptip" aria-hidden="true"></div>
+          </div>
+        </div>
+        <aside class="card panel" id="panel" aria-label="Opportunities">
+          <div id="opps-view">
+            <div class="panelhead">
+              <p class="eyebrow">Opportunities</p>
+              <h2 id="opps-title"></h2>
+              <p id="opps-sub"></p>
+            </div>
+            <p class="hint" id="opps-hint">Select a location on the map or in the list to open its evidence.</p>
+            <ul class="opps" id="list"></ul>
+            <p class="panelnote" id="opps-note"></p>
+          </div>
+          <div id="site" hidden></div>
+        </aside>
+      </section>
+
+      <section class="card section" id="network" data-section="network" aria-labelledby="network-title">
+        <div class="shead">
+          <div>
+            <p class="eyebrow">Compare strategies</p>
+            <h2 id="network-title">Three ways to choose the same number of sites</h2>
+            <p id="network-sub"></p>
+          </div>
+        </div>
+        <div class="strategies" id="strategies"></div>
+        <div class="insight" id="insight" hidden></div>
+        <div class="netinv" id="network-investigation" data-section="investigate-network"></div>
+      </section>
+
+      <section class="card section" id="evaluation" data-section="evaluation" aria-labelledby="evaluation-title">
+        <div class="shead">
+          <div>
+            <p class="eyebrow">Evaluation</p>
+            <h2 id="evaluation-title">How much should you trust this?</h2>
+            <p>What the public evidence can and cannot show about the ranking, its stability and its grounding.</p>
+          </div>
+          <span class="tag" id="eval-label"></span>
+        </div>
+        <div class="trust" id="trust"></div>
+      </section>
+
+      <section class="card section" id="sources" data-section="sources" aria-labelledby="sources-title">
+        <div class="shead">
+          <div>
+            <p class="eyebrow">Data sources</p>
+            <h2 id="sources-title">Public-data demonstration</h2>
+            <p>SiteScout uses open public data only. It has no access to any operator's internal network, usage or commercial data.</p>
+          </div>
+          <span class="tag" id="sources-date"></span>
+        </div>
+        <div class="sources" id="source-list"></div>
+        <div class="facts-row" id="source-facts"></div>
+      </section>
+
+      <section class="card section" id="method" data-section="method" aria-labelledby="method-title">
+        <div class="shead">
+          <div>
+            <p class="eyebrow">Methodology</p>
+            <h2 id="method-title">How a location reaches the shortlist</h2>
+            <p>Every number is computed by deterministic code from public data. The investigation layer explains results; it never chooses sites.</p>
+          </div>
+        </div>
+        <ol class="pipeline" id="pipeline"></ol>
+        <p class="principle">The deterministic system makes the decision. Investigation explains and questions it, and never changes it.</p>
+        <div class="methodgrid">
+          <div>
+            <p class="h4">Evidence provenance</p>
+            <ul class="legendlist" id="provlegend"></ul>
+          </div>
+          <div>
+            <p class="h4">Score weights by profile</p>
+            <table class="weights" id="weights"></table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card section" id="limitations" data-section="limitations" aria-labelledby="limits-title">
+        <div class="shead">
+          <div>
+            <p class="eyebrow">Limitations</p>
+            <h2 id="limits-title">What this does not establish</h2>
+            <p id="limits-sub"></p>
+          </div>
+        </div>
+        <ul class="limits">
+          <li><b>Grid connection capacity</b><span>Nearby mapped lines and substations are grid evidence, not capacity.</span></li>
+          <li><b>Land availability</b><span>Whether a plot can be leased or used is not in public data.</span></li>
+          <li><b>Permits</b><span>District and national permit requirements are not assessed.</span></li>
+          <li><b>Host / owner willingness</b><span>No site host or landowner has been contacted.</span></li>
+          <li><b>Commercial viability</b><span>No tariffs, costs, revenue or payback are modelled.</span></li>
+          <li><b>Actual utilization</b><span>Coverage is modelled population, not charging sessions.</span></li>
+        </ul>
+        <p class="verifyline">These require operator, utility, site-owner or field verification.</p>
+        <p class="disclaimer" id="limits-disclaimer"></p>
+
+        <div class="operator" aria-labelledby="operator-title">
+          <div class="shead" style="margin-bottom: 0">
+            <div>
+              <p class="eyebrow muted">Future state</p>
+              <h2 id="operator-title">If connected to operator data</h2>
+            </div>
+            <span class="tag">Conceptual</span>
+          </div>
+          <div class="opgrid">
+            <div class="opbox now"><b>Public evidence</b><span>Population, roads, hosts, known charging sites and mapped grid, as in this demo.</span></div>
+            <div class="plus" aria-hidden="true">+</div>
+            <div class="future">
+              <div>Network utilization<small>Not connected</small></div>
+              <div>Charger uptime<small>Not connected</small></div>
+              <div>Session demand<small>Not connected</small></div>
+              <div>Site economics<small>Not connected</small></div>
+              <div>Power / utility data<small>Not connected</small></div>
+              <div>Land / host data<small>Not connected</small></div>
+            </div>
+          </div>
+          <p class="down" aria-hidden="true">↓</p>
+          <div class="opresult">Operator-specific expansion intelligence</div>
+          <p class="conceptual">Conceptual operator-data extension — not connected in this demo. No operator data is used or shown anywhere in SiteScout.</p>
+        </div>
+      </section>
+
+      <footer id="footer"></footer>
+    </main>
+  </div>
 </div>
 
 <script src="../data/export/sitescout.js"></script>
@@ -356,80 +809,88 @@ function svg(tag, attrs) {
   for (const [key, value] of Object.entries(attrs || {})) node.setAttribute(key, value);
   return node;
 }
+const $ = (id) => document.getElementById(id);
 
 if (!D) {
-  document.getElementById("question").textContent = "Export not found";
-  document.getElementById("lede").textContent =
+  $("question").textContent = "Export not found";
+  $("lede").textContent =
     "Run `uv run python scripts/export.py` to write data/export/sitescout.js, then reload.";
   throw new Error("window.SITESCOUT is missing");
 }
 
 const H = D.headline;
 const byKey = Object.fromEntries(H.selections.map((s) => [s.key, s]));
+const ctx = Object.fromEntries(D.context.map((r) => [r.id, r]));
 const unknowns = D.context.filter((r) => r.type === "UNKNOWN").map((r) => r.display);
 const gridDisclaimer = D.meta.disclaimers[1];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const formatDate = (iso) => { const [y, m, d] = iso.slice(0, 10).split("-"); return `${Number(d)} ${MONTHS[Number(m) - 1]} ${y}`; };
+const cap = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 let mode = "mclp";
 let activeId = null;
 if (INV) INV.init({ gridDisclaimer });
+
+// Provenance labels (the same wording investigation.js uses).
+const PROVENANCE = {
+  RETRIEVED_FACT: ["Retrieved fact", "Found directly in a source"],
+  CALCULATED: ["Calculated", "Derived by SiteScout from source data"],
+  INFERRED: ["Inferred", "An interpretation of the evidence"],
+  UNKNOWN: ["Unknown", "Not established by the public evidence"],
+};
+function provenance(type) {
+  const [label, meaning] = PROVENANCE[type] || [type, ""];
+  return el("span", { class: `prov p-${type}`, title: meaning }, label);
+}
 
 // Optional investigation (investigation.js): nothing when the script is absent.
 const investigationSection = (options) => (INV ? INV.section(options) : null);
 const investigationAction = (label, request, target) =>
   INV && target ? INV.action(label, request, target, "quiet") : null;
 
-// --- Header and the headline result ------------------------------------------------------------
-document.getElementById("independent").textContent = D.meta.disclaimers[0];
+// Replay a short entrance transition on a node that was just filled.
+function enter(node) {
+  node.classList.add("enter");
+  void node.offsetWidth;
+  node.classList.remove("enter");
+}
+
+// --- Header, page head and the expansion workflow ------------------------------------------------
+$("independent").textContent = D.meta.disclaimers[0];
+$("through").textContent = `Data through ${formatDate(D.meta.data_date)}`;
 if (D.meta.data_status !== "pipeline") {
-  const banner = document.getElementById("banner");
-  banner.hidden = false;
-  banner.textContent = "Demo data: this export was not produced by the pipeline.";
+  $("banner").hidden = false;
+  $("banner").textContent = "Demo data: this export was not produced by the pipeline.";
 }
-document.getElementById("question").textContent = H.question;
-document.getElementById("lede").textContent =
-  `${H.candidates} candidate sites were scored from public data. ${byKey.mclp.label}: ` +
-  `${H.n_sites} sites chosen together to cover as much of Rwanda's modelled population as ` +
-  `possible within ${H.service_radius}, compared with simply taking the ${byKey.top30.label.toLowerCase()}.`;
-document.getElementById("hero").append(
-  el("div", { class: "stat mclp" }, el("b", {}, byKey.mclp.population_display),
-    el("span", {}, byKey.mclp.label), el("small", {}, `of the modelled population within ${H.service_radius}`)),
-  el("div", { class: "vs" }, "vs"),
-  el("div", { class: "stat top30" }, el("b", {}, byKey.top30.population_display),
-    el("span", {}, byKey.top30.label), el("small", {}, `of the modelled population within ${H.service_radius}`)));
-document.getElementById("bars-title").textContent =
-  `Modelled population within ${H.service_radius} of a site`;
-const bars = document.getElementById("bars");
-for (const s of H.selections) {
-  bars.append(
-    el("div", { class: `bar ${s.key}` },
-      el("div", { class: "name" }, s.label),
-      el("div", { class: "track" }, el("div", { class: "fill", style: `width:${s.population_share * 100}%` })),
-      el("div", { class: "value" }, s.population_display)));
+$("question").textContent = H.question;
+$("lede").textContent =
+  `${H.candidates} candidate locations scored from public data; ${H.n_sites} chosen together as one network.`;
+const FLOW = [
+  ["01", "Discover", `${H.candidates} candidate locations`, "here"],
+  ["02", "Compare", `${H.selections.length} network strategies`, "here"],
+  ["03", "Investigate", "Evidence and trade-offs", "here"],
+  ["04", "Verify", "Grid, land, permits, host — outside SiteScout", "outside"],
+];
+$("flow").append(...FLOW.map(([n, title, text, kind]) =>
+  el("li", { class: kind }, el("span", { class: "n" }, n), el("b", {}, title), el("span", {}, text))));
+
+// --- Strategy selector and headline metrics -----------------------------------------------------
+const kpis = $("kpis");
+function renderKpis() {
+  const s = byKey[mode];
+  kpis.dataset.mode = mode;
+  kpis.replaceChildren(
+    el("div", { class: "kpi lead" }, el("dt", {}, "Population coverage"), el("dd", { class: "fade" }, s.population_display),
+      el("small", {}, `${s.label} · within ${H.service_radius}`)),
+    el("div", { class: "kpi" }, el("dt", {}, "Selected sites"), el("dd", { class: "fade" }, H.n_sites),
+      el("small", {}, `From ${H.candidates} candidates`)),
+    el("div", { class: "kpi" }, el("dt", {}, "Districts"), el("dd", { class: "fade" }, s.districts_display),
+      el("small", {}, "Reached by the network")),
+    el("div", { class: "kpi" }, el("dt", {}, "Provinces"), el("dd", { class: "fade" }, s.provinces_display),
+      el("small", {}, "Reached by the network")),
+    el("div", { class: "kpi" }, el("dt", {}, "Mean site score"), el("dd", { class: "fade" }, s.mean_score_display),
+      el("small", {}, "Individual scores, 0–100")));
+  enter(kpis);
 }
-document.getElementById("bars-note").textContent =
-  `Choosing sites together trades individual score for reach: mean site score ` +
-  `${byKey.mclp.mean_score_display} in the ${byKey.mclp.label.toLowerCase()} against ` +
-  `${byKey.top30.mean_score_display} in the ${byKey.top30.label}. Exact solver: ` +
-  `${H.solver_status}; greedy comes within ${H.exact_vs_greedy_gap} of its objective.`;
-const split = document.getElementById("split");
-for (const key of ["mclp", "top30"]) {
-  const s = byKey[key];
-  split.append(
-    el("div", { class: key },
-      el("h3", {}, s.label),
-      el("dl", {},
-        el("dt", {}, "Districts"), el("dd", {}, s.districts_display),
-        el("dt", {}, "Provinces"), el("dd", {}, s.provinces_display),
-        s.by_province.flatMap(([name, count]) => [el("dt", {}, name), el("dd", {}, count)]))));
-}
-const networkSection = investigationSection({
-  intro: "Explains the network result with SiteScout's tools and project documents. It never changes the decision above.",
-  primary: { label: "Investigate network difference", request: { kind: "network_comparison" } },
-});
-if (networkSection) document.getElementById("network-investigation").append(networkSection);
-document.getElementById("unknowns").append(el("strong", {}, "Unknown for every site: "), unknowns.join(" · "),
-  ". Grid evidence means mapped infrastructure nearby, never a grid connection decision.");
-document.getElementById("mapnote").textContent =
-  `Shaded circles show the ${H.service_radius} service radius of each selected site.`;
 
 // --- Map ---------------------------------------------------------------------------------------
 const M = D.map;
@@ -437,7 +898,7 @@ const WIDTH = 1000;
 const K = WIDTH / ((M.max_lon - M.min_lon) * M.lon_scale);
 const HEIGHT = (M.max_lat - M.min_lat) * K;
 const PAD = Math.ceil(M.ring_radius_deg * K) + 4; // room for a border site's service ring
-const map = document.getElementById("map");
+const map = $("map");
 map.setAttribute("viewBox", `${-PAD} ${-PAD} ${WIDTH + 2 * PAD} ${HEIGHT + 2 * PAD}`);
 const X = (lon) => (lon - M.min_lon) * M.lon_scale * K;
 const Y = (lat) => (M.max_lat - lat) * K;
@@ -458,181 +919,491 @@ for (const f of D.provinces.features) {
   t.textContent = f.properties.province;
   map.append(t);
 }
-const ringLayer = svg("g"); const candLayer = svg("g"); const chargerLayer = svg("g"); const siteLayer = svg("g");
-map.append(ringLayer, candLayer, chargerLayer, siteLayer);
+const ringLayer = svg("g"); const candLayer = svg("g"); const chargerLayer = svg("g");
+const siteLayer = svg("g"); const focusLayer = svg("g");
+map.append(ringLayer, candLayer, chargerLayer, siteLayer, focusLayer);
 
-function activate(node, handler) {
+const mapwrap = $("mapwrap");
+const tip = $("maptip");
+function showTip(node, site) {
+  const box = node.getBoundingClientRect();
+  const frame = mapwrap.getBoundingClientRect();
+  tip.replaceChildren(el("b", {}, site.label),
+    el("span", {}, `${site.district} · score ${site.score} · #${site.rank} of ${H.candidates}`));
+  const x = Math.min(Math.max(box.left + box.width / 2 - frame.left, 110), frame.width - 110);
+  tip.style.left = `${x}px`;
+  tip.style.top = `${box.top - frame.top}px`;
+  tip.classList.add("show");
+}
+const hideTip = () => tip.classList.remove("show");
+
+function activate(node, handler, site) {
   node.addEventListener("click", handler);
   node.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handler(); } });
+  node.addEventListener("mouseenter", () => showTip(node, site));
+  node.addEventListener("mouseleave", hideTip);
+  node.addEventListener("focus", () => showTip(node, site));
+  node.addEventListener("blur", hideTip);
 }
 for (const s of D.sites) {
-  const c = svg("circle", { class: "cand", cx: X(s.lon), cy: Y(s.lat), r: 3.2, tabindex: -1 });
-  c.append(Object.assign(svg("title"), { textContent: `${s.label} · score ${s.score}` }));
-  activate(c, () => showSite(s.candidate_id));
+  const c = svg("circle", { class: "cand", cx: X(s.lon), cy: Y(s.lat), r: 4.2, tabindex: -1 });
+  activate(c, () => showSite(s.candidate_id, true), s);
   candLayer.append(c);
 }
 for (const k of D.existing_chargers) {
-  chargerLayer.append(svg("rect", { class: "charger", x: X(k.lon) - 5, y: Y(k.lat) - 5, width: 10, height: 10 }));
+  chargerLayer.append(svg("rect", { class: "charger", x: X(k.lon) - 7, y: Y(k.lat) - 7, width: 14, height: 14, rx: 2 }));
 }
 
 const inMode = (site, key) => site[`selected_${key}`] === true;
 const selected = () => D.sites.filter((s) => inMode(s, mode));
 function drawSelection() {
-  ringLayer.replaceChildren(); siteLayer.replaceChildren();
+  ringLayer.replaceChildren(); siteLayer.replaceChildren(); focusLayer.replaceChildren();
   for (const s of selected()) {
     ringLayer.append(svg("circle", { class: `ring ${mode}`, cx: X(s.lon), cy: Y(s.lat), r: M.ring_radius_deg * K }));
-    const dot = svg("circle", { class: `site ${mode}${s.candidate_id === activeId ? " active" : ""}`,
-      cx: X(s.lon), cy: Y(s.lat), r: 7, tabindex: 0, role: "button", "aria-label": `${s.label}, rank ${s.rank}` });
-    dot.append(Object.assign(svg("title"), { textContent: `${s.label} · rank ${s.rank} · score ${s.score}` }));
-    activate(dot, () => showSite(s.candidate_id));
+    const dot = svg("circle", { class: `site ${mode}`, cx: X(s.lon), cy: Y(s.lat), r: 9, tabindex: 0,
+      role: "button", "aria-label": `${s.label}, rank ${s.rank}, score ${s.score}` });
+    activate(dot, () => showSite(s.candidate_id, true), s);
     siteLayer.append(dot);
   }
-  document.getElementById("legend-site").className = `s ${mode}`;
-  document.getElementById("legend-site-label").textContent = byKey[mode].label;
+  const active = D.sites.find((s) => s.candidate_id === activeId);
+  if (active) {
+    const cx = X(active.lon); const cy = Y(active.lat);
+    focusLayer.append(svg("circle", { class: "halo-fill", cx, cy, r: 26 }),
+      svg("circle", { class: "halo", cx, cy, r: 17 }), svg("circle", { class: "focusdot", cx, cy, r: 9.5 }));
+  }
+  $("legend").replaceChildren(
+    el("span", {}, el("i", { class: `s ${mode}` }), `${byKey[mode].label} site`),
+    el("span", {}, el("i", { class: `r ${mode}` }), `${H.service_radius} service radius`),
+    el("span", {}, el("i", { class: "c" }), "Candidate location"),
+    el("span", {}, el("i", { class: "k" }), "Known charging site (public data)"));
 }
 
-// --- Dossier: the overview with the list of 30, and a site's decision ---------------------------
-const overview = document.getElementById("overview");
-const sitePane = document.getElementById("site");
-const dossier = document.getElementById("dossier");
+// --- Opportunities panel ------------------------------------------------------------------------
+const panel = $("panel");
+const oppsView = $("opps-view");
+const sitePane = $("site");
+const workspace = $("workspace");
+const panelScrolls = () => getComputedStyle(panel).overflowY === "auto";
+
+// Bring a node into view; inside the panel when the panel is its own scroll area.
+function reveal(node) {
+  if (panelScrolls() && panel.contains(node)) {
+    workspace.scrollIntoView({ block: "start", behavior: "smooth" });
+    const top = node.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 64;
+    panel.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  } else {
+    node.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+}
 
 function showList() {
   activeId = null;
   const s = byKey[mode];
-  document.getElementById("list-title").textContent =
-    `${s.label}: ${H.n_sites} sites · ${s.population_display} of the population`;
-  const list = document.getElementById("list");
+  $("opps-title").textContent = s.label;
+  $("opps-sub").textContent = `${H.n_sites} locations · ${s.population_display} population coverage · ranked by score`;
+  $("opps-note").textContent = `# is a location's rank by score among all ${H.candidates} candidates.`;
+  const list = $("list");
   list.replaceChildren();
-  for (const site of selected()) {
+  for (const site of selected().slice().sort((a, b) => a.rank - b.rank)) {
     const b = el("button", { type: "button" },
       el("span", { class: "rank" }, `#${site.rank}`),
-      el("span", {}, site.label, el("br"), el("span", { class: "meta" }, `${site.district}, ${site.province} · score ${site.score}`)),
-      el("span", { class: `badge ${site.confidence}` }, site.confidence));
-    b.addEventListener("click", () => showSite(site.candidate_id));
+      el("span", {}, el("span", { class: "name" }, site.label),
+        el("span", { class: "meta" }, `${site.district}, ${site.province}`)),
+      el("span", { class: "right" }, el("span", { class: "score" }, site.score),
+        el("span", { class: `conf ${site.confidence}` }, site.confidence)));
+    b.addEventListener("click", () => showSite(site.candidate_id, true));
     list.append(el("li", {}, b));
   }
   sitePane.hidden = true;
   sitePane.replaceChildren();
-  overview.hidden = false;
+  oppsView.hidden = false;
+  panel.scrollTop = 0;
   drawSelection();
 }
 
+// --- Site opportunity dossier -------------------------------------------------------------------
 const EVIDENCE_GROUPS = [
-  ["demand", "Demand", ["pop_1km", "pop_5km", "pop_10km", "outside_share"]],
-  ["access", "Access", ["road_class", "dist_road", "dist_trunk"]],
-  ["host", "Host and nearby activity", ["host", "poi_1km", "poi_3km"]],
-  ["charging_gap", "Charging gap", ["dist_charger", "chargers_10km", "chargers_25km"]],
-  ["grid_evidence", "Grid evidence", ["dist_substation", "dist_line", "grid_completeness", "grid_status"]],
+  ["demand", "Demand", ["pop_1km", "pop_5km", "pop_10km", "outside_share"], "pop_10km"],
+  ["access", "Access", ["road_class", "dist_road", "dist_trunk"], "dist_road"],
+  ["host", "Host / commercial", ["host", "poi_1km", "poi_3km"], "host"],
+  ["charging_gap", "Charging gap", ["dist_charger", "chargers_10km", "chargers_25km"], "dist_charger"],
+  ["grid_evidence", "Grid evidence", ["dist_substation", "dist_line", "grid_completeness", "grid_status"], "dist_line"],
 ];
+// Short titles for the brief's next actions; the action text itself comes from the export.
+const ACTION_TITLES = [
+  [/^Ask the utility/i, "Utility capacity check"],
+  [/^Request the utility/i, "Utility network map"],
+  [/^Contact the owner/i, "Host / land discussion"],
+  [/^Check permit/i, "Permit review"],
+  [/^Visit /i, "Field validation"],
+  [/^Verify grid/i, "Field grid check"],
+  [/^Estimate cross-border/i, "Cross-border demand"],
+];
+const actionTitle = (text) => (ACTION_TITLES.find(([re]) => re.test(text)) || [null, "Follow-up"])[1];
+
+function block(title, extra, ...children) {
+  return el("section", { class: "block" }, el("div", { class: "bh" }, el("h3", {}, title), extra || null), ...children);
+}
 
 function componentBars(site) {
-  return site.components.map((c) =>
-    el("div", { class: "comp" }, el("span", {}, c.label),
-      el("div", { class: "track" }, el("div", { class: "fill", style: `width:${c.value}%` })),
-      el("span", { class: "v" }, c.display)));
+  const order = site.brief ? site.brief.components_by_strength : [];
+  const strong = order.slice(0, 2);
+  const weakest = order[order.length - 1];
+  return el("div", { class: "comps" },
+    el("div", { class: "comp head" }, el("span", {}, "Component"), el("span", {}, ""), el("span", { class: "v" }, "Score"),
+      el("span", { class: "w" }, "Weight")),
+    site.components.map((c) => {
+      const weight = ctx[`weight_${site.profile}_${c.key}`];
+      const flag = strong.includes(c.key) ? el("em", { class: "s" }, "Strength")
+        : c.key === weakest ? el("em", { class: "w" }, "Weakest") : null;
+      return el("div", { class: "comp" }, el("span", { class: "lab" }, c.label, flag),
+        el("div", { class: "track" }, el("div", { class: "fill", style: `width:${c.value}%` })),
+        el("span", { class: "v" }, c.display), el("span", { class: "w" }, weight ? weight.display : ""));
+    }));
 }
 
-function roles(site) {
-  return el("div", { class: "roles" }, H.selections.map((s) =>
-    el("span", { class: `role ${s.key}${inMode(site, s.key) ? " on" : ""}` },
-      `${inMode(site, s.key) ? "In" : "Not in"}: ${s.label}`)));
+function networkRole(site) {
+  return el("ul", { class: "roles" }, H.selections.map((s) => {
+    const on = inMode(site, s.key);
+    return el("li", { class: `${s.key} ${on ? "on" : "off"}` },
+      el("span", { class: "tick" }, el("i", { "aria-hidden": "true" }, on ? "✓" : "–"), s.label),
+      el("span", { class: "st" }, on ? "Included" : "Not included"));
+  }));
 }
 
-function showSite(id) {
+function evidenceCards(site, records) {
+  return el("div", { class: "evgrid" }, EVIDENCE_GROUPS.map(([key, group, , lead]) => {
+    const r = records[lead];
+    const status = records.grid_status;
+    if (key === "grid_evidence" && status && status.type === "UNKNOWN") {
+      return el("div", { class: "evcard" }, el("span", { class: "g" }, group), el("b", { class: "missing" }, "Missing"),
+        el("span", { class: "c" }, `No mapped substation or power line within ${ctx.grid_radius.display}`),
+        el("span", { class: "f" }, provenance(status.type), el("span", {}, status.evidence.source)));
+    }
+    if (!r) return null;
+    return el("div", { class: "evcard" }, el("span", { class: "g" }, group), el("b", {}, r.display),
+      el("span", { class: "c" }, r.claim), el("span", { class: "f" }, provenance(r.type), el("span", {}, r.evidence.source)));
+  }));
+}
+
+function evidenceTable(site, records, inv) {
+  const rows = [];
+  for (const [key, group, ids] of EVIDENCE_GROUPS) {
+    const explain = investigationAction("Explain", { kind: "evidence_explanation", candidate_id: site.candidate_id, group: key }, inv);
+    rows.push(el("tr", { class: "group" }, el("td", { colspan: 3 }, el("div", { class: "cell" }, group, explain))));
+    for (const rid of ids) {
+      const r = records[rid];
+      if (!r || (rid === "outside_share" && !site.brief.border_note)) continue;
+      const missing = rid === "grid_status" && r.type === "UNKNOWN";
+      rows.push(el("tr", {}, el("td", {}, r.claim.split(":")[0]),
+        el("td", { class: `v${missing ? " missing" : ""}` }, missing ? "Missing" : r.display),
+        el("td", { class: "t" }, provenance(r.type))));
+    }
+  }
+  return el("details", { class: "allev" }, el("summary", {}, "View all evidence"),
+    el("table", { class: "ev" }, el("tbody", {}, rows)));
+}
+
+function showSite(id, fromUser) {
   const site = D.sites.find((s) => s.candidate_id === id);
   if (!site) return;
   activeId = id;
   drawSelection();
-  const back = el("button", { class: "back", type: "button" }, `← Network overview`);
-  back.addEventListener("click", showList);
   const inNetwork = site.selected_mclp;
+  const back = el("button", { class: "back", type: "button" }, "← All opportunities");
+  back.addEventListener("click", () => {
+    showList();
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  });
+
   const inv = investigationSection({
-    intro: "Explains this site's decision with SiteScout's tools and project documents. It never changes the decision above.",
+    title: "Site investigation",
+    questions: ["What supports this location?", "What does the public evidence not establish?"],
+    intro: "Explains this location from SiteScout's records and project documents. It never changes the decision.",
     primary: { label: "Investigate this site", request: { kind: "site_investigation", candidate_id: id } },
   });
-  const verify = investigationAction("What would we need to verify?",
-    { kind: "unknowns", candidate_id: id }, inv);
-  const decision = el("section", { class: `decision${inNetwork ? "" : " out"}`, "aria-label": "Site decision" },
-    el("p", { class: "eyebrow" }, "Site decision"),
+  const verify = investigationAction("What would we need to verify?", { kind: "unknowns", candidate_id: id }, inv);
+
+  const head = el("header", { class: "dhead" }, back,
+    el("div", { class: "eyerow" }, el("p", { class: "eyebrow" }, "Site opportunity"),
+      el("span", { class: `status${inNetwork ? "" : " out"}` }, inNetwork ? `In the ${byKey.mclp.label.toLowerCase()}` : "Not in the optimized network")),
     el("h2", {}, site.label),
-    el("div", { class: "sub" }, `${site.district}, ${site.province} · ${site.profile} profile · `,
+    el("p", { class: "sub" }, `${site.district} · ${site.province} · ${cap(site.profile)} profile · `,
       el("span", { class: "mono" }, site.candidate_id)),
     el("div", { class: "facts" },
       el("div", {}, el("b", {}, site.score), el("span", {}, "Score (0–100)")),
-      el("div", {}, el("b", {}, `#${site.rank}`), el("span", {}, `Rank of ${H.candidates}`)),
-      el("div", {}, el("b", {}, site.confidence), el("span", {}, "Confidence"))),
-    el("h4", {}, "Network role"), roles(site),
-    inNetwork ? el("p", {}, `Unique contribution: ${site.unique_coverage} of the network's weighted demand coverage.`)
-      : el("div", { class: "notselected" }, "Not selected for the optimized network."));
+      el("div", {}, el("b", {}, `#${site.rank}`, el("small", {}, ` / ${H.candidates}`)), el("span", {}, "Rank by score")),
+      el("div", {}, el("b", {}, el("span", { class: `conf ${site.confidence}` }, site.confidence)), el("span", {}, "Confidence"))));
 
+  const role = block("Network role", null, networkRole(site),
+    inNetwork
+      ? el("div", { class: "contrib" }, el("b", {}, site.unique_coverage),
+          el("p", {}, `Unique contribution. Without this site, the ${byKey.mclp.label.toLowerCase()} would lose ${site.unique_coverage} of its weighted demand coverage.`))
+      : el("div", { class: "notice" }, "Not selected for the optimized network. Detailed evidence and next actions are prepared for the network's sites."));
+
+  const parts = [head, role];
   if (inNetwork) {
     const b = site.brief;
     const records = Object.fromEntries(site.evidence.map((r) => [r.id, r]));
-    const rows = [];
-    for (const [key, group, ids] of EVIDENCE_GROUPS) {
-      const explain = investigationAction("Explain", { kind: "evidence_explanation", candidate_id: id, group: key }, inv);
-      rows.push(el("tr", { class: "group" }, el("td", { colspan: 3 }, el("div", { class: "cell" }, group, explain))));
-      for (const rid of ids) {
-        const r = records[rid];
-        if (!r || (rid === "outside_share" && !b.border_note)) continue;
-        const missing = rid === "grid_status" && r.type === "UNKNOWN";
-        rows.push(el("tr", {}, el("td", {}, r.claim.split(":")[0]),
-          el("td", { class: `v${missing ? " missing" : ""}` }, missing ? "Missing" : r.display),
-          el("td", { class: "t" }, el("span", { class: `type t-${r.type}` }, r.type))));
-      }
-    }
-    decision.append(
-      el("h4", {}, "Why this site"), el("p", {}, b.opportunity),
-      el("h4", {}, "Score components"), ...componentBars(site),
-      el("h4", {}, "Evidence"), el("table", { class: "ev" }, el("tbody", {}, rows)),
-      el("p", { class: "disclaimer" }, gridDisclaimer),
-      el("h4", {}, "Confidence"), el("p", {}, site.confidence_reasons + "."),
-      el("h4", {}, "Unknown", verify), el("ul", { class: "plain" }, b.unknowns.map((u) => el("li", {}, u))),
-      el("h4", {}, "Risks"), el("ul", { class: "plain" }, b.risks.map((r) => el("li", {}, r))),
-      el("h4", {}, "Next investigation"), el("ul", { class: "plain" }, b.actions.map((a) => el("li", {}, a))),
-      el("p", {}, el("a", { href: `../${b.brief_path}` }, "Full Site Evidence Brief")));
+    parts.push(
+      block("Why this location", null, el("p", {}, b.opportunity), componentBars(site)),
+      el("section", { class: "block", id: "site-evidence" },
+        el("div", { class: "bh" }, el("h3", {}, "Evidence behind this location")),
+        evidenceCards(site, records), evidenceTable(site, records, inv),
+        el("p", { class: "disclaimer" }, gridDisclaimer)),
+      block("Confidence", el("span", { class: `conf ${site.confidence}` }, site.confidence),
+        el("p", {}, `${site.confidence_reasons}.`)),
+      block("What we still need to verify", verify,
+        el("ul", { class: "verify" }, b.unknowns.map((u) => el("li", {}, u, provenance("UNKNOWN")))),
+        b.risks.length ? el("p", { class: "subh" }, "Known risks") : null,
+        el("ul", { class: "risks" }, b.risks.map((r) => el("li", {}, r)))),
+      el("section", { class: "block", id: "site-investigation" }, inv || ""),
+      block("Next investigation", null,
+        el("ol", { class: "steps-next" }, b.actions.map((a) => el("li", {}, el("div", {}, el("b", {}, actionTitle(a)), el("span", {}, a)))))),
+      el("a", { class: "brieflink", href: `../${b.brief_path}` }, "Open the full Site Evidence Brief →"));
   } else {
-    decision.append(
-      el("h4", {}, "Score components"), ...componentBars(site),
-      el("h4", {}, "Confidence"), el("p", {}, site.confidence_reasons + "."),
-      el("h4", {}, "Unknown", verify), el("ul", { class: "plain" }, unknowns.map((u) => el("li", {}, u))));
+    parts.push(
+      block("Score components", null, componentBars(site)),
+      block("Confidence", el("span", { class: `conf ${site.confidence}` }, site.confidence),
+        el("p", {}, `${site.confidence_reasons}.`)),
+      block("What we still need to verify", verify,
+        el("ul", { class: "verify" }, unknowns.map((u) => el("li", {}, cap(u), provenance("UNKNOWN"))))),
+      el("section", { class: "block", id: "site-investigation" }, inv || ""));
   }
-  sitePane.replaceChildren(back, decision, inv || "");
-  overview.hidden = true;
+  const dossier = el("article", { class: "dossier", "aria-label": `Site opportunity: ${site.label}` }, parts);
+  sitePane.replaceChildren(dossier);
+  oppsView.hidden = true;
   sitePane.hidden = false;
-  dossier.scrollTop = 0;
+  panel.scrollTop = 0;
+  enter(dossier);
+  if (fromUser && !panelScrolls()) panel.scrollIntoView({ block: "start", behavior: "smooth" });
   if (location.hash.slice(1) !== id) history.replaceState(null, "", `#${id}`);
 }
 
-const toggle = document.getElementById("toggle");
+// --- Strategy toggle ----------------------------------------------------------------------------
+const toggle = $("toggle");
+function setMode(key) {
+  mode = key;
+  for (const b of toggle.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.mode === key));
+  for (const card of document.querySelectorAll(".strat")) card.classList.toggle("current", card.dataset.mode === key);
+  renderKpis();
+  if (activeId) drawSelection(); else showList();
+}
 for (const s of H.selections) {
   const button = el("button", { type: "button", class: s.key, "data-mode": s.key,
-    "aria-pressed": String(s.key === mode) }, s.label);
+    "aria-pressed": String(s.key === mode) }, s.label, el("small", {}, `${s.population_display} coverage`));
   button.addEventListener("click", () => {
-    mode = s.key;
-    for (const other of toggle.querySelectorAll("button")) other.setAttribute("aria-pressed", String(other === button));
-    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-    showList();
+    if (location.hash && !activeId) history.replaceState(null, "", location.pathname + location.search);
+    setMode(s.key);
   });
   toggle.append(button);
 }
 
-// --- Footer --------------------------------------------------------------------------------------
-const evalBox = document.getElementById("footer-eval");
-evalBox.append(el("p", {}, el("strong", {}, `${D.evaluation.label[0].toUpperCase()}${D.evaluation.label.slice(1)}. `),
-  el("a", { href: `../${D.evaluation.report_path}` }, "Full report")));
-for (const line of D.evaluation.lines) evalBox.append(el("p", {}, line));
-const legal = document.getElementById("footer-legal");
-for (const text of D.meta.disclaimers) legal.append(el("p", {}, text));
-legal.append(el("p", {}, D.meta.licence_notice));
-legal.append(el("p", {}, "Sources: " + D.meta.sources.map((s) => `${s.name} (${s.credit}; ${s.licence})`).join(" · ")));
-legal.append(el("p", {}, `Data as of ${D.meta.data_date} · export written ${D.meta.generated_at}`));
+// --- Compare strategies -------------------------------------------------------------------------
+const ROLE = { mclp: "Chosen by SiteScout", greedy: "Heuristic baseline", top30: "Score-only baseline" };
+$("network-sub").textContent =
+  `The same ${H.candidates} candidates and the same ${H.n_sites}-site budget. Coverage is the share of Rwanda's ` +
+  `modelled population within ${H.service_radius} of a selected site.`;
+$("strategies").append(...H.selections.map((s) => {
+  const show = el("button", { class: "showbtn", type: "button" }, "Show on map");
+  show.addEventListener("click", () => { setMode(s.key); workspace.scrollIntoView({ block: "start", behavior: "smooth" }); });
+  return el("article", { class: `strat ${s.key}${s.key === mode ? " current" : ""}`, "data-mode": s.key },
+    el("div", { class: "top" }, el("h3", {}, s.label), el("span", { class: "role-chip" }, ROLE[s.key] || "")),
+    el("div", { class: "big" }, s.population_display),
+    el("p", { class: "cap" }, `Modelled population within ${H.service_radius}`),
+    el("div", { class: "track" }, el("div", { class: "fill", style: `width:${s.population_share * 100}%` })),
+    el("dl", {}, el("dt", {}, "Sites"), el("dd", {}, H.n_sites), el("dt", {}, "Districts"), el("dd", {}, s.districts_display),
+      el("dt", {}, "Provinces"), el("dd", {}, s.provinces_display), el("dt", {}, "Mean site score"), el("dd", {}, s.mean_score_display)),
+    el("p", { class: "prov-list" }, s.by_province.flatMap(([name, count], i) =>
+      [i ? " · " : "", el("span", {}, `${name.replace(" Province", "")} `, el("b", {}, count))])),
+    show);
+}));
+
+// The trade-off is stated only when the export shows it: a higher mean score with lower coverage.
+const optimized = byKey.mclp; const scoreOnly = byKey.top30;
+if (optimized && scoreOnly && parseFloat(scoreOnly.mean_score_display) > parseFloat(optimized.mean_score_display)
+    && scoreOnly.population_share < optimized.population_share) {
+  const bars = (label, value) => el("div", {}, el("h4", {}, label), H.selections.map((s) =>
+    el("div", { class: `tbar ${s.key}` }, el("span", { class: "nm" }, s.label),
+      el("div", { class: "track" }, el("div", { class: "fill", style: `width:${value(s)}%` })),
+      el("span", { class: "v" }, label === "Mean site score" ? s.mean_score_display : s.population_display))));
+  $("insight").hidden = false;
+  $("insight").append(
+    el("div", {},
+      el("p", { class: "eyebrow" }, "Network insight"),
+      el("h3", {}, "Highest individual scores ≠ best network"),
+      el("p", {}, `The ${scoreOnly.label} has the highest mean site score (${scoreOnly.mean_score_display}) but reaches ` +
+        `${scoreOnly.population_display} of the modelled population, across ${scoreOnly.districts_display} districts.`),
+      el("p", {}, `The ${optimized.label.toLowerCase()} accepts a lower mean site score (${optimized.mean_score_display}) to reach ` +
+        `${optimized.population_display} across ${optimized.districts_display} districts and ${optimized.provinces_display} provinces: ` +
+        "sites are chosen for the people they add to the network, not only for their own score."),
+      el("p", { class: "solver" }, `Exact optimization, solver status ${H.solver_status}. The greedy heuristic comes within ` +
+        `${H.exact_vs_greedy_gap} of the exact objective.`)),
+    el("div", { class: "tradeoff" },
+      bars("Mean site score", (s) => parseFloat(s.mean_score_display)),
+      bars("Population coverage", (s) => s.population_share * 100)));
+}
+const networkSection = investigationSection({
+  title: "Network investigation",
+  questions: [`Why does the ${optimized.label.toLowerCase()} differ from the ${scoreOnly.label}?`],
+  intro: "Explains the network result from SiteScout's records and project documents. It never changes the networks above.",
+  primary: { label: "Investigate network difference", request: { kind: "network_comparison" } },
+});
+if (networkSection) $("network-investigation").append(networkSection);
+
+// --- Evaluation ---------------------------------------------------------------------------------
+const E = D.evaluation;
+const metric = Object.fromEntries((E.metrics || []).map((m) => [m.key, m]));
+const tile = (key, lead) => metric[key]
+  ? el("div", { class: `metric${lead ? " lead" : ""}` }, el("b", {}, metric[key].display), el("span", {}, metric[key].label))
+  : null;
+$("eval-label").textContent = cap(E.label);
+if (E.metrics) {
+  const known = metric.known_sites ? metric.known_sites.display : "";
+  $("trust").append(
+    el("article", { class: "tcard" }, el("h3", {}, "Backtest against known charging sites"),
+      el("div", { class: "pair" }, tile("precision_sitescout", true), tile("precision_population")),
+      el("div", { class: "pair" }, tile("known_sites"), tile("difference_interval")),
+      E.difference_includes_zero
+        ? el("p", { class: "caveat" }, `Small public backtest (${known} known sites): the uncertainty interval includes zero, ` +
+            "so SiteScout and a population-only ranking cannot yet be told apart. This is not statistical proof.")
+        : null),
+    el("article", { class: "tcard" }, el("h3", {}, "Weight stability"),
+      tile("stability_mean", true), tile("stability_min"),
+      el("p", { class: "foot" }, "How much the top of the ranking changes when any single weight moves.")),
+    el("article", { class: "tcard" }, el("h3", {}, "Grounding"),
+      tile("grounding", true),
+      el("p", { class: "foot" }, "Every number in the Site Evidence Briefs traces to structured evidence. Investigation " +
+        "answers are validated against the records they retrieve."),
+      el("a", { href: `../${E.report_path}` }, "Full evaluation report →")));
+} else {
+  $("trust").append(el("article", { class: "tcard" }, E.lines.map((line) => el("p", {}, line))));
+}
+
+// --- Methodology --------------------------------------------------------------------------------
+const PIPELINE = [
+  ["Public data", "OpenStreetMap, WorldPop population and geoBoundaries districts.", ""],
+  ["Geospatial processing", "Distances and areas in a metric projection; boundaries matched at district level.", ""],
+  [`${H.candidates} candidates`, "Generated in code from real host locations and corridor points.", ""],
+  ["Deterministic scoring", "Demand, access, host, charging gap and grid evidence; urban and corridor profiles.", "decides"],
+  ["Network optimization", `Maximum coverage of modelled population within ${H.service_radius}; exact solver, ${H.solver_status.toLowerCase()}.`, "decides"],
+  ["Evidence", "Every value typed by provenance; every number in the briefs grounded.", ""],
+  ["Evaluation", `${cap(E.label)}, weight stability and grounding checks.`, ""],
+  ["AI-assisted investigation", "Explains and questions the result with SiteScout's own records. It never chooses sites.", "explains"],
+];
+$("pipeline").append(...PIPELINE.map(([title, text, kind], i) =>
+  el("li", { class: kind }, el("span", { class: "n" }, String(i + 1).padStart(2, "0")), el("b", {}, title), el("span", {}, text))));
+$("provlegend").append(...[
+  ["RETRIEVED_FACT", "Found directly in a source, such as a host type or a licence."],
+  ["CALCULATED", "Derived by SiteScout from source data, such as a distance or a population count."],
+  ["INFERRED", "An interpretation, such as a confidence level."],
+  ["UNKNOWN", "Not established by public data. It never raises a score or a confidence level."],
+].map(([type, text]) => el("li", {}, provenance(type), el("span", {}, text))));
+const COMPONENTS = D.sites[0].components.map((c) => [c.key, c.label]);
+$("weights").append(
+  el("thead", {}, el("tr", {}, el("th", {}, "Component"), el("th", {}, "Urban"), el("th", {}, "Corridor"))),
+  el("tbody", {}, COMPONENTS.map(([key, label]) => el("tr", {}, el("td", {}, label),
+    el("td", {}, (ctx[`weight_urban_${key}`] || {}).display || ""),
+    el("td", {}, (ctx[`weight_corridor_${key}`] || {}).display || "")))));
+
+// --- Data sources and limitations ---------------------------------------------------------------
+$("sources-date").textContent = `Data through ${formatDate(D.meta.data_date)}`;
+$("source-list").append(...D.meta.sources.map((s) =>
+  el("article", { class: "src" }, el("b", {}, s.name), el("p", {}, s.credit),
+    el("span", { class: "tag lic" }, s.licence))));
+const sourceFacts = [
+  [ctx.osm_date, "OpenStreetMap data up to"],
+  [ctx.worldpop, "Population source"],
+  [ctx.known_sites, "Known charging sites in the public dataset"],
+  [ctx.manual_chargers, "Manual charger list"],
+].filter(([r]) => r);
+$("source-facts").append(...sourceFacts.map(([r, label]) => el("div", {}, el("b", {}, cap(r.display)), el("span", {}, label))));
+$("source-facts").after(el("p", { class: "srcnote" }, "Known charging sites are those in the public dataset only, " +
+  "not a complete record of any operator's network."));
+$("limits-sub").textContent = D.meta.disclaimers[2];
+$("limits-disclaimer").textContent = gridDisclaimer;
+
+// --- Footer -------------------------------------------------------------------------------------
+$("footer").append(
+  el("p", {}, D.meta.disclaimers[0]),
+  el("p", {}, D.meta.licence_notice),
+  el("p", {}, "Sources: " + D.meta.sources.map((s) => `${s.name} (${s.credit}; ${s.licence})`).join(" · ")),
+  el("p", {}, `Data as of ${D.meta.data_date} · export written ${D.meta.generated_at}`));
+
+// --- Navigation ---------------------------------------------------------------------------------
+const sidebar = $("sidebar"); const scrim = $("scrim"); const menu = $("menu");
+function setDrawer(open) {
+  sidebar.classList.toggle("open", open);
+  menu.setAttribute("aria-expanded", String(open));
+  scrim.hidden = !open;
+  requestAnimationFrame(() => scrim.classList.toggle("show", open));
+}
+menu.addEventListener("click", () => setDrawer(!sidebar.classList.contains("open")));
+scrim.addEventListener("click", () => setDrawer(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setDrawer(false); });
+
+function flashHint(text) {
+  const hint = $("opps-hint");
+  hint.textContent = text;
+  hint.classList.add("flash");
+  setTimeout(() => hint.classList.remove("flash"), 1400);
+}
+const activeNetworkSite = () => D.sites.find((s) => s.candidate_id === activeId && s.selected_mclp);
+const NAV = {
+  overview: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+  network: () => $("network").scrollIntoView({ block: "start", behavior: "smooth" }),
+  opportunities: () => {
+    if (activeId) showList();
+    workspace.scrollIntoView({ block: "start", behavior: "smooth" });
+  },
+  evidence: () => {
+    if (activeNetworkSite()) return reveal($("site-evidence"));
+    if (activeId) showList();
+    workspace.scrollIntoView({ block: "start", behavior: "smooth" });
+    flashHint("Select one of the network's locations to see the evidence behind it.");
+  },
+  investigate: () => {
+    const target = activeId && $("site-investigation");
+    if (target) reveal(target);
+    else $("network-investigation").scrollIntoView({ block: "center", behavior: "smooth" });
+  },
+  evaluation: () => $("evaluation").scrollIntoView({ block: "start", behavior: "smooth" }),
+  sources: () => $("sources").scrollIntoView({ block: "start", behavior: "smooth" }),
+  method: () => $("method").scrollIntoView({ block: "start", behavior: "smooth" }),
+  limitations: () => $("limitations").scrollIntoView({ block: "start", behavior: "smooth" }),
+};
+const navButtons = [...document.querySelectorAll(".nav")];
+function markNav(key) {
+  for (const b of navButtons) b.setAttribute("aria-current", String(b.dataset.nav === key));
+}
+for (const b of navButtons) {
+  b.addEventListener("click", () => {
+    markNav(b.dataset.nav);
+    setDrawer(false);
+    NAV[b.dataset.nav]();
+  });
+}
+// Highlight the section in view as the page scrolls.
+if ("IntersectionObserver" in window) {
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) if (entry.isIntersecting) markNav(entry.target.dataset.section);
+  }, { rootMargin: "-40% 0px -55% 0px" });
+  for (const node of document.querySelectorAll("[data-section]")) {
+    if (NAV[node.dataset.section]) observer.observe(node);
+  }
+}
+markNav("overview");
 
 // Deep links for demos: #top30 or #greedy opens that selection; #<candidate_id> opens that site.
 const hash = decodeURIComponent(location.hash.slice(1));
-if (byKey[hash] && hash !== "mclp") toggle.querySelector(`button[data-mode="${hash}"]`).click();
-else showList();
-if (hash && D.sites.some((s) => s.candidate_id === hash)) showSite(hash);
+if (byKey[hash] && hash !== "mclp") setMode(hash);
+else setMode("mclp");
+if (hash && D.sites.some((s) => s.candidate_id === hash)) showSite(hash, false);
+window.addEventListener("hashchange", () => {
+  const next = decodeURIComponent(location.hash.slice(1));
+  if (byKey[next]) setMode(next);
+  else if (D.sites.some((s) => s.candidate_id === next)) showSite(next, true);
+});
 </script>
 </body>
 </html>

@@ -141,9 +141,17 @@ class MapFrame(_Model):
     ring_radius_deg: float  # the service radius in degrees of latitude, for drawing only
 
 
+class EvaluationMetric(_Model):
+    key: str
+    label: str
+    display: str
+
+
 class Evaluation(_Model):
     label: str
     lines: list[str]
+    metrics: list[EvaluationMetric]  # the numbers in `lines`, one tile each on the page
+    difference_includes_zero: bool
     report_path: str
 
 
@@ -213,21 +221,52 @@ def _evaluation(processed_dir: Path, config: Config) -> Evaluation:
     key = f"precision_at_{top}"
     ours, pop = a["metrics"]["sitescout"][key], a["metrics"]["population_only"][key]
     interval = a["bootstrap"]["sitescout_minus_population"][key]
+    includes_zero = bool(interval[0] <= 0 <= interval[1])
+    level = f"{config.settings.evaluation.bootstrap.confidence_level * 100:.0f}%"
+    interval_display = f"[{interval[0]:.3f}, {interval[1]:.3f}]"
+    change = f"{b['perturbation'] * 100:.0f}%"
     lines = [
         f"Backtest against {a['known_charging_sites']} known charging sites: Precision@{top} "
         f"{ours:.3f} for SiteScout, {pop:.3f} for population only; the {top}-candidate "
-        f"difference interval [{interval[0]:.3f}, {interval[1]:.3f}] "
-        + (
-            "includes 0, so the two cannot be told apart."
-            if interval[0] <= 0 <= interval[1]
-            else "excludes 0."
-        ),
+        f"difference interval {interval_display} "
+        + ("includes 0, so the two cannot be told apart." if includes_zero else "excludes 0."),
         f"Weight stability: Top-{b['top_k']} overlap {b['mean_overlap']:.2f} on average and at "
-        f"least {b['min_overlap']:.2f} when any weight changes by {b['perturbation'] * 100:.0f}%.",
+        f"least {b['min_overlap']:.2f} when any weight changes by {change}.",
         f"Grounding: {grounding['grounded']} of {grounding['numbers']} numbers in the "
         f"{grounding['briefs']} briefs trace to structured evidence.",
     ]
-    return Evaluation(label=results["label"], lines=lines, report_path="reports/evaluation.md")
+    metrics = [
+        ("precision_sitescout", f"Precision@{top}, SiteScout", f"{ours:.3f}"),
+        ("precision_population", f"Precision@{top}, population only", f"{pop:.3f}"),
+        (
+            "known_sites",
+            "Known charging sites in the public dataset",
+            str(a["known_charging_sites"]),
+        ),
+        ("difference_interval", f"{level} interval of the difference", interval_display),
+        (
+            "stability_mean",
+            f"Mean Top-{b['top_k']} overlap, weights ±{change}",
+            f"{b['mean_overlap']:.2f}",
+        ),
+        (
+            "stability_min",
+            f"Lowest Top-{b['top_k']} overlap, weights ±{change}",
+            f"{b['min_overlap']:.2f}",
+        ),
+        (
+            "grounding",
+            f"Numbers in the {grounding['briefs']} briefs grounded",
+            f"{grounding['grounded']} / {grounding['numbers']}",
+        ),
+    ]
+    return Evaluation(
+        label=results["label"],
+        lines=lines,
+        metrics=[EvaluationMetric(key=k, label=lab, display=d) for k, lab, d in metrics],
+        difference_includes_zero=includes_zero,
+        report_path="reports/evaluation.md",
+    )
 
 
 def build_export(config: Config, processed_dir: Path, generated_at: str) -> Export:

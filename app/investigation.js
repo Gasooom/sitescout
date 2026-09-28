@@ -15,13 +15,13 @@ window.SiteScoutInvestigation = (function () {
   const KIND_TITLES = {
     site_investigation: "Site investigation",
     network_comparison: "Network difference",
-    unknowns: "What would need to be verified",
+    unknowns: "What needs to be verified",
     evidence_explanation: "Evidence explanation",
   };
   const GROUP_TITLES = {
     demand: "Demand",
     access: "Access",
-    host: "Host and nearby activity",
+    host: "Host / commercial",
     charging_gap: "Charging gap",
     grid_evidence: "Grid evidence",
   };
@@ -31,6 +31,19 @@ window.SiteScoutInvestigation = (function () {
     INFERRED: "Inferred",
     UNKNOWN: "Unknown",
   };
+  // Provenance labels, the same wording the decision page uses.
+  const PROVENANCE = {
+    RETRIEVED_FACT: ["Retrieved fact", "Found directly in a source"],
+    CALCULATED: ["Calculated", "Derived by SiteScout from source data"],
+    INFERRED: ["Inferred", "An interpretation of the evidence"],
+    UNKNOWN: ["Unknown", "Not established by the public evidence"],
+  };
+  const BLOCKS = [
+    ["Key finding", (a) => a.direct_answer, "finding"],
+    ["Supporting evidence", (a) => [...a.evidence, ...a.interpretation], ""],
+    ["What remains unknown", (a) => a.unknowns, ""],
+    ["Recommended next checks", (a) => a.next_investigation, ""],
+  ];
   const LIMIT = "The investigation reached its step limit before producing a validated answer.";
   const PROVIDER = "The model provider did not return a usable response.";
   const ENDINGS = {
@@ -48,6 +61,7 @@ window.SiteScoutInvestigation = (function () {
   const UNAVAILABLE =
     "Investigation unavailable in this view. The SiteScout decision above is complete without it.";
   const UNAFFECTED = "The decision above is unaffected.";
+  const VALIDATED = "Validated against the SiteScout records retrieved for this investigation.";
 
   let availability = null;
   let gridDisclaimer = "";
@@ -66,6 +80,11 @@ window.SiteScoutInvestigation = (function () {
       node.append(child instanceof Node ? child : document.createTextNode(String(child)));
     }
     return node;
+  }
+
+  function provenance(type) {
+    const [label, meaning] = PROVENANCE[type] || [type, ""];
+    return el("span", { class: `prov p-${type}`, title: meaning }, label);
   }
 
   // One status request per page load, and none at all when the page is opened from disk.
@@ -90,24 +109,33 @@ window.SiteScoutInvestigation = (function () {
   function setRunning(value) {
     running = value;
     for (const button of document.querySelectorAll("button.inv-action")) button.disabled = value;
+    for (const node of document.querySelectorAll(".investigation")) node.classList.toggle("busy", value);
   }
 
   // A labelled investigation block; every result of its actions renders inside it.
   function section(options) {
     const note = el("p", { class: "inv-intro" }, options.intro);
+    const questions = options.questions && options.questions.length
+      ? el("ul", { class: "inv-questions" }, options.questions.map((q) => el("li", {}, q)))
+      : null;
     const actions = el("div", { class: "inv-actions" });
     const line = el("p", { class: "inv-line", "aria-live": "polite" });
     const result = el("div", { class: "inv-result" });
     const node = el(
       "section",
-      { class: "investigation", "aria-label": "Investigation" },
-      el("div", { class: "inv-head" }, el("h3", {}, "Investigation"), el("span", { class: "inv-tag" }, "AI Analyst")),
-      note, actions, line, result,
+      { class: "investigation", "aria-label": options.title || "Investigation" },
+      el("div", { class: "inv-head" },
+        el("h3", {}, options.title || "Investigation"),
+        el("span", { class: "inv-tag" }, "AI-assisted investigation")),
+      questions, note, actions, line, result,
     );
     sections.set(node, { note, actions, line, result });
     if (options.primary) actions.append(action(options.primary.label, options.primary.request, node));
     status().then((ok) => {
-      if (!ok) note.textContent = UNAVAILABLE;
+      if (!ok) {
+        note.textContent = UNAVAILABLE;
+        note.classList.add("off");
+      }
     });
     return node;
   }
@@ -131,6 +159,7 @@ window.SiteScoutInvestigation = (function () {
     setRunning(true);
     parts.result.replaceChildren();
     parts.line.textContent = "Investigating…";
+    if (target.scrollIntoView) target.scrollIntoView({ block: "nearest", behavior: "smooth" });
     fetch("/api/investigate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,7 +179,7 @@ window.SiteScoutInvestigation = (function () {
       });
   }
 
-  // --- Rendering -------------------------------------------------------------------------------
+  // --- Rendering: an analyst report, not a conversation ---------------------------------------
 
   function title(request) {
     const kind = KIND_TITLES[request.kind] || "Investigation";
@@ -159,31 +188,29 @@ window.SiteScoutInvestigation = (function () {
 
   function render(request, data) {
     const head = el("h4", { class: "inv-title", tabindex: "-1" }, title(request));
-    if (data.status === "answered" && data.answer) return el("div", {}, head, answered(data), trace(data));
-    if (data.status === "fallback") return el("div", {}, head, fallback(data), trace(data));
-    if (data.status === "unavailable") return el("div", {}, head, el("p", { class: "inv-message" }, UNAVAILABLE));
+    if (data.status === "answered" && data.answer) {
+      return el("article", { class: "report" }, head, answered(data), trace(data));
+    }
+    if (data.status === "fallback") return el("article", { class: "report" }, head, fallback(data), trace(data));
+    if (data.status === "unavailable") {
+      return el("article", { class: "report" }, head, el("p", { class: "inv-message" }, UNAVAILABLE));
+    }
     const text = data.status === "busy"
       ? "Another investigation is running. Try again when it finishes."
       : "The investigation request could not be completed.";
-    return el("div", {}, head, el("p", { class: "inv-message" }, text, " ", UNAFFECTED));
+    return el("article", { class: "report" }, head, el("p", { class: "inv-message" }, text, " ", UNAFFECTED));
   }
 
   function answered(data) {
     const a = data.answer;
-    const blocks = [
-      ["Conclusion", a.direct_answer],
-      ["Evidence", [...a.evidence, ...a.interpretation]],
-      ["Unknown", a.unknowns],
-      ["Next investigation", a.next_investigation],
-    ];
     return el(
       "div",
       { class: "inv-answer" },
-      el("p", { class: "inv-verdict" }, "Validated against the records this investigation retrieved."),
-      blocks
+      el("p", { class: "inv-verdict" }, VALIDATED),
+      BLOCKS.map(([name, pick, extra]) => [name, pick(a), extra])
         .filter(([, statements]) => statements.length)
-        .map(([name, statements]) =>
-          el("div", { class: "inv-block" }, el("h5", {}, name),
+        .map(([name, statements, extra]) =>
+          el("section", { class: `inv-block ${extra}` }, el("h5", {}, name),
             el("ul", { class: "stmts" }, statements.map((s) => statement(s, data))))),
     );
   }
@@ -193,13 +220,13 @@ window.SiteScoutInvestigation = (function () {
     return el(
       "li",
       { class: "stmt" },
-      el("span", { class: `type t-${s.kind}` }, s.kind),
       el(
         "div",
         { class: "stmt-body" },
         el("p", {}, s.text),
         s.quotes.map((q) => el("blockquote", {}, q)),
-        cites.length ? el("div", { class: "cites" }, cites) : null,
+        el("div", { class: "stmt-meta" }, provenance(s.kind),
+          cites.length ? el("div", { class: "cites" }, cites) : null),
       ),
     );
   }
@@ -210,7 +237,7 @@ window.SiteScoutInvestigation = (function () {
       return el(
         "details",
         { class: "cite" },
-        el("summary", {}, "Project knowledge · ", r.evidence.metric),
+        el("summary", {}, "Project document · ", r.evidence.metric),
         el("dl", {}, el("dt", {}, "Document"), el("dd", {}, r.evidence.metric),
           el("dt", {}, "Section"), el("dd", {}, r.claim), el("dt", {}, "Record"), el("dd", { class: "mono" }, r.id)),
       );
@@ -220,7 +247,8 @@ window.SiteScoutInvestigation = (function () {
         "details",
         { class: "cite" },
         el("summary", {}, `${r.claim}: ${r.display}`),
-        el("dl", {}, el("dt", {}, "Value"), el("dd", {}, r.display), el("dt", {}, "Type"), el("dd", {}, r.type),
+        el("dl", {}, el("dt", {}, "Value"), el("dd", {}, r.display),
+          el("dt", {}, "Provenance"), el("dd", {}, provenance(r.type)),
           el("dt", {}, "Source"), el("dd", {}, r.evidence.source), el("dt", {}, "Record"), el("dd", { class: "mono" }, r.id)),
       );
     }
@@ -243,7 +271,7 @@ window.SiteScoutInvestigation = (function () {
       .filter((type) => byType[type])
       .map((type) =>
         el("details", { class: "inv-group", ...(type === "UNKNOWN" ? { open: "" } : {}) },
-          el("summary", {}, TYPE_TITLES[type]),
+          el("summary", {}, TYPE_TITLES[type], " ", el("span", { class: "count" }, byType[type].length)),
           el("ul", { class: "recs" }, byType[type].map((r) =>
             el("li", {}, el("span", {}, r.id.startsWith("kb/") ? r.evidence.metric : r.claim),
               el("span", { class: "v" }, r.id.startsWith("kb/") ? r.claim : r.display))))));
@@ -269,6 +297,7 @@ window.SiteScoutInvestigation = (function () {
     return parts.join(" · ");
   }
 
+  // The recorded steps and validation checks, collapsed: an audit record, not the headline.
   function trace(data) {
     const steps = data.trace.map((t) =>
       el("li", {}, el("span", { class: "step" }, t.label),
@@ -281,11 +310,11 @@ window.SiteScoutInvestigation = (function () {
     return el(
       "details",
       { class: "trace" },
-      el("summary", {}, `How this was investigated · ${verdict} · ${data.elapsed_display}`),
+      el("summary", {}, `Investigation record · ${verdict} · ${data.elapsed_display}`),
       steps.length ? el("ol", { class: "steps" }, steps) : el("p", { class: "note" }, "No tool was called."),
       checks.length ? el("ul", { class: "checks" }, checks) : null,
     );
   }
 
-  return { init, status, section, action };
+  return { init, status, section, action, provenance };
 })();

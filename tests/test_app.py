@@ -86,7 +86,8 @@ def test_no_credential_or_provider_detail_reaches_the_browser(text):
 @pytest.mark.parametrize("text", [PAGE, CLIENT], ids=["index.html", "investigation.js"])
 def test_ai_is_named_only_where_it_adds_context(text):
     uses = re.findall(r"\bAI\b.{0,40}", text)
-    assert all(u.startswith(("AI Analyst", "AI investigation unavailable")) for u in uses), uses
+    allowed = ("AI Analyst", "AI investigation unavailable", "AI-assisted investigation")
+    assert all(u.startswith(allowed) for u in uses), uses
     lowered = text.lower()
     for banned in (
         "ai-powered",

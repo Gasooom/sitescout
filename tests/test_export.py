@@ -91,6 +91,30 @@ def test_chargers_are_positions_only_and_outlines_are_small(world):
     assert data["meta"]["data_status"] == "pipeline"
 
 
+def test_evaluation_metrics_repeat_the_evaluation_outputs(world):
+    config, processed, out = world
+    run_export(config, processed, out)
+    evaluation = _load(out)["evaluation"]
+    results, grounding = _load(processed / "evaluation.json"), _load(processed / "grounding.json")
+    top = max(config.settings.evaluation.backtest.precision_at)
+    a, b = results["backtest"], results["stability"]
+    interval = a["bootstrap"]["sitescout_minus_population"][f"precision_at_{top}"]
+    shown = {m["key"]: m["display"] for m in evaluation["metrics"]}
+    assert shown == {
+        "precision_sitescout": f"{a['metrics']['sitescout'][f'precision_at_{top}']:.3f}",
+        "precision_population": f"{a['metrics']['population_only'][f'precision_at_{top}']:.3f}",
+        "known_sites": str(a["known_charging_sites"]),
+        "difference_interval": f"[{interval[0]:.3f}, {interval[1]:.3f}]",
+        "stability_mean": f"{b['mean_overlap']:.2f}",
+        "stability_min": f"{b['min_overlap']:.2f}",
+        "grounding": f"{grounding['grounded']} / {grounding['numbers']}",
+    }
+    assert evaluation["difference_includes_zero"] == (interval[0] <= 0 <= interval[1])
+    for display in shown.values():  # every tile repeats a number the text lines already state
+        for part in display.strip("[]").replace(" / ", ", ").split(", "):
+            assert any(part in line for line in evaluation["lines"]), part
+
+
 def test_the_js_file_holds_the_same_data(world):
     config, processed, out = world
     run_export(config, processed, out)
