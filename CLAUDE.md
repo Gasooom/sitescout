@@ -84,7 +84,7 @@ All Git commits must represent Gasim as the author.
 - Business logic lives in `src/sitescout/`. Scripts in `scripts/` only parse arguments and call `src/`.
 - Python is the only place numbers are computed. The pipeline exports `data/export/sitescout.json`.
 - The front end in `app/` renders that export. It may filter, sort and display; it never computes scores, coverage or selection.
-- The design reference is `app/prototype.html`.
+- The design reference is the current page, `app/index.html` (the `app/prototype.html` once named here was never added; see `docs/decisions.md`).
 - Configuration-driven paths only (`config/settings.yaml`, `config/weights.yaml`). No absolute paths.
 - Config comes from YAML only.
 - **Environment-variable and `.env` overrides are disabled.**

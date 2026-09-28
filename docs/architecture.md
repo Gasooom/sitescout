@@ -193,7 +193,24 @@ question -> provider (optional model) -> one of nine capabilities, chosen one st
 - **Offline evaluation** (`sitescout/agent_eval/`, `scripts/agent_eval.py`): 73 scripted trajectories on the SYNTHETIC world and the real knowledge index measure the validator and the loop, not a model, and pin the documented false accepts and false rejects (`reports/agent_eval.md`). It uses no model, key or network, and it is the milestone's acceptance suite.
 - **Providers** (`sitescout/agent_provider/`, D-059): Anthropic and OpenAI adapters reuse the M9 reply translation, credential functions and optional extra; only the nine-tool check and the agent prompt are new. `agent.model_provider` in YAML chooses one, and each adapter passes its official API endpoint explicitly, so `ANTHROPIC_BASE_URL` and `OPENAI_BASE_URL` are never consulted. `scripts/agent_ask.py` is a manual smoke test.
 - **Live evaluation** (`sitescout/agent_live_eval/`, `scripts/agent_live_eval.py`, D-060, D-061): free-text cases (`tests/agent_live_cases.yaml`) go through the unmodified loop and a real provider within the tighter `agent.live_eval` budgets and at most `max_cases` cases. Each run is classified, its soft expectations are reported, latency and token usage are recorded, and the validator's structured issues are kept for every failed attempt, without the rejected text. It writes `reports/agent_live_eval.md` and the git-ignored `data/processed/agent_live_eval.json`. It is never run by pytest, and one run is one observation, not a measure of reliability.
-- **Boundary** (D-053, D-055): the agent is read-only with respect to the decision engine. It never changes scores, features, weights, candidates, the MCLP selection, coverage or evaluation results, and its output never enters the export, `evidence.json`, the briefs or the page.
+- **Boundary** (D-053, D-055, D-062): the agent is read-only with respect to the decision engine. It never changes scores, features, weights, candidates, the MCLP selection, coverage or evaluation results, and its output never enters the export, `evidence.json` or the briefs. On the locally served page it appears only as a separate investigation layer, held in memory (Milestone 11).
+
+## Milestone 11: the decision page and its investigation layer
+
+```
+file:// app/index.html  -> the decision view only (export via <script>, no request)
+http://127.0.0.1:<port> -> the same page + investigation.js
+   GET  /api/status       {"investigation_available": bool}
+   POST /api/investigate  {kind, candidate_id?, group?}
+        -> sitescout/server.py: fixed question -> agent_provider.ask (unchanged, agent: limits)
+        -> answer + cited records | fallback records, recorded trace, validation rules
+```
+
+- **Page** (`app/index.html`, D-048, D-062): a map-first layout. The left pane is the SVG map with the three networks (exact, greedy, Top-30), the right pane the dossier: the headline result, the network comparison and, per site, the **site decision** (score, rank, confidence, network role, why selected, components, typed evidence, unknowns, risks, next actions). It still computes nothing and still opens from disk.
+- **Investigation client** (`app/investigation.js`): no request when opened from disk; otherwise one status request, then contextual actions (investigate this site, explain an evidence group, what would need to be verified, investigate the network difference) shown only when available. It renders the validated answer with typed statements and their citations (records with value and source; documents with section and quotation), or the fallback's retrieved records with no generated text, and the recorded steps and validation outcome. "Investigating…" is the only loading state. Text goes in through `textContent`; nothing is stored in the browser.
+- **Server** (`sitescout/server.py`, `scripts/serve.py`, D-062): Python's standard library, 127.0.0.1 only, one investigation at a time. The page sends a kind and validated ids; the server writes the question. Host, origin, content-type and size checks; an allow-list of static files; a content security policy. Responses carry no fallback reason, exception text, rejected answer text or credential, and nothing is written.
+- **Demo-readiness gate** (`sitescout/demo_gate.py`, `scripts/demo_gate.py`, D-063): the deterministic items are tests; the live part runs three investigation kinds through the server's own path and writes `reports/demo_gate.md` with metadata only.
+- **QA** (`tests/qa_server.py`): serves the real page and data with scripted models so each state (answered, fallback, provider error, unavailable) can be inspected in a browser without a key.
 
 ## Rules every stage follows
 
