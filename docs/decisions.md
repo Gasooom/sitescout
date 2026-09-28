@@ -656,6 +656,20 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Recording the rejected answer's text (model output the validator refused, which would need its own review before being kept); parsing logs (the loop logs no detail); regenerating the first run's report (its diagnostics were never captured); rerunning all 11 cases (spends calls without adding information about A02); relaxing the quotation check (no evidence that it is wrong).
 - **Reason:** A failure category without its cause cannot be told apart from a validator defect. Keeping the structured issues the validator already produces explains every future rejection from the persisted result alone, without storing model text and without touching anything the loop decides.
 
+## D-062: An optional investigation layer on the decision page, served locally
+
+- **Date:** 2026-09-28 (Milestone 11; approved by Gasim)
+- **Decision:**
+  - **Principle:** SiteScout makes the decision deterministically; the investigation layer helps a person question it and never becomes the decision. This amends D-053 (the page stays AI-free) and D-048 (the page makes no network request) for the locally served page only.
+  - **Opened from disk** (`app/index.html`), the page is exactly the D-048 decision view: no request, no provider, no key. Its investigation block says the investigation is unavailable in that view.
+  - **Served** by `scripts/serve.py` (`sitescout/server.py`, Python's standard library, bound to 127.0.0.1 on `server.port`), the page may ask the M10 agent to investigate. `GET /api/status` answers only whether investigation is available. `POST /api/investigate` takes one of four kinds (`site_investigation`, `network_comparison`, `unknowns`, `evidence_explanation`) with a validated candidate id and evidence group where the kind needs them; the server writes the question from a fixed template, so the page cannot send free text. One investigation runs at a time, within the `agent:` limits, through the unmodified `agent_provider.ask`.
+  - **What returns:** the validated answer with the records it cites, or the fallback's own records when no answer passed; the recorded tool-call trace (fixed labels; only knowledge queries, candidate ids and plain numbers as arguments); each validation attempt as passed or not with its rule names; the elapsed time. Never the fallback's reason, an exception message, rejected answer text, a request body or a credential.
+  - **Nothing persists:** an investigation exists only in its request, its response and the page's current view. It is never written to `data/`, `reports/`, `app/`, a cache, a database or browser storage, and it never changes a score, rank, selection, coverage, evidence record, brief or the export.
+  - **Security:** the key stays in the server process (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, D-050; SiteScout still reads no `.env`, `uv run --env-file` sets the variable). Requests must name the loopback host (against DNS rebinding), and an investigation must come from the page's own origin as JSON, so another website cannot spend the key. Static files come from an allow-list. The content security policy allows inline script and style because the page's single file uses them.
+  - **Limits of this layer:** a run can take as long as the agent's limits allow, and it cannot be cancelled; the lock keeps it to one at a time.
+- **Alternatives:** A web framework (the standard library covers two endpoints and static files); a free-text question box (a prompt-injection surface and a chatbot); calling the provider from the browser (exposes the key); recording investigation results for a static demo (model output presented as if it were part of the decision).
+- **Reason:** The agent is useful only next to the decision it explains. A local, contextual, read-only layer shows how it uses tools, documents, evidence types and validation, while the decision view stays complete, deterministic and runnable from the public repository without a key.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.

@@ -383,6 +383,10 @@ EXPECTED_M10_PHASE6_SETTINGS = {
 }
 
 
+# Milestone 11 decision (D-062): the local server's port; the bind address is not a setting.
+EXPECTED_M11_SETTINGS = {"server.port": 8765}
+
+
 def test_settings_match_spec():
     assert flatten(load_config().snapshot()["settings"]) == {
         **EXPECTED_SETTINGS,
@@ -398,7 +402,29 @@ def test_settings_match_spec():
         **EXPECTED_M10_PHASE3_SETTINGS,
         **EXPECTED_M10_PHASE5_SETTINGS,
         **EXPECTED_M10_PHASE6_SETTINGS,
+        **EXPECTED_M11_SETTINGS,
     }
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        (80, "greater than or equal to 1024"),
+        (70000, "less than or equal to 65535"),
+        ("8765", "Input should be a valid integer"),
+        (True, "Input should be a valid integer"),
+    ],
+)
+def test_the_server_port_is_checked(settings_data, weights_data, value, message):
+    set_path(settings_data, "server.port", value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+def test_the_server_bind_address_is_not_a_setting(settings_data, weights_data):
+    settings_data["server"]["host"] = "0.0.0.0"
+    with pytest.raises(ConfigError, match="Extra inputs are not permitted"):
+        build_config(settings_data, weights_data)
 
 
 @pytest.mark.parametrize(

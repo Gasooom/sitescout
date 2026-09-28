@@ -844,6 +844,13 @@ class AgentSettings(_Model):
     live_eval: LiveEvalSettings
 
 
+class ServerSettings(_Model):
+    """Milestone 11 (D-062): the local server behind the page's optional investigation layer.
+    It always binds 127.0.0.1, which is fixed in code; only the port is configurable."""
+
+    port: Annotated[int, Strict(), Field(ge=1024, le=65535)]
+
+
 class Settings(_Model):
     """config/settings.yaml."""
 
@@ -863,6 +870,7 @@ class Settings(_Model):
     knowledge: KnowledgeSettings
     investigation: InvestigationSettings
     agent: AgentSettings
+    server: ServerSettings
 
     @model_validator(mode="after")
     def _agent_top_k_within_the_retrieval_limit(self) -> Self:

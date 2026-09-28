@@ -488,3 +488,9 @@ agent:
     max_retrieval_calls: 2
     max_cases: 12
     price_table: null
+
+# Milestone 11 (D-062): the optional local server behind the decision page's investigation
+# layer (scripts/serve.py). It always binds 127.0.0.1; the address is fixed in code and is not
+# a setting. The port is only where the page is served locally, not an analytical value.
+server:
+  port: 8765
