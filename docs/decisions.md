@@ -670,6 +670,18 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** A web framework (the standard library covers two endpoints and static files); a free-text question box (a prompt-injection surface and a chatbot); calling the provider from the browser (exposes the key); recording investigation results for a static demo (model output presented as if it were part of the decision).
 - **Reason:** The agent is useful only next to the decision it explains. A local, contextual, read-only layer shows how it uses tools, documents, evidence types and validation, while the decision view stays complete, deterministic and runnable from the public repository without a key.
 
+## D-063: A demo-readiness gate for the investigation layer
+
+- **Date:** 2026-09-28 (Milestone 11; approved by Gasim)
+- **Decision:**
+  - SPEC §11 asks that the analyst be tested with a scenario set before it appears in the demo. For the investigation layer (D-062) that condition is this gate, separate from the M10 evaluations, which stay as D-058 and D-060 define them.
+  - **Deterministic items** (every test run, no provider): an invalid or nonexistent site is refused before any provider call; a double rejection returns the fallback's records and never answer text; investigations leave the export unchanged; no credential reaches a response or the page; nothing is written; runs stay within the `agent:` limits; the page opened from disk is complete and makes no request (`tests/test_server.py`, `tests/test_app.py`).
+  - **Live items** (`scripts/demo_gate.py`, `sitescout/demo_gate.py`): `site_investigation`, `evidence_explanation` for grid evidence and `unknowns`, each run `demo_gate.runs_per_kind` = 2 times on the highest-ranked network site, through the same `InvestigationService.run` the page's server calls. A kind passes when every run completes (a validated answer or the fallback) and at least `demo_gate.min_validated_per_kind` = 1 ends validated. `reports/demo_gate.md` records kind, outcome, validation rules, recorded steps and time, never answer text; it is an evaluation artifact in the sense of D-053.
+  - **Before the gate ran**, one local check of `site_investigation` fell back (a malformed first answer, then ungrounded numbers and a missing grid disclaimer). Its question asked for five things at once; it was narrowed to why the site is in or out of the network, from its score, rank and contribution, and what remains unknown. No validation rule changed.
+  - The live budget for this milestone was 8 investigations: 2 local checks and the 6 gate runs.
+- **Alternatives:** Reusing the M10 live evaluation as the gate (it is observational by D-060 and runs a different path); a single run per kind (one fallback would decide); requiring every run to validate (a fallback is a designed, safe state, not a failure of the product).
+- **Reason:** Showing the investigation layer should rest on the page's own path working with the real provider, measured and recorded, without turning a few runs into a claim about the agent in general.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.

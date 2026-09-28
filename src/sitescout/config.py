@@ -191,6 +191,7 @@ class PathSettings(_Model):
     agent_eval_report: RelativePath
     agent_live_cases: RelativePath
     agent_live_eval_report: RelativePath
+    demo_gate_report: RelativePath
 
 
 class LoggingSettings(_Model):
@@ -851,6 +852,19 @@ class ServerSettings(_Model):
     port: Annotated[int, Strict(), Field(ge=1024, le=65535)]
 
 
+class DemoGateSettings(_Model):
+    """Milestone 11 (D-063): the demo-readiness gate's live runs and its pass rule."""
+
+    runs_per_kind: Count
+    min_validated_per_kind: Count
+
+    @model_validator(mode="after")
+    def _threshold_within_the_runs(self) -> DemoGateSettings:
+        if self.min_validated_per_kind > self.runs_per_kind:
+            raise ValueError("demo_gate.min_validated_per_kind must not exceed runs_per_kind")
+        return self
+
+
 class Settings(_Model):
     """config/settings.yaml."""
 
@@ -871,6 +885,7 @@ class Settings(_Model):
     investigation: InvestigationSettings
     agent: AgentSettings
     server: ServerSettings
+    demo_gate: DemoGateSettings
 
     @model_validator(mode="after")
     def _agent_top_k_within_the_retrieval_limit(self) -> Self:

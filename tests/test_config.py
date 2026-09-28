@@ -384,7 +384,13 @@ EXPECTED_M10_PHASE6_SETTINGS = {
 
 
 # Milestone 11 decision (D-062): the local server's port; the bind address is not a setting.
-EXPECTED_M11_SETTINGS = {"server.port": 8765}
+EXPECTED_M11_SETTINGS = {
+    "server.port": 8765,
+    # D-063: the demo-readiness gate.
+    "paths.demo_gate_report": "reports/demo_gate.md",
+    "demo_gate.runs_per_kind": 2,
+    "demo_gate.min_validated_per_kind": 1,
+}
 
 
 def test_settings_match_spec():
@@ -417,6 +423,20 @@ def test_settings_match_spec():
 )
 def test_the_server_port_is_checked(settings_data, weights_data, value, message):
     set_path(settings_data, "server.port", value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("demo_gate.runs_per_kind", 0, "greater than 0"),
+        ("demo_gate.min_validated_per_kind", 3, "must not exceed runs_per_kind"),
+        ("demo_gate.runs_per_kind", "2", "Input should be a valid integer"),
+    ],
+)
+def test_the_demo_gate_settings_are_checked(settings_data, weights_data, dotted, value, message):
+    set_path(settings_data, dotted, value)
     with pytest.raises(ConfigError, match=message):
         build_config(settings_data, weights_data)
 

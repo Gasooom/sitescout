@@ -26,6 +26,7 @@ paths:
   # Phase 4's deterministic, offline evaluation above.
   agent_live_cases: tests/agent_live_cases.yaml
   agent_live_eval_report: reports/agent_live_eval.md
+  demo_gate_report: reports/demo_gate.md
 
 logging:
   level: INFO
@@ -494,3 +495,11 @@ agent:
 # a setting. The port is only where the page is served locally, not an analytical value.
 server:
   port: 8765
+
+# Milestone 11 (D-063): the demo-readiness gate's live part (scripts/demo_gate.py). Each of the
+# three gated investigation kinds runs runs_per_kind times through the page's own server path;
+# a kind passes when at least min_validated_per_kind runs end with a validated answer and none
+# fails to complete. A readiness check for the demo, not a measure of the agent's reliability.
+demo_gate:
+  runs_per_kind: 2
+  min_validated_per_kind: 1
