@@ -59,9 +59,8 @@ GROUP_WORDS: dict[str, str] = {
 # SiteScout never makes; the agent's own prompt and validator still apply unchanged.
 QUESTIONS: dict[str, str] = {
     "site_investigation": (
-        "Investigate candidate site {candidate_id}: using its stored records, explain its score, "
-        "its confidence level and its role in the optimized network, what the evidence shows, "
-        "and what remains unknown."
+        "Why is candidate site {candidate_id} in or out of the optimized network? Answer from its "
+        "stored score, rank and network contribution, and name what remains unknown."
     ),
     "network_comparison": (
         "How does the exact optimized network compare with the Top-30 by individual score in "

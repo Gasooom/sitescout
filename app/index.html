@@ -3,177 +3,338 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SiteScout · Rwanda EV charging network</title>
+<title>SiteScout · EV charging network intelligence · Rwanda</title>
 <!--
-  SiteScout decision demo (Milestone 8). A read-only view over data/export/sitescout.js,
-  which scripts/export.py writes from the pipeline's outputs. This page computes nothing:
-  every number it shows is a display string from the export; it only draws and lays out.
+  SiteScout decision page (Milestones 8 and 11). A read-only view over data/export/sitescout.js,
+  which scripts/export.py writes from the pipeline's outputs. This page computes nothing: every
+  number it shows is a display string from the export; it only draws and lays out.
+  investigation.js adds the optional investigation layer when the page is served locally by
+  scripts/serve.py (D-062); opened from disk, the page is the complete decision view on its own.
 -->
 <style>
   :root {
-    --ink: #1c2430; --muted: #5f6b7a; --faint: #8a96a5; --line: #d9dee5; --panel: #ffffff;
-    --bg: #f4f5f7; --network: #0b6e69; --network-soft: rgba(11, 110, 105, 0.07);
-    --top30: #b5651d; --top30-soft: rgba(181, 101, 29, 0.07); --candidate: #aab3bf;
-    --charger: #3b4452; --district: #e9ecf0; --province: #9aa5b3; --warn: #9a3412;
+    --bg: #f5f3ee; --panel: #ffffff; --ink: #17212b; --muted: #5a6571; --faint: #8a94a0;
+    --line: #e3ded4; --soft: #f0ede6;
+    --mclp: #0f766e; --mclp-soft: rgba(15, 118, 110, 0.08);
+    --greedy: #4b5d73; --greedy-soft: rgba(75, 93, 115, 0.08);
+    --top30: #b45309; --top30-soft: rgba(180, 83, 9, 0.08);
+    --candidate: #b6bec8; --charger: #1f2937; --district: #e9e5dc; --province: #a39b8b;
+    --warn: #9a3412; --focus: #1d4ed8;
+    --sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .wrap { max-width: 1320px; margin: 0 auto; padding: 24px 28px 40px; }
-  header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
-    border-bottom: 1px solid var(--line); padding-bottom: 14px; }
-  .brand { font-weight: 700; letter-spacing: 0.08em; font-size: 13px; text-transform: uppercase; }
-  .brand span { color: var(--muted); font-weight: 500; letter-spacing: 0.02em; text-transform: none; }
-  h1 { font-size: 30px; line-height: 1.2; margin: 22px 0 6px; font-weight: 650; }
-  .lede { color: var(--muted); margin: 0 0 20px; max-width: 70ch; }
-  .banner { background: #fff4e5; border: 1px solid #f0c48a; padding: 8px 12px; margin-top: 12px; }
-  .compare { display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; background: var(--panel);
-    border: 1px solid var(--line); padding: 20px 24px; }
-  .bars h2, .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--muted); margin: 0 0 12px; font-weight: 600; }
-  .bar { display: grid; grid-template-columns: 150px 1fr 64px; align-items: center; gap: 12px;
-    margin: 10px 0; }
-  .bar .name { font-size: 14px; }
-  .bar .track { height: 14px; background: #eef0f3; position: relative; }
-  .bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--candidate); }
-  .bar.mclp .fill { background: var(--network); } .bar.top30 .fill { background: var(--top30); }
-  .bar .value { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
-  .bar.mclp .value { color: var(--network); } .bar.top30 .value { color: var(--top30); }
-  .note { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; font-size: 13px; }
-  .split h3 { font-size: 14px; margin: 0 0 6px; }
-  .split .mclp h3 { color: var(--network); } .split .top30 h3 { color: var(--top30); }
-  .split dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0; }
-  .split dt { color: var(--muted); } .split dd { margin: 0; text-align: right;
-    font-variant-numeric: tabular-nums; }
-  .unknowns { margin: 14px 0 22px; font-size: 13px; color: var(--muted); }
-  .unknowns strong { color: var(--ink); }
-  main { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr); gap: 20px; }
-  .mapcard, .panel { background: var(--panel); border: 1px solid var(--line); }
-  .mapcard { padding: 14px 16px 10px; position: sticky; top: 12px; align-self: start; }
-  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased; }
+  button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  a { color: var(--mclp); text-underline-offset: 2px; }
+
+  /* --- Top bar --- */
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    padding: 0 24px; height: 56px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+  .brand strong { font-size: 14px; letter-spacing: 0.18em; font-weight: 750; text-transform: uppercase; }
+  .brand strong::before { content: ""; display: inline-block; width: 9px; height: 9px;
+    background: var(--mclp); margin-right: 9px; vertical-align: 1px; }
+  .brand span { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  .independent { color: var(--faint); font-size: 12px; text-align: right; }
+  .banner { background: #fff4e5; border-bottom: 1px solid #f0c48a; padding: 8px 24px; font-size: 13px; }
+
+  /* --- Shell: map pane and dossier --- */
+  .shell { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .mappane, .dossier { min-width: 0; }
+  .mappane { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 18px;
+    display: flex; flex-direction: column; gap: 10px; }
+  .maptools { display: flex; justify-content: space-between; align-items: center; gap: 12px;
     flex-wrap: wrap; }
-  .toggle { display: inline-flex; border: 1px solid var(--line); }
-  .toggle button { font: inherit; font-size: 13px; padding: 7px 14px; border: 0;
-    background: #fff; color: var(--muted); cursor: pointer; }
+  .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 3px;
+    background: var(--soft); gap: 3px; }
+  .toggle button { font-size: 13px; padding: 6px 12px; border: 0; border-radius: 6px;
+    background: transparent; color: var(--muted); cursor: pointer; }
+  .toggle button:hover { color: var(--ink); }
   .toggle button[aria-pressed="true"] { color: #fff; }
-  .toggle button.mclp[aria-pressed="true"] { background: var(--network); }
+  .toggle button.mclp[aria-pressed="true"] { background: var(--mclp); }
+  .toggle button.greedy[aria-pressed="true"] { background: var(--greedy); }
   .toggle button.top30[aria-pressed="true"] { background: var(--top30); }
   .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px;
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px;
     vertical-align: -1px; border-radius: 50%; }
-  .legend .c { background: var(--candidate); } .legend .s { background: var(--network); }
+  .legend .c { background: var(--candidate); }
+  .legend .s.mclp { background: var(--mclp); } .legend .s.greedy { background: var(--greedy); }
   .legend .s.top30 { background: var(--top30); }
   .legend .k { border: 1.5px solid var(--charger); border-radius: 0; width: 9px; height: 9px; }
-  svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+  .mapwrap { position: relative; flex: 1; min-height: 0; display: flex; }
+  #map { width: 100%; height: 100%; display: block; }
+  .mapnote { margin: 0; font-size: 12px; color: var(--faint); }
   .district { fill: var(--district); stroke: #fff; stroke-width: 0.8; }
-  .province { fill: none; stroke: var(--province); stroke-width: 1.2; }
-  .plabel { fill: var(--faint); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
-    pointer-events: none; }
+  .province { fill: none; stroke: var(--province); stroke-width: 1.1; }
+  .plabel { fill: var(--faint); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    pointer-events: none; font-family: var(--sans); }
   .cand { fill: var(--candidate); cursor: pointer; }
-  .ring { fill: var(--network-soft); stroke: none; pointer-events: none; }
+  .cand:hover { fill: var(--ink); }
+  .ring { stroke: none; pointer-events: none; }
+  .ring.mclp { fill: var(--mclp-soft); } .ring.greedy { fill: var(--greedy-soft); }
   .ring.top30 { fill: var(--top30-soft); }
-  .site { fill: var(--network); stroke: #fff; stroke-width: 1.5; cursor: pointer; }
+  .site { stroke: #fff; stroke-width: 1.5; cursor: pointer; }
+  .site.mclp { fill: var(--mclp); } .site.greedy { fill: var(--greedy); }
   .site.top30 { fill: var(--top30); }
-  .site:focus, .cand:focus { outline: none; stroke: var(--ink); stroke-width: 2.5; }
-  .site.active { stroke: var(--ink); stroke-width: 3; }
+  .site:hover, .site:focus { stroke: var(--ink); stroke-width: 2.5; outline: none; }
+  .site.active { stroke: var(--ink); stroke-width: 3.5; }
+  .cand:focus { outline: none; stroke: var(--ink); stroke-width: 2; }
   .charger { fill: #fff; stroke: var(--charger); stroke-width: 1.5; pointer-events: none; }
-  .panel { padding: 18px 20px; }
+
+  .dossier { padding: 22px 20px 32px; }
+  .dossier > * { max-width: 760px; }
+  .eyebrow { margin: 0 0 6px; font-size: 11px; font-weight: 650; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(22px, 2.3vw, 30px); line-height: 1.22; letter-spacing: -0.01em;
+    margin: 0 0 8px; font-weight: 700; }
+  .lede { color: var(--muted); margin: 0 0 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; margin: 0 0 14px; }
+  .card h2, .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin: 0 0 10px; font-weight: 650; }
+
+  /* Headline result */
+  .hero { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 14px;
+    margin: 0 0 14px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; }
+  .stat b { display: block; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.05;
+    font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat.mclp b { color: var(--mclp); } .stat.top30 b { color: var(--top30); }
+  .stat span { display: block; font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .stat small { display: block; font-size: 12px; color: var(--muted); }
+  .vs { color: var(--faint); font-size: 13px; padding-bottom: 26px; }
+  .bar { display: grid; grid-template-columns: 150px 1fr 60px; align-items: center; gap: 12px;
+    margin: 8px 0; }
+  .bar .name { font-size: 13px; }
+  .bar .track { height: 10px; background: var(--soft); border-radius: 5px; position: relative;
+    overflow: hidden; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; }
+  .bar.mclp .fill { background: var(--mclp); } .bar.greedy .fill { background: var(--greedy); }
+  .bar.top30 .fill { background: var(--top30); }
+  .bar .value { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+  .note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; font-size: 13px;
+    margin-top: 14px; border-top: 1px solid var(--soft); padding-top: 12px; }
+  .split h3 { font-size: 13px; margin: 0 0 6px; }
+  .split .mclp h3 { color: var(--mclp); } .split .top30 h3 { color: var(--top30); }
+  .split dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0; }
+  .split dt { color: var(--muted); }
+  .split dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .unknowns { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+  .unknowns strong { color: var(--ink); }
+
+  /* List of sites */
   .list { list-style: none; margin: 0; padding: 0; }
-  .list button { width: 100%; display: grid; grid-template-columns: 38px 1fr auto; gap: 10px;
-    align-items: baseline; font: inherit; font-size: 14px; text-align: left; background: none;
-    border: 0; border-bottom: 1px solid #eef0f3; padding: 8px 2px; cursor: pointer; color: var(--ink); }
-  .list button:hover, .list button:focus { background: #f6f8fa; outline: none; }
-  .list .rank { color: var(--faint); font-variant-numeric: tabular-nums; }
+  .list button { width: 100%; display: grid; grid-template-columns: 42px 1fr auto; gap: 10px;
+    align-items: center; font-size: 14px; text-align: left; background: none; border: 0;
+    border-top: 1px solid var(--soft); padding: 9px 4px; cursor: pointer; color: var(--ink); }
+  .list li:first-child button { border-top: 0; }
+  .list button:hover { background: var(--soft); }
+  .list .rank { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
   .list .meta { color: var(--muted); font-size: 12px; }
-  .badge { font-size: 11px; padding: 2px 7px; border: 1px solid var(--line); white-space: nowrap; }
-  .badge.High { border-color: #9cc9b8; color: #0f5a45; } .badge.Medium { border-color: #e2c98f; color: #7a5a12; }
+  .badge { font-size: 11px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
+    white-space: nowrap; }
+  .badge.High { border-color: #9cc9b8; color: #0f5a45; }
+  .badge.Medium { border-color: #e2c98f; color: #7a5a12; }
   .badge.Low { border-color: #e6a99a; color: var(--warn); }
-  .back { font: inherit; font-size: 13px; background: none; border: 0; color: var(--network);
-    cursor: pointer; padding: 0; margin-bottom: 10px; }
-  .detail h3 { font-size: 20px; margin: 0 0 4px; }
-  .detail .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+
+  /* Site dossier */
+  .back { background: none; border: 0; color: var(--mclp); cursor: pointer; padding: 0;
+    margin: 0 0 14px; font-size: 13px; }
+  .decision { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--mclp);
+    border-radius: 10px; padding: 18px 20px; }
+  .decision.out { border-top-color: var(--candidate); }
+  .decision h2 { font-size: 22px; line-height: 1.25; margin: 2px 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .mono { font-family: var(--mono); font-size: 12px; }
   .facts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line);
-    margin: 12px 0; }
-  .facts div { padding: 8px 10px; border-right: 1px solid var(--line); }
+    border-radius: 8px; margin: 14px 0; overflow: hidden; }
+  .facts div { padding: 10px 12px; border-right: 1px solid var(--line); }
   .facts div:last-child { border-right: 0; }
-  .facts b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .facts b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.2; }
   .facts span { font-size: 12px; color: var(--muted); }
-  .detail h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-    margin: 18px 0 6px; font-weight: 600; }
-  .detail p { margin: 0 0 8px; }
+  .roles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+  .role { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line);
+    color: var(--muted); }
+  .role.on.mclp { border-color: var(--mclp); color: var(--mclp); background: var(--mclp-soft); }
+  .role.on.greedy { border-color: var(--greedy); color: var(--greedy); background: var(--greedy-soft); }
+  .role.on.top30 { border-color: var(--top30); color: var(--top30); background: var(--top30-soft); }
+  .decision h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin: 20px 0 8px; font-weight: 650; display: flex;
+    justify-content: space-between; align-items: center; gap: 10px; }
+  .decision p { margin: 0 0 8px; }
   .comp { display: grid; grid-template-columns: 130px 1fr 44px; gap: 10px; align-items: center;
-    font-size: 13px; margin: 4px 0; }
-  .comp .track { height: 8px; background: #eef0f3; position: relative; }
-  .comp .fill { position: absolute; inset: 0 auto 0 0; background: var(--network); }
+    font-size: 13px; margin: 5px 0; }
+  .comp .track { height: 7px; background: var(--soft); border-radius: 4px; position: relative;
+    overflow: hidden; }
+  .comp .fill { position: absolute; inset: 0 auto 0 0; background: var(--mclp); border-radius: 4px; }
   .comp .v { text-align: right; font-variant-numeric: tabular-nums; }
   .ev { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .ev td { padding: 4px 0; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
-  .ev td:last-child { text-align: right; font-variant-numeric: tabular-nums; padding-left: 10px; }
-  .ev .group td { color: var(--ink); font-weight: 600; padding-top: 10px; border-bottom: 0; }
-  .missing { color: var(--warn); font-weight: 600; }
+  .ev td { padding: 5px 0; border-bottom: 1px solid var(--soft); vertical-align: top; }
+  .ev td.v { text-align: right; font-variant-numeric: tabular-nums; padding-left: 10px; }
+  .ev td.t { width: 1%; padding-left: 10px; text-align: right; }
+  .ev .group td { color: var(--ink); font-weight: 650; padding-top: 12px; border-bottom: 0; }
+  .ev .group .cell { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .type { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.02em;
+    padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted);
+    white-space: nowrap; }
+  .t-RETRIEVED_FACT { border-color: #9cc9b8; color: #0f5a45; }
+  .t-CALCULATED { border-color: #b9c3d0; color: #3c4a5c; }
+  .t-INFERRED { border-color: #e2c98f; color: #7a5a12; }
+  .t-UNKNOWN { border-color: #e6a99a; color: var(--warn); }
+  .missing { color: var(--warn); font-weight: 650; }
   .disclaimer { font-size: 12px; color: var(--muted); border-left: 2px solid var(--line);
-    padding-left: 10px; margin: 8px 0; }
-  .notselected { border: 1px solid var(--line); background: #f8f9fa; padding: 10px 12px;
-    font-size: 14px; margin: 12px 0; }
+    padding-left: 10px; margin: 10px 0; }
+  .notselected { border: 1px solid var(--line); background: var(--soft); padding: 10px 12px;
+    border-radius: 8px; font-size: 14px; margin: 12px 0; }
   ul.plain { margin: 0; padding-left: 18px; } ul.plain li { margin: 3px 0; }
-  a { color: var(--network); }
-  footer { margin-top: 28px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line);
-    padding-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  /* Investigation layer: separate from the decision, quieter, never mixed into it */
+  .investigation { margin: 14px 0; border: 1px dashed #cfc8ba; border-radius: 10px;
+    padding: 14px 18px; background: #faf8f4; }
+  .inv-head { display: flex; align-items: center; gap: 10px; }
+  .inv-head h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 650; }
+  .inv-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
+    padding: 1px 8px; background: var(--panel); }
+  .inv-intro { font-size: 13px; color: var(--muted); margin: 6px 0 10px; }
+  .inv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  button.inv-action { font-size: 13px; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--ink); background: var(--ink); color: #fff; }
+  button.inv-action.quiet { background: var(--panel); color: var(--ink); border-color: var(--line);
+    padding: 2px 9px; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  button.inv-action:hover { opacity: 0.88; }
+  button.inv-action:disabled { opacity: 0.45; cursor: default; }
+  .inv-line { margin: 8px 0 0; font-size: 13px; color: var(--muted); min-height: 0; }
+  .inv-line:empty { display: none; }
+  .inv-result:empty { display: none; }
+  .inv-result { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .inv-title { font-size: 15px; margin: 0 0 6px; }
+  .inv-title:focus { outline: none; }
+  .inv-verdict { font-size: 12px; color: #0f5a45; margin: 0 0 10px; }
+  .inv-verdict.warn { color: var(--warn); font-size: 14px; font-weight: 650; }
+  .inv-block h5, .inv-fallback h5 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin: 14px 0 6px; }
+  .stmts { list-style: none; margin: 0; padding: 0; }
+  .stmt { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin: 0 0 10px; align-items: start; }
+  .stmt .type { margin-top: 3px; }
+  .stmt-body p { margin: 0; }
+  blockquote { margin: 6px 0 0; padding: 4px 10px; border-left: 2px solid var(--mclp);
+    background: var(--panel); font-size: 13px; color: var(--muted); }
+  .cites { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+  details.cite { font-size: 12px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--panel); padding: 4px 8px; }
+  details.cite summary { cursor: pointer; color: var(--muted); }
+  details dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 6px 0 2px; }
+  details dt { color: var(--faint); } details dd { margin: 0; overflow-wrap: anywhere; }
+  .inv-group { font-size: 13px; margin: 4px 0; }
+  .inv-group summary { cursor: pointer; font-weight: 600; }
+  .recs { list-style: none; margin: 4px 0 8px; padding: 0; }
+  .recs li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;
+    border-bottom: 1px solid var(--soft); }
+  .recs .v { text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  .inv-message { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  details.trace { margin-top: 12px; font-size: 13px; }
+  details.trace summary { cursor: pointer; color: var(--muted); }
+  .steps, .checks { margin: 8px 0 0; padding-left: 20px; }
+  .steps li, .checks li { margin: 3px 0; }
+  .checks { list-style: none; padding-left: 0; }
+  .checks li.pass .step { color: #0f5a45; } .checks li.fail .step { color: var(--warn); }
+  .step { margin-right: 8px; } .args { color: var(--muted); overflow-wrap: anywhere; }
+
+  footer { margin-top: 24px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line);
+    padding-top: 14px; }
   footer p { margin: 0 0 6px; }
-  @media (max-width: 1000px) { main, .compare, footer { grid-template-columns: 1fr; } }
+
+  /* Desktop: the map fills the left pane, the dossier scrolls on the right */
+  @media (min-width: 1100px) {
+    body { overflow: hidden; }
+    .shell { grid-template-columns: minmax(0, 1.2fr) minmax(420px, 1fr); height: calc(100vh - 56px); }
+    .mappane { border-bottom: 0; border-right: 1px solid var(--line); padding: 16px 20px; }
+    .dossier { overflow-y: auto; padding: 26px 30px 40px; }
+  }
+  @media (max-width: 1099px) { .mapwrap { flex: none; height: 58vh; } }
+  @media (max-width: 700px) {
+    .topbar { padding: 0 14px; } .independent { display: none; }
+    .brand span { display: none; }
+    .mappane { padding: 10px 12px; } .mapwrap { height: auto; aspect-ratio: 8 / 7; }
+    .toggle { width: 100%; }
+    .toggle button { flex: 1; padding: 6px 2px; font-size: 12px; white-space: nowrap; }
+    .dossier { padding: 18px 14px 28px; }
+    .hero { grid-template-columns: 1fr 1fr; } .vs { display: none; }
+    .bar { grid-template-columns: 96px 1fr 52px; gap: 8px; }
+    .split { grid-template-columns: 1fr; }
+    .comp { grid-template-columns: 104px 1fr 40px; }
+    .facts b { font-size: 19px; }
+    .decision, .card, .investigation { padding: 14px; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="brand">SiteScout <span>· EV charging network intelligence · Rwanda</span></div>
-    <div class="brand"><span id="independent"></span></div>
-  </header>
-  <div id="banner" class="banner" hidden></div>
+<header class="topbar">
+  <div class="brand"><strong>SiteScout</strong><span>EV charging network intelligence · Rwanda</span></div>
+  <div class="independent" id="independent"></div>
+</header>
+<div id="banner" class="banner" hidden></div>
 
-  <h1 id="question"></h1>
-  <p class="lede" id="lede"></p>
-
-  <section class="compare" aria-label="Network comparison">
-    <div class="bars">
-      <h2 id="bars-title"></h2>
-      <div id="bars"></div>
-      <p class="note" id="bars-note"></p>
+<div class="shell">
+  <section class="mappane" aria-label="Map of Rwanda">
+    <div class="maptools">
+      <div class="toggle" role="group" aria-label="Which 30 sites to show" id="toggle"></div>
+      <div class="legend">
+        <span><i class="c"></i>Candidate</span>
+        <span><i class="s" id="legend-site"></i><span id="legend-site-label"></span></span>
+        <span><i class="k"></i>Known charging site</span>
+      </div>
     </div>
-    <div class="split" id="split"></div>
+    <div class="mapwrap">
+      <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"
+        preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <p class="mapnote" id="mapnote"></p>
   </section>
 
-  <p class="unknowns" id="unknowns"></p>
-
-  <main>
-    <section class="mapcard" aria-label="Map of Rwanda">
-      <div class="toolbar">
-        <div class="toggle" role="group" aria-label="Which 30 sites to show">
-          <button type="button" class="mclp" data-mode="mclp" aria-pressed="true"></button>
-          <button type="button" class="top30" data-mode="top30" aria-pressed="false"></button>
-        </div>
-        <div class="legend">
-          <span><i class="c"></i>Candidate</span>
-          <span><i class="s" id="legend-site"></i><span id="legend-site-label"></span></span>
-          <span><i class="k"></i>Known charging site</span>
-        </div>
-      </div>
-      <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"></svg>
-    </section>
-    <section class="panel" aria-live="polite" id="panel"></section>
+  <main class="dossier" id="dossier">
+    <div id="overview">
+      <p class="eyebrow">The decision</p>
+      <h1 id="question"></h1>
+      <p class="lede" id="lede"></p>
+      <div class="hero" id="hero"></div>
+      <section class="card" aria-labelledby="bars-title">
+        <h2 id="bars-title"></h2>
+        <div id="bars"></div>
+        <p class="note" id="bars-note"></p>
+        <div class="split" id="split"></div>
+      </section>
+      <div id="network-investigation"></div>
+      <p class="unknowns" id="unknowns"></p>
+      <section class="card" aria-labelledby="list-title">
+        <h2 id="list-title"></h2>
+        <ul class="list" id="list"></ul>
+        <p class="note">Select a site on the map or in the list. # is the site's rank by score among all candidates.</p>
+      </section>
+    </div>
+    <div id="site" hidden></div>
+    <footer>
+      <div id="footer-eval"></div>
+      <div id="footer-legal"></div>
+    </footer>
   </main>
-
-  <footer>
-    <div id="footer-left"></div>
-    <div id="footer-right"></div>
-  </footer>
 </div>
 
 <script src="../data/export/sitescout.js"></script>
+<script src="investigation.js"></script>
 <script>
 "use strict";
 const D = window.SITESCOUT;
+const INV = window.SiteScoutInvestigation;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 // Build DOM nodes; every piece of text goes in through textContent, never as HTML.
@@ -209,8 +370,14 @@ const unknowns = D.context.filter((r) => r.type === "UNKNOWN").map((r) => r.disp
 const gridDisclaimer = D.meta.disclaimers[1];
 let mode = "mclp";
 let activeId = null;
+if (INV) INV.init({ gridDisclaimer });
 
-// --- Header and the network comparison ----------------------------------------------------
+// Optional investigation (investigation.js): nothing when the script is absent.
+const investigationSection = (options) => (INV ? INV.section(options) : null);
+const investigationAction = (label, request, target) =>
+  INV && target ? INV.action(label, request, target, "quiet") : null;
+
+// --- Header and the headline result ------------------------------------------------------------
 document.getElementById("independent").textContent = D.meta.disclaimers[0];
 if (D.meta.data_status !== "pipeline") {
   const banner = document.getElementById("banner");
@@ -222,6 +389,12 @@ document.getElementById("lede").textContent =
   `${H.candidates} candidate sites were scored from public data. ${byKey.mclp.label}: ` +
   `${H.n_sites} sites chosen together to cover as much of Rwanda's modelled population as ` +
   `possible within ${H.service_radius}, compared with simply taking the ${byKey.top30.label.toLowerCase()}.`;
+document.getElementById("hero").append(
+  el("div", { class: "stat mclp" }, el("b", {}, byKey.mclp.population_display),
+    el("span", {}, byKey.mclp.label), el("small", {}, `of the modelled population within ${H.service_radius}`)),
+  el("div", { class: "vs" }, "vs"),
+  el("div", { class: "stat top30" }, el("b", {}, byKey.top30.population_display),
+    el("span", {}, byKey.top30.label), el("small", {}, `of the modelled population within ${H.service_radius}`)));
 document.getElementById("bars-title").textContent =
   `Modelled population within ${H.service_radius} of a site`;
 const bars = document.getElementById("bars");
@@ -248,16 +421,22 @@ for (const key of ["mclp", "top30"]) {
         el("dt", {}, "Provinces"), el("dd", {}, s.provinces_display),
         s.by_province.flatMap(([name, count]) => [el("dt", {}, name), el("dd", {}, count)]))));
 }
-const unknownsLine = document.getElementById("unknowns");
-unknownsLine.append(el("strong", {}, "Unknown for every site: "), unknowns.join(" · "),
+const networkSection = investigationSection({
+  intro: "Explains the network result with SiteScout's tools and project documents. It never changes the decision above.",
+  primary: { label: "Investigate network difference", request: { kind: "network_comparison" } },
+});
+if (networkSection) document.getElementById("network-investigation").append(networkSection);
+document.getElementById("unknowns").append(el("strong", {}, "Unknown for every site: "), unknowns.join(" · "),
   ". Grid evidence means mapped infrastructure nearby, never a grid connection decision.");
+document.getElementById("mapnote").textContent =
+  `Shaded circles show the ${H.service_radius} service radius of each selected site.`;
 
-// --- Map --------------------------------------------------------------------------------------
+// --- Map ---------------------------------------------------------------------------------------
 const M = D.map;
 const WIDTH = 1000;
 const K = WIDTH / ((M.max_lon - M.min_lon) * M.lon_scale);
 const HEIGHT = (M.max_lat - M.min_lat) * K;
-const PAD = 12;
+const PAD = Math.ceil(M.ring_radius_deg * K) + 4; // room for a border site's service ring
 const map = document.getElementById("map");
 map.setAttribute("viewBox", `${-PAD} ${-PAD} ${WIDTH + 2 * PAD} ${HEIGHT + 2 * PAD}`);
 const X = (lon) => (lon - M.min_lon) * M.lon_scale * K;
@@ -296,7 +475,8 @@ for (const k of D.existing_chargers) {
   chargerLayer.append(svg("rect", { class: "charger", x: X(k.lon) - 5, y: Y(k.lat) - 5, width: 10, height: 10 }));
 }
 
-const selected = () => D.sites.filter((s) => (mode === "mclp" ? s.selected_mclp : s.selected_top30));
+const inMode = (site, key) => site[`selected_${key}`] === true;
+const selected = () => D.sites.filter((s) => inMode(s, mode));
 function drawSelection() {
   ringLayer.replaceChildren(); siteLayer.replaceChildren();
   for (const s of selected()) {
@@ -311,33 +491,38 @@ function drawSelection() {
   document.getElementById("legend-site-label").textContent = byKey[mode].label;
 }
 
-// --- Panel: the list of 30 and the site detail -------------------------------------------------
-const panel = document.getElementById("panel");
+// --- Dossier: the overview with the list of 30, and a site's decision ---------------------------
+const overview = document.getElementById("overview");
+const sitePane = document.getElementById("site");
+const dossier = document.getElementById("dossier");
+
 function showList() {
   activeId = null;
   const s = byKey[mode];
-  const list = el("ul", { class: "list" });
+  document.getElementById("list-title").textContent =
+    `${s.label}: ${H.n_sites} sites · ${s.population_display} of the population`;
+  const list = document.getElementById("list");
+  list.replaceChildren();
   for (const site of selected()) {
     const b = el("button", { type: "button" },
       el("span", { class: "rank" }, `#${site.rank}`),
-      el("span", {}, site.label, el("br"), el("span", { class: "meta" }, `${site.province} · score ${site.score}`)),
+      el("span", {}, site.label, el("br"), el("span", { class: "meta" }, `${site.district}, ${site.province} · score ${site.score}`)),
       el("span", { class: `badge ${site.confidence}` }, site.confidence));
     b.addEventListener("click", () => showSite(site.candidate_id));
     list.append(el("li", {}, b));
   }
-  panel.replaceChildren(
-    el("h2", {}, `${s.label}: ${H.n_sites} sites · ${s.population_display} of the population`),
-    el("p", { class: "note" }, "Select a site on the map or in the list. # is the site's rank by score among all candidates."),
-    list);
+  sitePane.hidden = true;
+  sitePane.replaceChildren();
+  overview.hidden = false;
   drawSelection();
 }
 
 const EVIDENCE_GROUPS = [
-  ["Demand", ["pop_1km", "pop_5km", "pop_10km", "outside_share"]],
-  ["Access", ["road_class", "dist_road", "dist_trunk"]],
-  ["Host and nearby activity", ["host", "poi_1km", "poi_3km"]],
-  ["Charging gap", ["dist_charger", "chargers_10km", "chargers_25km"]],
-  ["Grid evidence", ["dist_substation", "dist_line", "grid_completeness", "grid_status"]],
+  ["demand", "Demand", ["pop_1km", "pop_5km", "pop_10km", "outside_share"]],
+  ["access", "Access", ["road_class", "dist_road", "dist_trunk"]],
+  ["host", "Host and nearby activity", ["host", "poi_1km", "poi_3km"]],
+  ["charging_gap", "Charging gap", ["dist_charger", "chargers_10km", "chargers_25km"]],
+  ["grid_evidence", "Grid evidence", ["dist_substation", "dist_line", "grid_completeness", "grid_status"]],
 ];
 
 function componentBars(site) {
@@ -347,82 +532,105 @@ function componentBars(site) {
       el("span", { class: "v" }, c.display)));
 }
 
+function roles(site) {
+  return el("div", { class: "roles" }, H.selections.map((s) =>
+    el("span", { class: `role ${s.key}${inMode(site, s.key) ? " on" : ""}` },
+      `${inMode(site, s.key) ? "In" : "Not in"}: ${s.label}`)));
+}
+
 function showSite(id) {
   const site = D.sites.find((s) => s.candidate_id === id);
+  if (!site) return;
   activeId = id;
   drawSelection();
-  const head = [
-    el("button", { class: "back", type: "button" }, `← All ${H.n_sites} sites`),
-    el("div", { class: "detail" },
-      el("h3", {}, site.label),
-      el("div", { class: "sub" }, `${site.district}, ${site.province} · ${site.profile} profile · ${site.candidate_id}`),
-      el("div", { class: "facts" },
-        el("div", {}, el("b", {}, site.score), el("span", {}, "Score (0–100)")),
-        el("div", {}, el("b", {}, `#${site.rank}`), el("span", {}, `Rank of ${H.candidates}`)),
-        el("div", {}, el("b", {}, site.confidence), el("span", {}, "Confidence"))))];
-  head[0].addEventListener("click", showList);
-  const body = head[1];
+  const back = el("button", { class: "back", type: "button" }, `← Network overview`);
+  back.addEventListener("click", showList);
+  const inNetwork = site.selected_mclp;
+  const inv = investigationSection({
+    intro: "Explains this site's decision with SiteScout's tools and project documents. It never changes the decision above.",
+    primary: { label: "Investigate this site", request: { kind: "site_investigation", candidate_id: id } },
+  });
+  const verify = investigationAction("What would we need to verify?",
+    { kind: "unknowns", candidate_id: id }, inv);
+  const decision = el("section", { class: `decision${inNetwork ? "" : " out"}`, "aria-label": "Site decision" },
+    el("p", { class: "eyebrow" }, "Site decision"),
+    el("h2", {}, site.label),
+    el("div", { class: "sub" }, `${site.district}, ${site.province} · ${site.profile} profile · `,
+      el("span", { class: "mono" }, site.candidate_id)),
+    el("div", { class: "facts" },
+      el("div", {}, el("b", {}, site.score), el("span", {}, "Score (0–100)")),
+      el("div", {}, el("b", {}, `#${site.rank}`), el("span", {}, `Rank of ${H.candidates}`)),
+      el("div", {}, el("b", {}, site.confidence), el("span", {}, "Confidence"))),
+    el("h4", {}, "Network role"), roles(site),
+    inNetwork ? el("p", {}, `Unique contribution: ${site.unique_coverage} of the network's weighted demand coverage.`)
+      : el("div", { class: "notselected" }, "Not selected for the optimized network."));
 
-  if (!site.selected_mclp) {
-    body.append(el("div", { class: "notselected" }, "Not selected for the optimized network."),
+  if (inNetwork) {
+    const b = site.brief;
+    const records = Object.fromEntries(site.evidence.map((r) => [r.id, r]));
+    const rows = [];
+    for (const [key, group, ids] of EVIDENCE_GROUPS) {
+      const explain = investigationAction("Explain", { kind: "evidence_explanation", candidate_id: id, group: key }, inv);
+      rows.push(el("tr", { class: "group" }, el("td", { colspan: 3 }, el("div", { class: "cell" }, group, explain))));
+      for (const rid of ids) {
+        const r = records[rid];
+        if (!r || (rid === "outside_share" && !b.border_note)) continue;
+        const missing = rid === "grid_status" && r.type === "UNKNOWN";
+        rows.push(el("tr", {}, el("td", {}, r.claim.split(":")[0]),
+          el("td", { class: `v${missing ? " missing" : ""}` }, missing ? "Missing" : r.display),
+          el("td", { class: "t" }, el("span", { class: `type t-${r.type}` }, r.type))));
+      }
+    }
+    decision.append(
+      el("h4", {}, "Why this site"), el("p", {}, b.opportunity),
+      el("h4", {}, "Score components"), ...componentBars(site),
+      el("h4", {}, "Evidence"), el("table", { class: "ev" }, el("tbody", {}, rows)),
+      el("p", { class: "disclaimer" }, gridDisclaimer),
+      el("h4", {}, "Confidence"), el("p", {}, site.confidence_reasons + "."),
+      el("h4", {}, "Unknown", verify), el("ul", { class: "plain" }, b.unknowns.map((u) => el("li", {}, u))),
+      el("h4", {}, "Risks"), el("ul", { class: "plain" }, b.risks.map((r) => el("li", {}, r))),
+      el("h4", {}, "Next investigation"), el("ul", { class: "plain" }, b.actions.map((a) => el("li", {}, a))),
+      el("p", {}, el("a", { href: `../${b.brief_path}` }, "Full Site Evidence Brief")));
+  } else {
+    decision.append(
       el("h4", {}, "Score components"), ...componentBars(site),
       el("h4", {}, "Confidence"), el("p", {}, site.confidence_reasons + "."),
-      el("h4", {}, "Unknown"), el("ul", { class: "plain" }, unknowns.map((u) => el("li", {}, u))));
-    panel.replaceChildren(...head);
-    return;
+      el("h4", {}, "Unknown", verify), el("ul", { class: "plain" }, unknowns.map((u) => el("li", {}, u))));
   }
-
-  const b = site.brief;
-  const records = Object.fromEntries(site.evidence.map((r) => [r.id, r]));
-  const rows = [];
-  for (const [group, ids] of EVIDENCE_GROUPS) {
-    rows.push(el("tr", { class: "group" }, el("td", { colspan: 2 }, group)));
-    for (const rid of ids) {
-      const r = records[rid];
-      if (!r || (rid === "outside_share" && !b.border_note)) continue;
-      const missing = rid === "grid_status" && r.type === "UNKNOWN";
-      rows.push(el("tr", {}, el("td", {}, r.claim.split(":")[0]),
-        el("td", { class: missing ? "missing" : "" }, missing ? "Missing" : r.display)));
-    }
-  }
-  body.append(
-    el("h4", {}, "Why this site was selected"),
-    el("p", {}, `Unique contribution: ${site.unique_coverage} of the network's weighted demand coverage.`),
-    el("p", {}, b.opportunity),
-    el("h4", {}, "Score components"), ...componentBars(site),
-    el("h4", {}, "Evidence"), el("table", { class: "ev" }, el("tbody", {}, rows)),
-    el("p", { class: "disclaimer" }, gridDisclaimer),
-    el("h4", {}, "Confidence"), el("p", {}, site.confidence_reasons + "."),
-    el("h4", {}, "Unknown"), el("ul", { class: "plain" }, b.unknowns.map((u) => el("li", {}, u))),
-    el("h4", {}, "Risks"), el("ul", { class: "plain" }, b.risks.map((r) => el("li", {}, r))),
-    el("h4", {}, "Next investigation"), el("ul", { class: "plain" }, b.actions.map((a) => el("li", {}, a))),
-    el("p", {}, el("a", { href: `../${b.brief_path}` }, "Full Site Evidence Brief")));
-  panel.replaceChildren(...head);
+  sitePane.replaceChildren(back, decision, inv || "");
+  overview.hidden = true;
+  sitePane.hidden = false;
+  dossier.scrollTop = 0;
+  if (location.hash.slice(1) !== id) history.replaceState(null, "", `#${id}`);
 }
 
-for (const button of document.querySelectorAll(".toggle button")) {
-  button.textContent = byKey[button.dataset.mode].label;
+const toggle = document.getElementById("toggle");
+for (const s of H.selections) {
+  const button = el("button", { type: "button", class: s.key, "data-mode": s.key,
+    "aria-pressed": String(s.key === mode) }, s.label);
   button.addEventListener("click", () => {
-    mode = button.dataset.mode;
-    for (const other of document.querySelectorAll(".toggle button")) other.setAttribute("aria-pressed", String(other === button));
+    mode = s.key;
+    for (const other of toggle.querySelectorAll("button")) other.setAttribute("aria-pressed", String(other === button));
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
     showList();
   });
+  toggle.append(button);
 }
 
-// --- Footer ----------------------------------------------------------------------------------
-const left = document.getElementById("footer-left");
-left.append(el("p", {}, el("strong", {}, `${D.evaluation.label[0].toUpperCase()}${D.evaluation.label.slice(1)}. `),
+// --- Footer --------------------------------------------------------------------------------------
+const evalBox = document.getElementById("footer-eval");
+evalBox.append(el("p", {}, el("strong", {}, `${D.evaluation.label[0].toUpperCase()}${D.evaluation.label.slice(1)}. `),
   el("a", { href: `../${D.evaluation.report_path}` }, "Full report")));
-for (const line of D.evaluation.lines) left.append(el("p", {}, line));
-const right = document.getElementById("footer-right");
-for (const text of D.meta.disclaimers) right.append(el("p", {}, text));
-right.append(el("p", {}, D.meta.licence_notice));
-right.append(el("p", {}, "Sources: " + D.meta.sources.map((s) => `${s.name} (${s.credit}; ${s.licence})`).join(" · ")));
-right.append(el("p", {}, `Data as of ${D.meta.data_date} · export written ${D.meta.generated_at}`));
+for (const line of D.evaluation.lines) evalBox.append(el("p", {}, line));
+const legal = document.getElementById("footer-legal");
+for (const text of D.meta.disclaimers) legal.append(el("p", {}, text));
+legal.append(el("p", {}, D.meta.licence_notice));
+legal.append(el("p", {}, "Sources: " + D.meta.sources.map((s) => `${s.name} (${s.credit}; ${s.licence})`).join(" · ")));
+legal.append(el("p", {}, `Data as of ${D.meta.data_date} · export written ${D.meta.generated_at}`));
 
-// Deep links for demos: #top30 opens the Top-30 view; #<candidate_id> opens that site.
+// Deep links for demos: #top30 or #greedy opens that selection; #<candidate_id> opens that site.
 const hash = decodeURIComponent(location.hash.slice(1));
-if (hash === "top30") document.querySelector('.toggle button[data-mode="top30"]').click();
+if (byKey[hash] && hash !== "mclp") toggle.querySelector(`button[data-mode="${hash}"]`).click();
 else showList();
 if (hash && D.sites.some((s) => s.candidate_id === hash)) showSite(hash);
 </script>
