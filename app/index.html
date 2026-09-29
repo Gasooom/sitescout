@@ -12,68 +12,123 @@
   scripts/serve.py (D-062); opened from disk, the page is the complete decision view on its own.
 -->
 <style>
+  /* IBM Plex Sans and Mono, SIL OFL 1.1 (app/fonts/LICENSE.txt), shipped with the page so it needs no
+     external request (D-065). The system stacks after them are the fallback. */
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("fonts/IBMPlexSans-Regular.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap;
+    src: url("fonts/IBMPlexSans-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("fonts/IBMPlexSans-SemiBold.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("fonts/IBMPlexMono-Regular.woff2") format("woff2"); }
+
   :root {
-    --bg: #f6f5f1; --surface: #ffffff; --surface-2: #fafaf7; --ink: #1b2127; --ink-2: #3a444e;
-    --muted: #66717b; --faint: #99a2aa; --line: #e3e0d8; --line-2: #eeebe5;
-    --accent: #0e6b5c; --accent-strong: #0a5247; --accent-soft: #eaf2ef;
-    --mclp: var(--accent); --greedy: #4d5b6b; --top30: #9a5b0b;
-    --mclp-ring: rgba(14, 107, 92, 0.09); --greedy-ring: rgba(77, 91, 107, 0.09); --top30-ring: rgba(154, 91, 11, 0.09);
-    --mclp-halo: rgba(14, 107, 92, 0.16); --greedy-halo: rgba(77, 91, 107, 0.16); --top30-halo: rgba(154, 91, 11, 0.16);
-    --candidate: #bdc4cb; --charger: #26303a; --district: #edebe5; --province: #b3ab9b;
-    --verify: #8a5d0c; --verify-line: #e9d6ad; --warn: #a0431a; --focus: #1d4ed8;
-    --sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    /* Colour. No general brand colour: interface in ink, one colour per network, one for "verify". */
+    --bg: #f5f4f0; --surface: #ffffff; --surface-2: #f8f7f3; --land: #fbfaf7;
+    --ink: #17191c; --ink-2: #3a4047; --muted: #5f666e;
+    --faint: #8b9298; /* candidate dots and disabled states; never text a reader needs */
+    --line: #d6d2c8; --line-soft: #e7e3dc; --boundary: #a39b8c;
+    --net-optimized: #1f4e79; --net-greedy: #5f6b78; --net-top30: #7b4b72;
+    --verify: #855a0c; --verify-soft: #f7efdc; --verify-line: #d9bf8a;
+    --warn: #a0431a; /* a failed validation step in the investigation trace */
+
+    /* Type: six steps; every number uses tabular figures. */
+    --sans: "IBM Plex Sans", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --fs-label: 11px; --fs-meta: 12px; --fs-body: 13px; --fs-title: 15px; --fs-site: 20px; --fs-outcome: 32px;
+    --lh-label: 14px; --lh-meta: 16px; --lh-body: 19px; --lh-title: 20px; --lh-site: 26px; --lh-outcome: 36px;
+
+    /* Space: a 4 px base. */
+    --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px;
+
+    /* Borders, radius and the one shadow (for what floats over the map). */
+    --border-zone: 1px solid var(--line); --border-row: 1px solid var(--line-soft);
+    --border-verify: 1px dashed var(--verify-line);
+    --r-0: 0; --r-1: 2px; --r-2: 4px; --r-3: 6px;
+    --shadow-float: 0 1px 2px rgba(23, 25, 28, 0.08), 0 4px 12px rgba(23, 25, 28, 0.08);
+
+    /* Earlier names, kept as aliases until the later phases move each component onto the tokens above. */
+    --line-2: var(--line-soft); --accent: var(--ink); --accent-strong: var(--ink); --accent-soft: var(--surface-2);
+    --mclp: var(--net-optimized); --greedy: var(--net-greedy); --top30: var(--net-top30);
+    --mclp-ring: rgba(31, 78, 121, 0.09); --greedy-ring: rgba(95, 107, 120, 0.09); --top30-ring: rgba(123, 75, 114, 0.09);
+    --mclp-halo: rgba(31, 78, 121, 0.16); --greedy-halo: rgba(95, 107, 120, 0.16); --top30-halo: rgba(123, 75, 114, 0.16);
+    --candidate: #bdc4cb; --charger: var(--ink); --district: #edebe5; --province: var(--boundary);
+    --focus: var(--ink);
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   html, body { margin: 0; }
-  body { background: var(--bg); color: var(--ink); font: 14px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
-    font-feature-settings: "cv11", "ss01"; overflow-x: hidden; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: var(--fs-body);
+    line-height: var(--lh-body); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   a { color: var(--accent); text-underline-offset: 2px; }
   h1, h2, h3, h4, h5, p { margin: 0; }
-  .mono { font-family: var(--mono); font-size: 12px; }
-  [data-section] { scroll-margin-top: 72px; }
+  .mono { font-family: var(--mono); font-size: var(--fs-meta); }
+  [data-section] { scroll-margin-top: 64px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; }
     html { scroll-behavior: auto; } }
 
   /* Section labels: the only routine use of uppercase */
-  .label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted); }
 
-  /* --- Shell -------------------------------------------------------------------------------- */
-  .app { display: grid; grid-template-columns: 216px minmax(0, 1fr); min-height: 100vh; }
-  .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid var(--line);
-    background: var(--bg); display: flex; flex-direction: column; padding: 18px 12px; z-index: 40; }
-  .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 22px; }
-  .mark { width: 22px; height: 22px; border-radius: 50%; flex: none; background: var(--mclp-halo); position: relative; }
-  .mark::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--accent); }
-  .brand strong { font-size: 12.5px; font-weight: 700; letter-spacing: 0.16em; }
-  .navlabel { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint);
-    padding: 14px 10px 4px; }
-  .nav { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none;
-    padding: 6px 10px; cursor: pointer; color: var(--muted); font-size: 13px; position: relative; transition: color 0.15s; }
-  .nav svg { width: 15px; height: 15px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.5;
-    stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; }
+  /* --- Top bar: the product, the network workspace and the reference sections --------------- */
+  .app { min-height: 100vh; }
+  .topbar { position: sticky; top: 0; z-index: 30; height: 48px; display: flex; align-items: center; gap: var(--s-5);
+    padding: 0 var(--s-5); background: var(--surface); border-bottom: var(--border-zone); }
+  .brand { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .tabs { display: flex; align-items: stretch; align-self: stretch; }
+  .nav { display: flex; align-items: center; border: 0; background: none; padding: 0 var(--s-3); cursor: pointer;
+    color: var(--muted); font-size: var(--fs-body); white-space: nowrap; position: relative; transition: color 0.15s; }
   .nav:hover { color: var(--ink); }
-  .nav[aria-current="true"] { color: var(--ink); font-weight: 600; }
-  .nav[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px;
-    border-radius: 1px; background: var(--accent); }
-  .scrim { position: fixed; inset: 0; background: rgba(27, 33, 39, 0.28); z-index: 35; opacity: 0; transition: opacity 0.2s; }
-  .scrim.show { opacity: 1; }
+  .nav:focus-visible { outline-offset: -2px; }
+  .nav[aria-current="true"] { color: var(--ink); font-weight: 500; }
+  .nav[aria-current="true"]::after { content: ""; position: absolute; left: var(--s-3); right: var(--s-3); bottom: -1px;
+    height: 2px; background: var(--ink); }
+  .tabsep { width: 1px; background: var(--line); margin: 14px var(--s-2); }
+  .through { margin-left: auto; font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; }
+  .menu { display: none; border: var(--border-zone); background: var(--surface); border-radius: var(--r-2); width: 32px; height: 32px;
+    padding: 0; cursor: pointer; align-items: center; justify-content: center; flex: none; }
+  .menu svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 1.6; stroke-linecap: round; }
+  .banner { background: var(--verify-soft); border-bottom: 1px solid var(--verify-line); padding: var(--s-2) var(--s-5);
+    font-size: var(--fs-body); }
 
-  .main { min-width: 0; display: flex; flex-direction: column; }
-  .topbar { position: sticky; top: 0; z-index: 30; height: 52px; display: flex; align-items: center; gap: 12px;
-    padding: 0 28px; background: var(--bg); border-bottom: 1px solid var(--line); }
-  .menu { display: none; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; width: 34px; height: 34px;
-    padding: 0; cursor: pointer; align-items: center; justify-content: center; }
-  .menu svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; }
-  .context { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  .context strong { font-size: 14px; font-weight: 600; white-space: nowrap; }
-  .context span { color: var(--muted); font-size: 13px; }
-  .through { margin-left: auto; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
-  .banner { background: #fff4e5; border-bottom: 1px solid #f0c48a; padding: 8px 28px; font-size: 13px; }
-  .content { padding: 20px 28px 40px; width: 100%; max-width: 1520px; }
+  /* --- Network outcome: one large figure, its reach, and the network switch ------------------- */
+  .outcome { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s-3) var(--s-6);
+    padding: var(--s-4) var(--s-5); background: var(--surface); border-bottom: var(--border-zone); scroll-margin-top: 48px; }
+  .oc-kicker { grid-column: 1 / -1; display: flex; gap: var(--s-3); align-items: baseline; flex-wrap: wrap; color: var(--ink-2); }
+  .oc-kicker .label { color: var(--ink-2); }
+  .oc-figure { display: flex; align-items: flex-end; gap: var(--s-3); min-width: 0; }
+  .oc-big { font-size: var(--fs-outcome); line-height: var(--lh-outcome); font-weight: 600; letter-spacing: -0.01em;
+    color: var(--mclp); transition: color 0.25s; }
+  .oc-figure[data-mode="greedy"] .oc-big { color: var(--greedy); }
+  .oc-figure[data-mode="top30"] .oc-big { color: var(--top30); }
+  .oc-text { display: flex; flex-direction: column; padding-bottom: 3px; color: var(--muted); }
+  .oc-facts { color: var(--ink-2); }
+  .oc-facts b { font-weight: 600; color: var(--ink); }
+  .oc-facts .sep { color: var(--faint); margin: 0 var(--s-2); }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+    white-space: nowrap; border: 0; }
+
+  /* The network switch: one joined control; the pressed network shows its map colour. */
+  .seg { display: inline-flex; border: var(--border-zone); border-radius: var(--r-2); overflow: hidden; background: var(--surface); }
+  .seg button { display: flex; align-items: center; gap: var(--s-2); height: 32px; padding: 0 var(--s-3); border: 0;
+    border-left: var(--border-zone); background: transparent; cursor: pointer; font-size: var(--fs-body); color: var(--muted);
+    white-space: nowrap; text-align: left; transition: background 0.15s, color 0.15s; }
+  .seg button:first-child { border-left: 0; }
+  .seg button:focus-visible { outline-offset: -2px; }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 500; }
+  .seg button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--line); }
+  .seg button.mclp[aria-pressed="true"]::before { background: var(--mclp); }
+  .seg button.greedy[aria-pressed="true"]::before { background: var(--greedy); }
+  .seg button.top30[aria-pressed="true"]::before { background: var(--top30); }
+
+  .main { min-width: 0; }
+  .content { display: block; width: 100%; }
+  .report { padding: var(--s-5) var(--s-5) 40px; max-width: 1520px; }
 
   /* --- The recurring motif: a site node inside its service ring, as drawn on the map -------- */
   .node { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--mclp);
@@ -82,110 +137,143 @@
   .node.top30 { background: var(--top30); box-shadow: 0 0 0 2px var(--surface), 0 0 0 5px var(--top30-halo); }
   .node.off { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--candidate); }
 
-  /* --- Workbench: network status, map and the opportunity queue in one bounded area -------- */
-  .workbench { display: grid; grid-template-columns: minmax(0, 1fr) 380px; border: 1px solid var(--line);
-    border-radius: 12px; background: var(--surface); overflow: hidden; height: clamp(600px, calc(100vh - 96px), 980px); }
-  .mapcol { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
-  .netstatus { padding: 16px 20px 15px; border-bottom: 1px solid var(--line-2); }
-  .ns-kicker { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; color: var(--faint); }
-  .ns-kicker .label { color: var(--ink-2); }
-  .ns-figure { margin-top: 12px; }
-  .ns-strategy { display: flex; align-items: center; gap: 11px; font-size: 14px; font-weight: 600; }
-  .ns-big { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
-  .ns-big b { font-size: 46px; font-weight: 650; letter-spacing: -0.035em; line-height: 1; color: var(--mclp);
-    font-variant-numeric: tabular-nums; transition: color 0.25s; }
-  .ns-figure[data-mode="greedy"] .ns-big b { color: var(--greedy); }
-  .ns-figure[data-mode="top30"] .ns-big b { color: var(--top30); }
-  .ns-big span { font-size: 13.5px; color: var(--muted); }
-  .ns-facts { font-size: 13.5px; color: var(--ink-2); margin-top: 7px; font-variant-numeric: tabular-nums; }
-  .ns-facts b { font-weight: 600; }
-  .ns-facts .sep { color: var(--faint); margin: 0 7px; }
+  /* --- The deck: the outcome over one workspace that fills the screen under the top bar -------
+     Opportunities | map | site dossier, divided by lines, not cards. The map takes the free width. */
+  .deck { display: flex; flex-direction: column; height: calc(100vh - 48px); min-height: 640px; }
+  .workbench { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr) 380px;
+    grid-template-areas: "list map dossier"; background: var(--surface); border-bottom: var(--border-zone); }
+  .queue { grid-area: list; border-right: var(--border-zone); }
+  .mapcol { grid-area: map; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .dcol { grid-area: dossier; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-left: var(--border-zone);
+    background: var(--surface); }
+  .dempty { padding: var(--s-4) 18px; }
+  .dempty p:not(.label) { margin-top: var(--s-2); color: var(--muted); max-width: 320px; }
   .enter .fade { opacity: 0; transition: none; }
   .fade { transition: opacity 0.25s; }
 
-  .mapwrap { position: relative; flex: 1; min-height: 0; display: flex; background: var(--surface-2); }
-  #map { width: 100%; height: 100%; display: block; }
-  .strategy { position: absolute; left: 12px; top: 12px; z-index: 1; display: flex; flex-direction: column; gap: 5px;
-    background: rgba(255, 255, 255, 0.95); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
-  .strategy .label { padding-left: 4px; color: var(--faint); }
-  .seg { display: inline-flex; background: var(--line-2); border-radius: 8px; padding: 3px; gap: 2px; }
-  .seg button { border: 0; background: transparent; border-radius: 6px; padding: 6px 12px 6px 11px; cursor: pointer;
-    font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 9px; line-height: 1.25; text-align: left;
-    transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
-  .seg button span { display: flex; flex-direction: column; }
-  .seg button small { font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
-  .seg button:hover { color: var(--ink); }
-  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(27, 33, 39, 0.1); }
-  .seg button[aria-pressed="true"] small { color: var(--muted); }
-  .seg button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--candidate);
-    transition: background 0.15s, box-shadow 0.15s; }
-  .seg button.mclp[aria-pressed="true"]::before { background: var(--mclp); box-shadow: 0 0 0 3px var(--mclp-halo); }
-  .seg button.greedy[aria-pressed="true"]::before { background: var(--greedy); box-shadow: 0 0 0 3px var(--greedy-halo); }
-  .seg button.top30[aria-pressed="true"]::before { background: var(--top30); box-shadow: 0 0 0 3px var(--top30-halo); }
-  .legend { position: absolute; right: 12px; bottom: 12px; z-index: 1; display: grid; gap: 4px; font-size: 11.5px;
-    color: var(--ink-2); background: rgba(255, 255, 255, 0.95); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; }
-  .legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
-  .legend .node { width: 8px; height: 8px; margin: 0 1px; }
-  .legend .c { background: var(--candidate); width: 7px; height: 7px; margin: 0 1.5px; }
-  .legend .r { width: 12px; height: 12px; background: var(--mclp-ring); border: 1px solid rgba(14, 107, 92, 0.3); }
-  .legend .r.greedy { background: var(--greedy-ring); border-color: rgba(77, 91, 107, 0.3); }
-  .legend .r.top30 { background: var(--top30-ring); border-color: rgba(154, 91, 11, 0.3); }
-  .legend .k { border: 1.5px solid var(--charger); border-radius: 1px; width: 9px; height: 9px; background: #fff; margin: 0 0.5px; }
+  .mapwrap { position: relative; flex: 1; min-height: 0; display: flex; background: var(--bg); }
+  /* --u is map units per screen pixel (set by the page on resize): symbols, lines and labels keep one
+     screen size at every width, while boundaries, rings and the scale bar stay geographic. */
+  #map { --u: 1.4; width: 100%; height: 100%; display: block; }
+  #map * { vector-effect: non-scaling-stroke; }
 
-  .graticule { fill: none; stroke: #dedad1; stroke-width: 1; stroke-dasharray: 2 5; pointer-events: none; }
-  .gratlabel { fill: #a3aab1; font-size: 17px; font-family: var(--sans); pointer-events: none; }
-  .scalebar { stroke: var(--ink-2); stroke-width: 2.5; fill: none; pointer-events: none; }
-  .maptext { fill: var(--ink-2); font-size: 19px; font-weight: 600; font-family: var(--sans); pointer-events: none; }
-  .district { fill: var(--district); stroke: #fff; stroke-width: 1; transition: fill 0.2s; }
-  .district:hover { fill: #e6e3db; }
-  .province { fill: none; stroke: var(--province); stroke-width: 1.2; pointer-events: none; }
-  .plabel { fill: #8f97a0; font-size: 19px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-    pointer-events: none; font-family: var(--sans); paint-order: stroke; stroke: var(--district); stroke-width: 5px; }
-  .cand { fill: var(--candidate); cursor: pointer; transition: fill 0.15s; }
+  /* Legend: the one element floating over the map. */
+  .legend { position: absolute; right: var(--s-3); bottom: var(--s-3); z-index: 1; display: grid; gap: var(--s-1);
+    font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--ink-2); background: var(--surface);
+    border: var(--border-zone); border-radius: var(--r-3); box-shadow: var(--shadow-float); padding: var(--s-2) var(--s-3); }
+  .legend span { display: inline-flex; align-items: center; gap: var(--s-2); white-space: nowrap; }
+  .legend i { display: inline-block; flex: none; width: 12px; height: 12px; border-radius: 50%; position: relative; }
+  .legend i.node { width: 9px; height: 9px; margin: 0 1.5px; box-shadow: none; }
+  .legend i.sel { width: 6px; height: 6px; margin: 0 3px; background: var(--ink);
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+  .legend i.r { border: 1px solid rgba(31, 78, 121, 0.55); background: rgba(31, 78, 121, 0.06); }
+  .legend i.r.greedy { border-color: rgba(95, 107, 120, 0.55); background: rgba(95, 107, 120, 0.06); }
+  .legend i.r.top30 { border-color: rgba(123, 75, 114, 0.55); background: rgba(123, 75, 114, 0.06); }
+  .legend i.c { width: 5px; height: 5px; margin: 0 3.5px; background: var(--faint); }
+  .legend i.k { width: 8px; height: 8px; margin: 0 2px; border-radius: 1px; background: var(--ink); }
+
+  /* Ground: the country outline, quiet land, district lines under province lines, a graticule outside. */
+  .graticule { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; pointer-events: none; }
+  .country { fill: var(--land); stroke: var(--ink-2); stroke-width: 2; pointer-events: none; }
+  .district { fill: var(--land); stroke: var(--line-soft); stroke-width: 1; transition: fill 0.2s; }
+  .district:hover { fill: #f3f1eb; }
+  .province { fill: none; stroke: var(--boundary); stroke-width: 1; pointer-events: none; }
+  .plabel { fill: var(--muted); font-family: var(--sans); font-size: calc(10px * var(--u)); font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; paint-order: stroke; stroke: var(--land);
+    stroke-width: calc(3px * var(--u)); stroke-linejoin: round; vector-effect: none; }
+
+  /* Instruments: graticule labels, scale bar, north arrow. Thin, compact, low contrast. */
+  .gratlabel { fill: var(--faint); font-family: var(--sans); font-size: calc(10px * var(--u)); pointer-events: none; }
+  .scalebar { fill: none; stroke: var(--ink-2); stroke-width: 1.5; pointer-events: none; }
+  .maptext { fill: var(--ink-2); font-family: var(--sans); font-size: calc(11px * var(--u)); font-weight: 500; pointer-events: none; }
+
+  /* Candidates: small and quiet, with a slightly larger transparent edge to click. */
+  .cand { r: calc(2.25px * var(--u)); fill: var(--faint); stroke: transparent; stroke-width: 6; cursor: pointer;
+    transition: fill 0.15s, opacity 0.15s; }
   .cand:hover, .cand:focus { fill: var(--ink-2); outline: none; }
+
+  /* Known charging sites (public data): a dark square of their own. */
+  .charger rect { transform: scale(var(--u)); fill: var(--ink); stroke: var(--surface); stroke-width: 1; pointer-events: none; }
+
+  /* The modelled 10 km service radius: an outline with a trace of fill, so overlaps stay readable. */
   .ring { pointer-events: none; stroke-width: 1; }
-  .ring.mclp { fill: var(--mclp-ring); stroke: rgba(14, 107, 92, 0.22); }
-  .ring.greedy { fill: var(--greedy-ring); stroke: rgba(77, 91, 107, 0.22); }
-  .ring.top30 { fill: var(--top30-ring); stroke: rgba(154, 91, 11, 0.22); }
-  .site { stroke: #fff; stroke-width: 2; cursor: pointer; transition: r 0.15s; }
-  .site.mclp { fill: var(--mclp); } .site.greedy { fill: var(--greedy); } .site.top30 { fill: var(--top30); }
-  .site:hover, .site:focus { r: 12px; outline: none; }
-  .charger { fill: #fff; stroke: var(--charger); stroke-width: 1.8; pointer-events: none; }
-  .halo { fill: none; stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
-  .halo-fill { fill: rgba(27, 33, 39, 0.08); stroke: none; pointer-events: none; }
-  .focusdot { fill: var(--ink); stroke: #fff; stroke-width: 2.5; pointer-events: none; }
-  .maptip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; border-radius: 7px; padding: 7px 10px;
-    font-size: 12px; line-height: 1.35; transform: translate(-50%, calc(-100% - 12px)); white-space: nowrap; opacity: 0;
+  .ring.mclp { fill: rgba(31, 78, 121, 0.04); stroke: rgba(31, 78, 121, 0.32); }
+  .ring.greedy { fill: rgba(95, 107, 120, 0.04); stroke: rgba(95, 107, 120, 0.32); }
+  .ring.top30 { fill: rgba(123, 75, 114, 0.04); stroke: rgba(123, 75, 114, 0.32); }
+  .ring-focus { pointer-events: none; stroke-width: 1.5; }
+  .ring-focus.mclp { fill: rgba(31, 78, 121, 0.1); stroke: var(--mclp); }
+  .ring-focus.greedy { fill: rgba(95, 107, 120, 0.1); stroke: var(--greedy); }
+  .ring-focus.top30 { fill: rgba(123, 75, 114, 0.1); stroke: var(--top30); }
+
+  /* Active network sites: the dominant marks. The visible dot stays small; the hit area is larger. */
+  .site { cursor: pointer; outline: none; }
+  .site .hit { r: calc(10px * var(--u)); fill: transparent; }
+  .site .dot { r: calc(5.5px * var(--u)); stroke: var(--surface); stroke-width: 1.5; transition: r 0.15s, opacity 0.15s; }
+  .site.mclp .dot { fill: var(--mclp); } .site.greedy .dot { fill: var(--greedy); } .site.top30 .dot { fill: var(--top30); }
+  .site:hover .dot { r: calc(7px * var(--u)); }
+  .site:focus-visible .dot { r: calc(7px * var(--u)); stroke: var(--ink); stroke-width: 2; }
+  @media (pointer: coarse) { .site .hit { r: calc(22px * var(--u)); } } /* 44 px to tap */
+  #map.compact .site .dot { r: calc(4.5px * var(--u)); }
+  #map.compact .site:hover .dot, #map.compact .site:focus-visible .dot { r: calc(5.5px * var(--u)); }
+  #map.compact .focus .halo { r: calc(9px * var(--u)); }
+  #map.compact .focus .focusdot { r: calc(5.5px * var(--u)); }
+
+  /* The selected site: its dot inside an ink ring, over its own service ring; the rest steps back. */
+  #map.focused .site .dot { opacity: 0.7; }
+  #map.focused .cand { opacity: 0.5; }
+  .focus { pointer-events: none; }
+  .focus .halo { r: calc(11px * var(--u)); fill: none; stroke: var(--ink); stroke-width: 2; }
+  .focus .focusdot { r: calc(7px * var(--u)); fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+  .focus.mclp .focusdot { fill: var(--mclp); } .focus.greedy .focusdot { fill: var(--greedy); }
+  .focus.top30 .focusdot { fill: var(--top30); }
+
+  .maptip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; border-radius: var(--r-2); padding: 7px 10px;
+    font-size: var(--fs-meta); line-height: 1.35; transform: translate(-50%, calc(-100% - 12px)); white-space: nowrap; opacity: 0;
     transition: opacity 0.12s; z-index: 2; }
   .maptip.show { opacity: 1; }
-  .maptip b { display: block; font-weight: 600; font-size: 12.5px; }
+  .maptip b { display: block; font-weight: 600; font-size: var(--fs-meta); }
   .maptip span { color: #c9d0d6; }
 
   /* --- Opportunity queue -------------------------------------------------------------------- */
   .queue { min-height: 0; overflow-y: auto; position: relative; overscroll-behavior: contain; }
-  .qhead { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: 16px 18px 11px;
-    border-bottom: 1px solid var(--line-2); }
-  .qhead h2 { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; margin-top: 6px; }
-  .qhead p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .qhead { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: var(--s-4) var(--s-4) var(--s-2);
+    border-bottom: var(--border-zone); }
+  .qhead h2 { display: flex; align-items: center; gap: 10px; font-size: var(--fs-title); font-weight: 600; margin-top: 6px; }
+  .qhead p { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
   .qlist { list-style: none; margin: 0; padding: 0 0 8px; }
-  .qlist button { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px; text-align: left;
-    background: none; border: 0; border-bottom: 1px solid var(--line-2); padding: 8px 18px; cursor: pointer;
+  .qhead p.qcols { display: flex; justify-content: space-between; gap: var(--s-2); margin-top: var(--s-3);
+    font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); }
+  /* A row: rank, then the location and its score, where it is and what it adds, and how sure we are. */
+  .qlist button { width: 100%; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--s-1); text-align: left;
+    background: none; border: 0; border-bottom: var(--border-row); padding: var(--s-2) var(--s-4); cursor: pointer;
     position: relative; transition: background 0.12s; }
   .qlist button:hover { background: var(--surface-2); }
-  .qlist button[aria-current="true"] { background: var(--accent-soft); }
+  .qlist button[aria-current="true"] { background: var(--surface-2); }
   .qlist button[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-    background: var(--accent); }
-  .qlist .rank { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; padding-top: 1px; }
-  .qlist .name { display: block; font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .qlist .meta { display: block; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .qlist .meta b { color: var(--ink-2); font-weight: 600; }
-  .qnote { font-size: 12px; color: var(--faint); padding: 6px 18px 16px; }
-  .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; transition: color 0.4s; }
-  .hint.flash { color: var(--accent-strong); }
+    background: var(--mclp); }
+  .qlist[data-mode="greedy"] button[aria-current="true"]::before { background: var(--greedy); }
+  .qlist[data-mode="top30"] button[aria-current="true"]::before { background: var(--top30); }
+  /* The leading number is the site's position in this network's list (1..N), never its global score
+     rank (of 300); that number is spelled out on its own line below as "Score rank #X / 300". */
+  .qlist .rank { display: flex; flex-direction: column; padding-top: 1px; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .qlist .rank b { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+  .qlist .rank small { font-size: 10px; color: var(--faint); }
+  .qlist .row { display: flex; flex-direction: column; min-width: 0; }
+  .qlist .l1, .qlist .l2 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); min-width: 0; }
+  .qlist .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qlist .l1 b { font-weight: 600; flex: none; }
+  .qlist .l2 { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); }
+  .qlist .l2b { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--faint); margin-top: 1px; }
+  .qlist .contrib { color: var(--ink-2); flex: none; }
+  .qlist .l3 { display: flex; align-items: center; gap: var(--s-3); font-size: var(--fs-meta); line-height: var(--lh-meta);
+    color: var(--muted); margin-top: 2px; }
+  .qlist .l3 .verify-tag { font-weight: 500; }
+  .qnote { font-size: var(--fs-meta); color: var(--muted); padding: var(--s-2) var(--s-4) var(--s-4); }
+  .hint { font-size: var(--fs-meta); color: var(--muted); margin-top: 6px; transition: color 0.4s; }
 
   /* Provenance: how SiteScout knows something. Small, typographic, never a badge. */
-  .prov { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  .prov { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--muted); white-space: nowrap; cursor: help; }
   .prov::before { content: ""; width: 6px; height: 6px; flex: none; box-sizing: border-box; }
   .p-RETRIEVED_FACT::before { background: var(--ink-2); border-radius: 50%; }
@@ -195,137 +283,161 @@
   .p-UNKNOWN::before { border: 1.5px dashed var(--verify); border-radius: 50%; width: 7px; height: 7px; }
 
   /* Unknown → Verify: the explicit boundary of the evidence */
-  .verify-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 650; letter-spacing: 0.08em;
+  .verify-tag { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--verify); white-space: nowrap; flex: none; }
   .verify-tag::before { content: ""; width: 7px; height: 7px; border: 1.5px dashed var(--verify); border-radius: 50%; }
   .verify { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--verify-line); }
   .verify li { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 8px 2px;
-    border-bottom: 1px solid var(--verify-line); font-size: 13.5px; }
-  .verify li span.d { display: block; font-size: 12px; color: var(--muted); }
+    border-bottom: 1px solid var(--verify-line); font-size: var(--fs-body); }
+  .verify li span.d { display: block; font-size: var(--fs-meta); color: var(--muted); }
 
   /* --- Site dossier ------------------------------------------------------------------------- */
   .dossier { transition: opacity 0.2s; }
   .dossier.enter { opacity: 0; transition: none; }
-  .dnav { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 18px 0; font-size: 12.5px; }
-  .back, .step-btn { background: none; border: 0; padding: 0; cursor: pointer; color: var(--accent); font-size: 12.5px; font-weight: 500; }
+  .dnav { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 18px 0; font-size: var(--fs-meta); }
+  .back, .step-btn { background: none; border: 0; padding: 0; cursor: pointer; color: var(--accent); font-size: var(--fs-meta); font-weight: 500; }
   .back:hover, .step-btn:hover { color: var(--accent-strong); }
   .step-btn:disabled { color: var(--faint); cursor: default; }
   .qpos { display: flex; align-items: center; gap: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .dhead { padding: 14px 18px 16px; border-bottom: 1px solid var(--line-2); }
-  .dhead h2 { font-size: 20px; line-height: 1.25; font-weight: 650; letter-spacing: -0.015em; margin-top: 6px; }
-  .dhead .sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .dhead h2 { font-size: var(--fs-site); line-height: 1.25; font-weight: 600; letter-spacing: 0; margin-top: 6px; }
+  .dhead .sub { color: var(--muted); font-size: var(--fs-meta); margin-top: 3px; }
   .dfig { display: flex; gap: 26px; margin-top: 14px; align-items: flex-end; }
   .dfig div { display: flex; flex-direction: column; }
-  .dfig b { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .dfig b small { font-size: 13px; font-weight: 500; color: var(--faint); letter-spacing: 0; }
-  .dfig span { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-  .dfig .conf-v { font-size: 16px; font-weight: 600; padding-bottom: 3px; }
+  .dfig b { font-size: var(--fs-site); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .dfig b small { font-size: var(--fs-body); font-weight: 500; color: var(--faint); letter-spacing: 0; }
+  .dfig span { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
+  .dfig div:not(.lead) b { font-size: var(--fs-title); line-height: var(--lh-title); }
+  .dhead .cid { margin-top: 2px; color: var(--muted); }
   .block { padding: 16px 18px; border-bottom: 1px solid var(--line-2); }
   .bh { display: flex; justify-content: space-between; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin-bottom: 10px; min-height: 22px; }
   .bh h3 { white-space: nowrap; }
-  .block > p { font-size: 13.5px; color: var(--ink-2); }
-  .role-line { font-size: 14px; color: var(--ink); }
-  .role-line b { font-weight: 650; font-variant-numeric: tabular-nums; }
-  .members { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--muted); }
+  .block > p { font-size: var(--fs-body); color: var(--ink-2); }
+  .role-line { color: var(--ink-2); margin-top: var(--s-2); }
+  .role-status { display: flex; align-items: center; gap: var(--s-2); font-weight: 500; color: var(--ink); }
+  .role-status.out { color: var(--muted); }
+  .role-status .node { width: 8px; height: 8px; }
+  .contrib-wrap { margin-top: var(--s-3); }
+  .role-fig { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-1) var(--s-3); align-items: baseline;
+    margin-top: var(--s-2); }
+  .role-fig b { font-size: var(--fs-site); line-height: var(--lh-site); font-weight: 600; color: var(--mclp); }
+  .role-fig p { color: var(--ink-2); }
+  .role-fig p.caption { grid-column: 1 / -1; margin-top: 0; }
+  /* Network contribution: a little more weight than a generic figure, tied to the optimized network's
+     own colour so it reads as belonging there even when another network is the active one. */
+  .role-fig.contrib { border-left: 3px solid var(--mclp); padding-left: var(--s-3); }
+  .role-fig.contrib b { font-size: 28px; line-height: 32px; }
+  .block p.caption { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); margin-top: var(--s-2); }
+  .block p.keyline { margin: 0 0 var(--s-2); }
+  .block p.brief { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--ink-2); margin-top: var(--s-3);
+    padding-top: var(--s-3); border-top: var(--border-row); }
+  .block p.conf b { font-weight: 600; color: var(--ink); }
+  .members { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--fs-meta); color: var(--muted); }
   .members li { display: inline-flex; align-items: center; gap: 8px; }
   .members .node { width: 8px; height: 8px; }
   .members li.current { color: var(--ink); font-weight: 600; }
-  .comps { margin-top: 12px; width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .comps th { font-size: 10.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 0.06em;
+  .comps { margin-top: 12px; width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+  .comps th { font-size: var(--fs-label); font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 0.06em;
     text-align: right; padding: 0 0 4px 10px; white-space: nowrap; }
   .comps th:first-child { text-align: left; padding-left: 0; }
   .comps td { padding: 4px 0; vertical-align: middle; }
   .comps td.lab { width: 122px; line-height: 1.2; }
-  .comps td.lab em { display: block; font-style: normal; font-size: 10.5px; color: var(--muted); }
+  .comps td.lab em { display: block; font-style: normal; font-size: var(--fs-label); color: var(--muted); }
   .comps td.bar { padding: 0 10px; }
   .comps td.v { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; width: 40px; }
   .comps td.w { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; width: 44px; }
+  .comps tfoot td { border-top: var(--border-zone); padding-top: var(--s-2); font-weight: 600; }
   .track { height: 5px; background: var(--line-2); border-radius: 3px; position: relative; overflow: hidden; }
   .fill { position: absolute; inset: 0 auto 0 0; background: var(--ink-2); border-radius: 3px; transition: width 0.3s; }
   .evrows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-2); }
   .evrows li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line-2); }
-  .evrows .g { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
-  .evrows b { display: block; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-  .evrows .c { display: block; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
-  .evrows .f { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: 11.5px; color: var(--faint); }
+  .evrows .g { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .evrows b { display: block; font-size: var(--fs-title); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .evrows .c { display: block; font-size: var(--fs-meta); color: var(--muted); line-height: 1.4; }
+  .evrows .f { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: var(--fs-meta); color: var(--faint); }
   details.allev { margin-top: 10px; }
-  details.allev > summary { cursor: pointer; font-size: 12.5px; font-weight: 500; color: var(--accent); }
-  .ev { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+  details.allev > summary { cursor: pointer; font-size: var(--fs-meta); font-weight: 500; color: var(--accent); }
+  .ev { width: 100%; border-collapse: collapse; font-size: var(--fs-body); margin-top: 8px; }
   .ev td { padding: 5px 0; border-bottom: 1px solid var(--line-2); vertical-align: top; }
   .ev td.v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; padding: 5px 10px; overflow-wrap: anywhere; }
   .ev td.t { width: 1%; text-align: right; }
-  .ev .group td { padding-top: 12px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+  .ev .group td { padding-top: 12px; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
   .ev .group .cell { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .ev .open { color: var(--verify); }
-  .disclaimer { font-size: 12px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 10px; margin-top: 12px; }
-  .risks { margin: 12px 0 0; padding: 0 0 0 16px; font-size: 12.5px; color: var(--ink-2); }
+  .disclaimer { font-size: var(--fs-meta); color: var(--muted); border-left: 2px solid var(--line); padding-left: 10px; margin-top: 12px; }
+  .risks { margin: 12px 0 0; padding: 0 0 0 16px; font-size: var(--fs-body); color: var(--ink-2); }
   .risks li { margin: 3px 0; }
-  .subh { font-size: 11.5px; font-weight: 600; color: var(--muted); margin-top: 14px; }
+  .subh { font-size: var(--fs-meta); font-weight: 600; color: var(--muted); margin-top: 14px; }
   .checks-next { list-style: none; margin: 0; padding: 0; counter-reset: step; }
   .checks-next li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--line-2);
     counter-increment: step; }
   .checks-next li:first-child { border-top: 0; padding-top: 0; }
-  .checks-next li::before { content: counter(step, decimal-leading-zero); font-size: 12.5px; font-weight: 600; color: var(--muted);
+  .checks-next li::before { content: counter(step, decimal-leading-zero); font-size: var(--fs-meta); font-weight: 600; color: var(--muted);
     font-variant-numeric: tabular-nums; padding-top: 1px; }
-  .checks-next b { display: block; font-size: 13.5px; font-weight: 600; }
-  .checks-next span { display: block; font-size: 12.5px; color: var(--muted); }
-  .brieflink { display: inline-block; margin: 14px 18px 20px; font-size: 12.5px; }
-  .note { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  .checks-next b { display: block; font-size: var(--fs-body); font-weight: 600; }
+  .checks-next span { display: block; font-size: var(--fs-body); color: var(--muted); }
+  .brieflink { display: inline-block; margin-top: var(--s-3); font-size: var(--fs-meta); }
+  .note { color: var(--muted); font-size: var(--fs-meta); margin-top: 8px; }
+  /* Unknowns in the dossier: open questions in the verification amber, dashed, never an error red. */
+  .dossier .verify { background: var(--verify-soft); border: var(--border-verify); border-radius: var(--r-1); padding: 0 var(--s-3);
+    margin-top: var(--s-2); }
+  .dossier .verify li { border-bottom: var(--border-verify); }
+  .dossier .verify li:last-child { border-bottom: 0; }
 
   /* --- Investigation: an analytical finding attached to a site or the network -------------- */
   .investigation { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--surface); }
   .inv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-  .inv-head h3 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
-  .inv-tag { font-size: 11px; color: var(--faint); }
+  .inv-head h3 { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+  .inv-tag { font-size: var(--fs-label); color: var(--faint); }
   .inv-questions { list-style: none; margin: 8px 0 0; padding: 0; }
-  .inv-questions li { font-size: 14px; color: var(--ink); padding: 1px 0; }
-  .inv-intro { font-size: 12.5px; color: var(--muted); margin: 6px 0 10px; }
+  .inv-questions li { font-size: var(--fs-body); color: var(--ink); padding: 1px 0; }
+  .inv-intro { font-size: var(--fs-meta); color: var(--muted); margin: 6px 0 10px; }
   .inv-intro.off { color: var(--faint); margin-bottom: 0; }
   .inv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  button.inv-action { font-size: 13px; font-weight: 500; padding: 6px 13px; border-radius: 7px; cursor: pointer;
+  button.inv-action { font-size: var(--fs-body); font-weight: 500; padding: 6px 13px; border-radius: 7px; cursor: pointer;
     border: 1px solid var(--ink); background: var(--ink); color: #fff; transition: opacity 0.15s; }
   button.inv-action:hover { opacity: 0.86; }
-  button.inv-action.quiet { background: var(--surface); color: var(--accent); border-color: var(--line); padding: 2px 9px; font-size: 12px;
+  button.inv-action.quiet { background: var(--surface); color: var(--accent); border-color: var(--line); padding: 2px 9px; font-size: var(--fs-meta);
     letter-spacing: 0; text-transform: none; }
   button.inv-action.quiet:hover { border-color: var(--accent); opacity: 1; }
   button.inv-action:disabled { opacity: 0.45; cursor: default; }
-  .inv-line { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+  .inv-line { margin: 10px 0 0; font-size: var(--fs-body); color: var(--muted); }
   .inv-line:empty, .inv-result:empty { display: none; }
   .inv-result { margin-top: 14px; border-top: 1px solid var(--line-2); padding-top: 14px; }
-  .inv-title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+  .inv-title { font-size: var(--fs-title); font-weight: 600; letter-spacing: -0.01em; }
   .inv-title:focus { outline: none; }
-  .inv-verdict { font-size: 12px; color: var(--muted); margin: 3px 0 0; }
-  .inv-verdict.warn { color: var(--warn); font-size: 13px; font-weight: 600; }
+  .inv-verdict { font-size: var(--fs-meta); color: var(--muted); margin: 3px 0 0; }
+  .inv-verdict.warn { color: var(--warn); font-size: var(--fs-body); font-weight: 600; }
   .inv-block { margin-top: 16px; }
-  .inv-block h5, .inv-fallback h5 { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  .inv-block h5, .inv-fallback h5 { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--muted); margin: 0 0 6px; }
   .inv-fallback h5 { margin-top: 14px; }
-  .inv-block.finding .stmt-line p { font-size: 15px; color: var(--ink); line-height: 1.5; }
+  .inv-block.finding .stmt-line p { font-size: var(--fs-title); color: var(--ink); line-height: 1.5; }
   .stmts { list-style: none; margin: 0; padding: 0; }
   .stmt { padding: 7px 0; border-top: 1px solid var(--line-2); }
   .stmt:first-child { border-top: 0; padding-top: 0; }
   .inv-block.next .stmts { counter-reset: nc; }
   .inv-block.next .stmt { display: grid; grid-template-columns: 28px minmax(0, 1fr); counter-increment: nc; }
-  .inv-block.next .stmt::before { content: counter(nc, decimal-leading-zero); font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .inv-block.next .stmt::before { content: counter(nc, decimal-leading-zero); font-size: var(--fs-meta); font-weight: 600; color: var(--muted); }
   .stmt-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-  .stmt-line p { font-size: 13.5px; color: var(--ink-2); }
+  .stmt-line p { font-size: var(--fs-body); color: var(--ink-2); }
   .stmt-meta { display: flex; align-items: flex-start; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
   .inv-block.unknown .stmt { border-top-color: var(--verify-line); }
-  blockquote { margin: 6px 0 0; padding: 2px 10px; border-left: 2px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  blockquote { margin: 6px 0 0; padding: 2px 10px; border-left: 2px solid var(--line); font-size: var(--fs-meta); color: var(--muted); }
   .cites { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-  details.cite { font-size: 12px; }
+  details.cite { font-size: var(--fs-meta); }
   details.cite summary { cursor: pointer; color: var(--muted); overflow-wrap: anywhere; }
   details.cite dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 6px 0 4px 14px; padding-left: 10px;
     border-left: 1px solid var(--line); }
   details dt { color: var(--faint); } details dd { margin: 0; overflow-wrap: anywhere; }
-  .inv-group { font-size: 13px; margin: 4px 0; }
+  .inv-group { font-size: var(--fs-body); margin: 4px 0; }
   .inv-group summary { cursor: pointer; font-weight: 500; }
   .inv-group .count { color: var(--faint); font-weight: 400; }
   .recs { list-style: none; margin: 4px 0 8px; padding: 0; }
   .recs li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line-2); }
   .recs .v { text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-  .inv-message { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
-  details.trace { margin-top: 16px; font-size: 12.5px; border-top: 1px solid var(--line-2); padding-top: 10px; }
+  .inv-message { font-size: var(--fs-body); color: var(--muted); margin: 8px 0 0; }
+  details.trace { margin-top: 16px; font-size: var(--fs-body); border-top: 1px solid var(--line-2); padding-top: 10px; }
   details.trace summary { cursor: pointer; color: var(--muted); }
   .steps, .checks { margin: 8px 0 0; padding-left: 20px; }
   .steps li, .checks li { margin: 3px 0; }
@@ -335,21 +447,21 @@
 
   /* --- Workflow line under the workbench ---------------------------------------------------- */
   .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 14px 0 0; padding: 0; }
-  .flow li { padding: 2px 16px; border-left: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .flow li { padding: 2px 16px; border-left: 1px solid var(--line); font-size: var(--fs-body); color: var(--muted); }
   .flow li:first-child { border-left: 0; padding-left: 4px; }
-  .flow .n { font-size: 11px; font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  .flow .n { font-size: var(--fs-label); font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 6px; }
   .flow b { font-weight: 600; color: var(--ink-2); margin-right: 6px; }
 
   /* --- Document sections: an analytical report under the workbench ------------------------- */
   .doc { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 28px; padding: 36px 4px; border-top: 1px solid var(--line); }
   .flow + .doc { margin-top: 30px; }
-  .dochead h2 { font-size: 19px; font-weight: 650; letter-spacing: -0.015em; margin-top: 6px; line-height: 1.3; }
-  .dochead p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .dochead h2 { font-size: var(--fs-site); font-weight: 600; letter-spacing: 0; margin-top: 6px; line-height: 1.3; }
+  .dochead p { font-size: var(--fs-body); color: var(--muted); margin-top: 6px; }
   .docbody { min-width: 0; }
-  .sub2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 26px 0 10px; }
+  .sub2 { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 26px 0 10px; }
 
-  table.cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .cmp th { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: right;
+  table.cmp { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+  .cmp th { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: right;
     padding: 0 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   .cmp th:first-child, .cmp td:first-child { text-align: left; padding-left: 12px; }
   .cmp td { padding: 12px 10px; border-bottom: 1px solid var(--line-2); text-align: right; vertical-align: middle;
@@ -361,94 +473,116 @@
   .cmp tbody tr.current.top30 { box-shadow: inset 3px 0 0 var(--top30); }
   .cmp .sname { display: flex; align-items: center; gap: 11px; background: none; border: 0; padding: 0; cursor: pointer;
     font-weight: 600; text-align: left; }
-  .cmp .srole { display: block; font-size: 11.5px; color: var(--muted); font-weight: 400; margin: 2px 0 0 21px; text-align: left; }
+  .cmp .srole { display: block; font-size: var(--fs-meta); color: var(--muted); font-weight: 400; margin: 2px 0 0 21px; text-align: left; }
   .cmp .barcell { display: grid; grid-template-columns: 46px 88px; gap: 10px; align-items: center; justify-content: end; }
-  .cmp .barcell b { font-weight: 650; }
+  .cmp .barcell b { font-weight: 600; }
   .cmp tr.mclp .fill { background: var(--mclp); } .cmp tr.greedy .fill { background: var(--greedy); }
   .cmp tr.top30 .fill { background: var(--top30); }
-  .cmp td.dist { font-size: 12px; color: var(--muted); text-align: left; max-width: 220px; line-height: 1.5; }
+  .cmp td.dist { font-size: var(--fs-meta); color: var(--muted); text-align: left; max-width: 220px; line-height: 1.5; }
   .cmp td.dist span { white-space: nowrap; }
   .cmp td.dist b { color: var(--ink-2); font-weight: 600; }
   .cmp th.dist { text-align: left; }
   .observation { margin-top: 22px; border-left: 2px solid var(--ink-2); padding: 2px 0 2px 16px; max-width: 760px; }
-  .observation .obs { font-size: 15px; font-weight: 600; color: var(--ink); margin-top: 4px; }
-  .observation p { font-size: 13.5px; color: var(--ink-2); margin-top: 6px; }
-  .observation .solver { font-size: 12.5px; color: var(--muted); }
+  .observation .obs { font-size: var(--fs-title); font-weight: 600; color: var(--ink); margin-top: 4px; }
+  .observation p { font-size: var(--fs-body); color: var(--ink-2); margin-top: 6px; }
+  .observation .solver { font-size: var(--fs-meta); color: var(--muted); }
   .netinv { margin-top: 26px; max-width: 860px; }
 
   .metrics { display: grid; grid-template-columns: 1.3fr 1fr 1fr; }
   .mgroup { padding: 0 22px; border-left: 1px solid var(--line); min-width: 0; }
   .mgroup:first-child { padding-left: 0; border-left: 0; }
-  .mgroup h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .mgroup h3 { font-size: var(--fs-body); font-weight: 600; margin-bottom: 10px; }
   .mrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-  .metric b { display: block; font-size: 24px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
-  .metric span { display: block; font-size: 12px; color: var(--muted); line-height: 1.35; margin-top: 2px; }
-  .caveat { font-size: 12.5px; color: var(--ink-2); border-left: 2px solid var(--verify); padding: 2px 0 2px 10px; }
-  .mgroup .foot { font-size: 12px; color: var(--muted); margin-top: 8px; }
-  .mgroup a { display: inline-block; margin-top: 10px; font-size: 12.5px; }
+  .metric b { display: block; font-size: var(--fs-site); font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .metric span { display: block; font-size: var(--fs-meta); color: var(--muted); line-height: 1.35; margin-top: 2px; }
+  .caveat { font-size: var(--fs-body); color: var(--ink-2); border-left: 2px solid var(--verify); padding: 2px 0 2px 10px; }
+  .mgroup .foot { font-size: var(--fs-meta); color: var(--muted); margin-top: 8px; }
+  .mgroup a { display: inline-block; margin-top: 10px; font-size: var(--fs-meta); }
 
   .pipeline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
   .pipeline li { display: grid; grid-template-columns: 30px minmax(0, 1fr); padding: 10px 0; border-bottom: 1px solid var(--line-2); }
-  .pipeline .n { font-size: 12px; font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; padding-top: 1px; }
-  .pipeline b { font-size: 13.5px; font-weight: 600; }
-  .pipeline .role { font-size: 11px; font-weight: 600; margin-left: 8px; color: var(--accent); }
+  .pipeline .n { font-size: var(--fs-meta); font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; padding-top: 1px; }
+  .pipeline b { font-size: var(--fs-body); font-weight: 600; }
+  .pipeline .role { font-size: var(--fs-label); font-weight: 600; margin-left: 8px; color: var(--accent); }
   .pipeline .role.explains { color: var(--muted); }
-  .pipeline span.t { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
-  .principle { font-size: 13.5px; color: var(--ink-2); margin-top: 16px; }
+  .pipeline span.t { display: block; font-size: var(--fs-body); color: var(--muted); margin-top: 1px; }
+  .principle { font-size: var(--fs-body); color: var(--ink-2); margin-top: 16px; }
   .twocol { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; }
   .provlist { list-style: none; margin: 0; padding: 0; }
   .provlist li { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-2);
-    font-size: 13px; color: var(--ink-2); align-items: baseline; }
-  table.plain { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .plain th { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left;
+    font-size: var(--fs-body); color: var(--ink-2); align-items: baseline; }
+  table.plain { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+  .plain th { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left;
     padding: 0 10px 6px 0; border-bottom: 1px solid var(--line); }
   .plain td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-2); vertical-align: top; }
   .plain td.r, .plain th.r { text-align: right; font-variant-numeric: tabular-nums; }
-  .plain td.muted { color: var(--muted); font-size: 12.5px; }
+  .plain td.muted { color: var(--muted); font-size: var(--fs-body); }
   .kv { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 18px 0 0; }
   .kv div { padding: 0 16px; border-left: 1px solid var(--line); }
   .kv div:first-child { padding-left: 0; border-left: 0; }
-  .kv dt { font-size: 12px; color: var(--muted); }
-  .kv dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .srcnote { font-size: 12.5px; color: var(--muted); margin-top: 14px; }
+  .kv dt { font-size: var(--fs-meta); color: var(--muted); }
+  .kv dd { margin: 2px 0 0; font-size: var(--fs-title); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .srcnote { font-size: var(--fs-meta); color: var(--muted); margin-top: 14px; }
 
-  .limits li { padding: 10px 2px; }
-  .limits li b { font-size: 13.5px; font-weight: 600; }
-  .verifyline { margin-top: 16px; font-size: 14px; font-weight: 600; }
+  /* Open items to verify, not a list of failures: one quiet marker each, not a repeated tag. */
+  .limits li { justify-content: flex-start; align-items: flex-start; gap: var(--s-2); padding: 10px 2px; }
+  .limits li .mark { width: 7px; height: 7px; margin-top: 7px; flex: none; border: 1.5px dashed var(--verify); border-radius: 50%; }
+  .limits li b { font-size: var(--fs-body); font-weight: 600; }
+  .verify-cue { margin-top: var(--s-4); padding: var(--s-2) var(--s-3); background: var(--verify-soft);
+    border: var(--border-verify); border-radius: var(--r-1); font-size: var(--fs-label); font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--verify); }
   .operator { margin-top: 30px; }
   .opgrid { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 2fr); gap: 12px; align-items: stretch; }
   .opbox { border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; background: var(--surface); }
-  .opbox b { display: block; font-size: 13px; font-weight: 600; }
-  .opbox span { font-size: 12px; color: var(--muted); }
+  .opbox b { display: block; font-size: var(--fs-body); font-weight: 600; }
+  .opbox span { font-size: var(--fs-meta); color: var(--muted); }
   .plus { display: flex; align-items: center; justify-content: center; color: var(--faint); }
   .future { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .future div { border: 1px dashed #cfcac0; border-radius: 8px; padding: 8px 11px; font-size: 12.5px; color: var(--ink-2); }
-  .future small { display: block; font-size: 11px; color: var(--faint); }
+  .future div { border: 1px dashed #cfcac0; border-radius: 8px; padding: 8px 11px; font-size: var(--fs-body); color: var(--ink-2); }
+  .future small { display: block; font-size: var(--fs-label); color: var(--faint); }
   .down { text-align: center; color: var(--faint); margin: 6px 0; }
-  .opresult { border: 1px dashed #b9c1c9; border-radius: 8px; padding: 10px 14px; text-align: center; font-weight: 600; font-size: 13.5px;
+  .opresult { border: 1px dashed #b9c1c9; border-radius: 8px; padding: 10px 14px; text-align: center; font-weight: 600; font-size: var(--fs-body);
     color: var(--ink-2); }
-  .conceptual { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+  .conceptual { font-size: var(--fs-meta); color: var(--muted); margin-top: 10px; }
 
-  footer { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding: 18px 4px 0; }
+  footer { font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line); padding: 18px 4px 0; }
   footer p { margin: 0 0 6px; }
 
   /* --- Responsive --------------------------------------------------------------------------- */
+  @media (min-width: 1400px) {
+    .workbench { grid-template-columns: 320px minmax(0, 1fr) 400px; }
+  }
+  @media (min-width: 1200px) {
+    .dnav .back { display: none; } /* the list stays in view beside the dossier */
+    .dnav { justify-content: flex-end; }
+  }
+  @media (max-width: 1199px) {
+    /* Map and one side column; the dossier takes the list's place while a site is open. */
+    .workbench { grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "map side"; }
+    .queue, .dcol { grid-area: side; border-right: 0; border-left: var(--border-zone); }
+    .workbench[data-view="list"] .dcol, .workbench[data-view="site"] .queue { display: none; }
+  }
   @media (max-width: 1279px) {
-    .app { grid-template-columns: minmax(0, 1fr); }
-    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; transform: translateX(-100%); transition: transform 0.22s;
-      background: var(--surface); }
-    .sidebar.open { transform: none; box-shadow: 0 10px 30px rgba(27, 33, 39, 0.18); }
-    .menu { display: inline-flex; }
-    .workbench { grid-template-columns: minmax(0, 1fr) 350px; }
-    .strategy { padding: 4px; } .strategy .label, .seg button small { display: none; }
     .doc { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .dochead p { max-width: 720px; }
   }
+  @media (max-width: 899px) {
+    /* The section links move behind the menu button. */
+    .menu { display: inline-flex; }
+    .tabs { display: none; position: absolute; top: 48px; left: 0; right: 0; flex-direction: column; background: var(--surface);
+      border-bottom: var(--border-zone); padding: var(--s-2) 0; }
+    .topbar.open .tabs { display: flex; }
+    .nav { height: 44px; padding: 0 var(--s-5); }
+    .nav[aria-current="true"]::after { left: 0; right: auto; top: 10px; bottom: 10px; width: 2px; height: auto; }
+    .tabsep { width: auto; height: 1px; margin: var(--s-1) var(--s-5); }
+  }
   @media (max-width: 1023px) {
-    .workbench { grid-template-columns: minmax(0, 1fr); height: auto; }
-    .mapcol { border-right: 0; border-bottom: 1px solid var(--line); }
+    /* Stacked: map, then the list or the open dossier, in the page's own scroll. */
+    .deck { height: auto; min-height: 0; }
+    .workbench { grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "side"; }
+    .queue, .dcol { border-left: 0; overflow: visible; }
+    .mapcol { border-bottom: var(--border-zone); }
     .mapwrap { flex: none; aspect-ratio: 1.12; }
-    .queue { overflow: visible; }
     .qhead { position: static; }
     .metrics { grid-template-columns: minmax(0, 1fr); gap: 20px; }
     .mgroup { padding: 0; border-left: 0; }
@@ -460,21 +594,23 @@
     .cmp td.dist, .cmp th.dist { display: none; }
   }
   @media (max-width: 700px) {
-    .topbar { padding: 0 14px; gap: 10px; }
-    .context span, .through .tl { display: none; }
-    .banner { padding: 8px 14px; }
-    .content { padding: 14px 12px 32px; }
-    .netstatus { padding: 14px 14px 13px; }
-    .ns-big b { font-size: 38px; }
+    .topbar { padding: 0 var(--s-4); gap: var(--s-3); }
+    .through { display: none; }
+    .menu { margin-left: auto; }
+    .banner { padding: var(--s-2) var(--s-4); }
+    .report { padding: var(--s-3) var(--s-4) 32px; }
+    .nav { padding: 0 var(--s-4); }
+    .tabsep { margin: var(--s-1) var(--s-4); }
+    /* The outcome stacks: question, figure, reach, then the switch at full width. */
+    .outcome { grid-template-columns: minmax(0, 1fr); padding: var(--s-4); }
+    .oc-figure { flex-direction: column; align-items: flex-start; gap: var(--s-1); }
+    .seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .seg button { height: 44px; padding: 0 var(--s-2); white-space: normal; line-height: var(--lh-meta); }
     .mapwrap { flex-direction: column; aspect-ratio: auto; }
     #map { aspect-ratio: 1.12; height: auto; }
-    .strategy { position: static; order: -1; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0; padding: 10px 12px;
-      background: var(--surface); }
-    .seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .seg button { padding: 6px 7px; font-size: 12px; gap: 6px; }
-    .seg button small { display: none; }
-    .legend { position: static; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; grid-template-columns: 1fr 1fr;
-      background: var(--surface); gap: 6px 12px; }
+    .legend { position: static; border: 0; border-top: var(--border-row); border-radius: 0; box-shadow: none;
+      grid-template-columns: 1fr 1fr; background: var(--surface); gap: var(--s-2) var(--s-3); padding: var(--s-3) var(--s-4); }
+    .legend span { white-space: normal; }
     .flow { grid-template-columns: 1fr 1fr; row-gap: 8px; }
     .flow li:nth-child(3) { border-left: 0; padding-left: 4px; }
     .doc { padding: 28px 2px; }
@@ -483,7 +619,7 @@
     .cmp tbody tr { display: grid; grid-template-columns: 1fr 1fr; padding: 10px 0 10px 12px; border-bottom: 1px solid var(--line-2); }
     .cmp td { border: 0; padding: 3px 12px 3px 0; text-align: left; }
     .cmp td:first-child { grid-column: 1 / -1; padding-left: 0; margin-bottom: 4px; }
-    .cmp td[data-label]::before { content: attr(data-label); display: block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+    .cmp td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em;
       text-transform: uppercase; color: var(--muted); }
     .cmp .barcell { justify-content: start; grid-template-columns: 46px 70px; }
     .pipeline { grid-template-columns: minmax(0, 1fr); }
@@ -491,64 +627,50 @@
     .kv div { padding-left: 0; border-left: 0; }
     .future { grid-template-columns: 1fr 1fr; }
     .provlist li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-    .block, .dhead, .qhead, .dnav { padding-left: 14px; padding-right: 14px; }
-    .qlist button { padding-left: 14px; padding-right: 14px; }
+    .block, .dhead, .qhead, .dnav, .dempty { padding-left: var(--s-4); padding-right: var(--s-4); }
+    /* Touch targets of at least 44 px. */
+    .menu { width: 44px; height: 44px; }
+    .dnav { padding-top: 0; }
+    .back, .step-btn { min-height: 44px; padding: 0 var(--s-2); }
+    .back { padding-left: 0; }
   }
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar" id="sidebar" aria-label="Navigation">
-    <div class="brand"><span class="mark" aria-hidden="true"></span><strong>SITE SCOUT</strong></div>
-    <nav id="nav">
-      <p class="navlabel">Workspace</p>
-      <button class="nav" type="button" data-nav="overview"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>Overview</button>
-      <button class="nav" type="button" data-nav="network"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="5" r="2"/><circle cx="11.5" cy="4" r="2"/><circle cx="8" cy="12" r="2"/></svg>Network</button>
-      <button class="nav" type="button" data-nav="opportunities"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5s4.5-4.2 4.5-8a4.5 4.5 0 0 0-9 0c0 3.8 4.5 8 4.5 8z"/><circle cx="8" cy="6.5" r="1.6"/></svg>Opportunities</button>
-      <button class="nav" type="button" data-nav="evidence"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M6.2 8h4.2M6.2 10.6h4.2"/></svg>Evidence</button>
-      <button class="nav" type="button" data-nav="investigate"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.3"/><path d="M10.2 10.2l3.6 3.6"/></svg>Investigate</button>
-      <button class="nav" type="button" data-nav="evaluation"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5h11M4.5 11V8M8 11V4.5M11.5 11V6.5"/></svg>Evaluation</button>
-      <p class="navlabel">Method</p>
-      <button class="nav" type="button" data-nav="sources"><svg viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="3.8" rx="5" ry="1.9"/><path d="M3 3.8v8.4c0 1 2.2 1.9 5 1.9s5-.9 5-1.9V3.8M3 8c0 1 2.2 1.9 5 1.9S13 9 13 8"/></svg>Data sources</button>
-      <button class="nav" type="button" data-nav="method"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.5h10M3 8h10M3 12.5h6"/></svg>Methodology</button>
-      <button class="nav" type="button" data-nav="limitations"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke-dasharray="2 2"/></svg>Limitations</button>
+  <header class="topbar" id="topbar">
+    <span class="brand">SiteScout</span>
+    <nav class="tabs" id="nav" aria-label="Sections">
+      <button class="nav" type="button" data-nav="network">Network</button>
+      <span class="tabsep" aria-hidden="true"></span>
+      <button class="nav" type="button" data-nav="evaluation">Evaluation</button>
+      <button class="nav" type="button" data-nav="sources">Data sources</button>
+      <button class="nav" type="button" data-nav="method">Methodology</button>
+      <button class="nav" type="button" data-nav="limitations">Limitations</button>
     </nav>
-  </aside>
-  <div class="scrim" id="scrim" hidden></div>
+    <span class="through" id="through"></span>
+    <button class="menu" id="menu" type="button" aria-label="Open navigation" aria-controls="nav" aria-expanded="false">
+      <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
+    </button>
+  </header>
+  <div id="banner" class="banner" hidden></div>
 
   <div class="main">
-    <header class="topbar">
-      <button class="menu" id="menu" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
-        <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
-      </button>
-      <div class="context"><strong>Charging Network Expansion</strong><span>Rwanda</span></div>
-      <span class="through" id="through"></span>
-    </header>
-    <div id="banner" class="banner" hidden></div>
-
     <main class="content" id="content">
-      <section class="workbench" id="workspace" data-section="overview" aria-label="Network expansion workbench">
-        <div class="mapcol">
-          <header class="netstatus" id="overview">
-            <p class="ns-kicker"><span class="label">Network expansion</span><span id="question"></span></p>
-            <div class="ns-figure" id="ns-figure" aria-live="polite">
-              <p class="ns-strategy"><i class="node" id="ns-node"></i><span id="ns-label"></span></p>
-              <p class="ns-big"><b id="ns-coverage" class="fade"></b><span id="ns-caption"></span></p>
-              <p class="ns-facts fade" id="ns-facts"></p>
-            </div>
-            <p id="lede" hidden></p>
-          </header>
-          <div class="mapwrap" id="mapwrap">
-            <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"
-              preserveAspectRatio="xMidYMid meet"></svg>
-            <div class="strategy">
-              <span class="label">Network strategy</span>
-              <div class="seg" role="group" aria-label="Network strategy" id="toggle"></div>
-            </div>
-            <div class="legend" id="legend" aria-label="Map legend"></div>
-            <div class="maptip" id="maptip" aria-hidden="true"></div>
-          </div>
+    <!-- The decision deck: the outcome over one workspace (opportunities | map | site dossier). -->
+    <div class="deck">
+      <!-- The network outcome: the one large figure, for the network selected by the switch. -->
+      <section class="outcome" id="overview" aria-label="Network outcome">
+        <p class="oc-kicker"><span class="label">Network outcome</span><span id="question"></span></p>
+        <div class="oc-figure" id="ns-figure" aria-live="polite">
+          <span class="sr-only" id="ns-name"></span>
+          <b class="oc-big fade" id="ns-coverage"></b>
+          <p class="oc-text"><span id="ns-caption"></span><span class="oc-facts fade" id="ns-facts"></span></p>
         </div>
+        <div class="seg" role="group" aria-label="Network" id="toggle"></div>
+        <p id="lede" hidden></p>
+      </section>
+      <section class="workbench" id="workspace" data-section="network" data-view="list" aria-label="Network workspace">
         <aside class="queue" id="panel" aria-label="Opportunities">
           <div id="opps-view">
             <div class="qhead">
@@ -556,14 +678,32 @@
               <h2><i class="node" id="q-node"></i><span id="opps-title"></span></h2>
               <p id="opps-sub"></p>
               <p class="hint" id="opps-hint">Select a location to open its evidence.</p>
+              <p class="qcols" aria-hidden="true"><span>Location</span><span id="opps-cols"></span></p>
             </div>
             <ol class="qlist" id="list"></ol>
             <p class="qnote" id="opps-note"></p>
           </div>
+        </aside>
+        <div class="mapcol">
+          <div class="mapwrap" id="mapwrap">
+            <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"
+              preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="legend" id="legend" aria-label="Map legend"></div>
+            <div class="maptip" id="maptip" aria-hidden="true"></div>
+          </div>
+        </div>
+        <aside class="dcol" id="dossier" aria-label="Site dossier">
+          <div class="dempty" id="dossier-empty">
+            <p class="label">Site dossier</p>
+            <p>Select a location in the list or on the map to see its network role, why it scores as it does,
+              the evidence behind it, what is not yet known and the next checks.</p>
+          </div>
           <div id="site" hidden></div>
         </aside>
       </section>
+    </div>
 
+    <div class="report">
       <ol class="flow" id="flow" aria-label="Where SiteScout sits in the expansion process"></ol>
 
       <section class="doc" id="network" data-section="network" aria-labelledby="network-title">
@@ -620,12 +760,12 @@
       <section class="doc" id="limitations" data-section="limitations" aria-labelledby="limits-title">
         <div class="dochead">
           <p class="label">Limitations</p>
-          <h2 id="limits-title">What this does not establish</h2>
+          <h2 id="limits-title">What still needs verification</h2>
           <p id="limits-sub"></p>
         </div>
         <div class="docbody">
           <ul class="verify limits" id="limits"></ul>
-          <p class="verifyline">These require operator, utility, site-owner or field verification.</p>
+          <p class="verify-cue">Verify with operator, utility, site owner or authorities</p>
           <p class="disclaimer" id="limits-disclaimer"></p>
           <div class="operator" aria-labelledby="operator-title">
             <p class="sub2" id="operator-title">If connected to operator data</p>
@@ -649,6 +789,7 @@
       </section>
 
       <footer id="footer"></footer>
+    </div>
     </main>
   </div>
 </div>
@@ -718,6 +859,11 @@ function provenance(type) {
 // Unknown → Verify: the explicit boundary of the evidence.
 const verifyTag = () => el("span", { class: "verify-tag", title: "Not established by the evidence; to be verified" }, "Verify");
 const verifyRow = (text, detail) => el("li", {}, el("div", {}, text, detail ? el("span", { class: "d" }, detail) : null), verifyTag());
+// An open item to verify: one quiet marker, not a "Verify" tag repeated on every row. Used where
+// several items are listed together (the Limitations section), so the list reads as a diligence
+// checklist rather than a wall of identical warnings.
+const limitRow = (title, text) => el("li", {}, el("span", { class: "mark", "aria-hidden": "true" }),
+  el("div", {}, el("b", {}, title), el("span", { class: "d" }, text)));
 
 // Optional investigation (investigation.js): nothing when the script is absent.
 const investigationSection = (options) => (INV ? INV.section(options) : null);
@@ -732,7 +878,7 @@ function enter(node) {
 }
 
 // --- Header and the workflow line ----------------------------------------------------------------
-$("through").append(el("span", { class: "tl" }, "Data through "), formatDate(D.meta.data_date));
+$("through").append("Rwanda · Data through ", formatDate(D.meta.data_date));
 if (D.meta.data_status !== "pipeline") {
   $("banner").hidden = false;
   $("banner").textContent = "This export was not produced by the pipeline.";
@@ -747,19 +893,19 @@ const FLOW = [
 $("flow").append(...FLOW.map(([n, title, text]) =>
   el("li", {}, el("span", { class: "n" }, n), el("b", {}, title), text)));
 
-// --- Network status: the selected strategy, its coverage and its reach ----------------------------
+// --- Network outcome: the selected network's coverage and its reach -----------------------------
+// Coverage is the only large figure; the mean site score belongs to the comparison, not here.
 const figure = $("ns-figure");
 function renderStatus() {
   const s = byKey[mode];
   figure.dataset.mode = mode;
-  $("ns-node").className = `node ${mode}`;
-  $("ns-label").textContent = s.label;
+  $("ns-name").textContent = `${s.label}:`;
   $("ns-coverage").textContent = s.population_display;
-  $("ns-caption").textContent = `modelled population coverage within ${H.service_radius}`;
+  $("ns-caption").textContent = `of modelled population within ${H.service_radius}`;
   const sep = () => el("span", { class: "sep", "aria-hidden": "true" }, "·");
   $("ns-facts").replaceChildren(
     el("b", {}, H.n_sites), " sites", sep(), el("b", {}, s.districts_display), " districts", sep(),
-    el("b", {}, s.provinces_display), " provinces", sep(), "mean site score ", el("b", {}, s.mean_score_display));
+    el("b", {}, s.provinces_display), " provinces");
   enter(figure);
 }
 
@@ -778,20 +924,16 @@ function pathOf(geometry) {
   return polygons.map((rings) => rings.map((ring) =>
     "M" + ring.map(([lon, lat]) => `${X(lon).toFixed(1)},${Y(lat).toFixed(1)}`).join("L") + "Z").join("")).join("");
 }
-// Geographic frame: a graticule from the map frame, a scale bar the length of the service radius, north.
+const VB_W = WIDTH + 2 * PAD; const VB_H = HEIGHT + 2 * PAD;
+// Geographic frame: a graticule in map units; its labels and the instruments are drawn at screen size.
 const STEP = 0.5; // graticule spacing in degrees
-for (let lon = Math.ceil(M.min_lon / STEP) * STEP; lon <= M.max_lon; lon += STEP) {
-  map.append(svg("line", { class: "graticule", x1: X(lon), x2: X(lon), y1: -PAD, y2: HEIGHT + PAD }));
-  const t = svg("text", { class: "gratlabel", x: X(lon) + 4, y: -PAD + 14 });
-  t.textContent = `${lon.toFixed(1)}°E`;
-  map.append(t);
-}
-for (let lat = Math.ceil(M.min_lat / STEP) * STEP; lat <= M.max_lat; lat += STEP) {
-  map.append(svg("line", { class: "graticule", x1: -PAD, x2: WIDTH + PAD, y1: Y(lat), y2: Y(lat) }));
-  const t = svg("text", { class: "gratlabel", x: -PAD + 4, y: Y(lat) - 5 });
-  t.textContent = `${Math.abs(lat).toFixed(1)}°S`;
-  map.append(t);
-}
+const LONS = []; const LATS = [];
+for (let lon = Math.ceil(M.min_lon / STEP) * STEP; lon <= M.max_lon; lon += STEP) LONS.push(lon);
+for (let lat = Math.ceil(M.min_lat / STEP) * STEP; lat <= M.max_lat; lat += STEP) LATS.push(lat);
+for (const lon of LONS) map.append(svg("line", { class: "graticule", x1: X(lon), x2: X(lon), y1: -PAD, y2: HEIGHT + PAD }));
+for (const lat of LATS) map.append(svg("line", { class: "graticule", x1: -PAD, x2: WIDTH + PAD, y1: Y(lat), y2: Y(lat) }));
+// The country outline: the provinces' outer edge, drawn wide under the land so only the outside half shows.
+for (const f of D.provinces.features) map.append(svg("path", { class: "country", d: pathOf(f.geometry) }));
 for (const f of D.districts.features) {
   const p = svg("path", { class: "district", d: pathOf(f.geometry) });
   p.append(Object.assign(svg("title"), { textContent: `${f.properties.district}, ${f.properties.province}` }));
@@ -803,19 +945,41 @@ for (const f of D.provinces.features) {
   t.textContent = f.properties.province;
   map.append(t);
 }
-{
-  const len = M.ring_radius_deg * K; // the service radius, drawn to the map's own scale
-  const x0 = 4; const y0 = HEIGHT + PAD - 16;
-  map.append(svg("path", { class: "scalebar", d: `M${x0},${y0 - 7}V${y0}H${x0 + len}V${y0 - 7}` }));
-  const label = svg("text", { class: "maptext", x: x0 + len + 8, y: y0 + 1 });
-  label.textContent = H.service_radius;
-  map.append(label);
-  const nx = WIDTH + PAD - 22; const ny = -PAD + 20;
-  map.append(svg("path", { class: "scalebar", d: `M${nx},${ny + 26}V${ny}M${nx - 6},${ny + 8}L${nx},${ny}L${nx + 6},${ny + 8}` }));
-  const north = svg("text", { class: "maptext", x: nx, y: ny + 44, "text-anchor": "middle" });
-  north.textContent = "N";
-  map.append(north);
+const furniture = svg("g");
+map.append(furniture);
+// Graticule labels, the scale bar (the service radius, to the map's own scale) and north, placed in
+// screen pixels (u = map units per pixel) so they stay legible and in the corners at every width.
+function drawFurniture(u, compact) {
+  const text = (cls, attrs, content) => Object.assign(svg("text", { class: cls, ...attrs }), { textContent: content });
+  const nodes = [];
+  // On a small map the graticule labels would sit under the markers: they are left out, not shrunk.
+  if (!compact) for (const lon of LONS) nodes.push(text("gratlabel", { x: X(lon) + 4 * u, y: -PAD + 14 * u }, `${lon.toFixed(1)}°E`));
+  if (!compact) for (const lat of LATS) nodes.push(text("gratlabel", { x: -PAD + 4 * u, y: Y(lat) - 4 * u }, `${Math.abs(lat).toFixed(1)}°S`));
+  const len = M.ring_radius_deg * K;
+  const x0 = -PAD + 16 * u; const y0 = HEIGHT + PAD - 16 * u; const tick = 6 * u;
+  nodes.push(svg("path", { class: "scalebar", d: `M${x0},${y0 - tick}V${y0}H${x0 + len}V${y0 - tick}` }),
+    text("maptext", { x: x0 + len + 6 * u, y: y0 }, H.service_radius));
+  const nx = WIDTH + PAD - 20 * u; const ny = -PAD + 14 * u;
+  nodes.push(svg("path", { class: "scalebar", d: `M${nx},${ny + 22 * u}V${ny}M${nx - 5 * u},${ny + 7 * u}L${nx},${ny}L${nx + 5 * u},${ny + 7 * u}` }),
+    text("maptext", { x: nx, y: ny + 36 * u, "text-anchor": "middle" }, "N"));
+  furniture.replaceChildren(...nodes);
 }
+let unitsPerPx = 0;
+function setMapScale() {
+  const box = map.getBoundingClientRect();
+  if (!box.width || !box.height) return;
+  const u = 1 / Math.min(box.width / VB_W, box.height / VB_H);
+  if (Math.abs(u - unitsPerPx) < 0.001) return;
+  unitsPerPx = u;
+  const compact = box.width < 560;
+  map.style.setProperty("--u", u.toFixed(4));
+  map.classList.toggle("compact", compact);
+  drawFurniture(u, compact);
+}
+setMapScale();
+if ("ResizeObserver" in window) new ResizeObserver(setMapScale).observe(map);
+else window.addEventListener("resize", setMapScale);
+if (!unitsPerPx) drawFurniture(1.4, false); // not laid out yet; redrawn once it is
 const ringLayer = svg("g"); const candLayer = svg("g"); const chargerLayer = svg("g");
 const siteLayer = svg("g"); const focusLayer = svg("g");
 map.append(ringLayer, candLayer, chargerLayer, siteLayer, focusLayer);
@@ -826,7 +990,7 @@ function showTip(node, site) {
   const box = node.getBoundingClientRect();
   const frame = mapwrap.getBoundingClientRect();
   tip.replaceChildren(el("b", {}, site.label),
-    el("span", {}, `${site.district} · score ${site.score} · #${site.rank} of ${H.candidates}`));
+    el("span", {}, `${site.district} · score ${site.score} · score rank #${site.rank} of ${H.candidates}`));
   const x = Math.min(Math.max(box.left + box.width / 2 - frame.left, 110), frame.width - 110);
   tip.style.left = `${x}px`;
   tip.style.top = `${box.top - frame.top}px`;
@@ -843,80 +1007,115 @@ function activate(node, handler, site) {
   node.addEventListener("blur", hideTip);
 }
 for (const s of D.sites) {
-  const c = svg("circle", { class: "cand", cx: X(s.lon), cy: Y(s.lat), r: 4.2, tabindex: -1 });
+  const c = svg("circle", { class: "cand", cx: X(s.lon), cy: Y(s.lat), tabindex: -1 });
   activate(c, () => showSite(s.candidate_id, true), s);
   candLayer.append(c);
 }
 for (const k of D.existing_chargers) {
-  chargerLayer.append(svg("rect", { class: "charger", x: X(k.lon) - 7, y: Y(k.lat) - 7, width: 14, height: 14, rx: 2 }));
+  const g = svg("g", { class: "charger", transform: `translate(${X(k.lon)} ${Y(k.lat)})` });
+  g.append(svg("rect", { x: -3.5, y: -3.5, width: 7, height: 7, rx: 0.5 }));
+  chargerLayer.append(g);
 }
 
 const inMode = (site, key) => site[`selected_${key}`] === true;
 const selected = () => D.sites.filter((s) => inMode(s, mode)).sort((a, b) => a.rank - b.rank);
 function drawSelection() {
   ringLayer.replaceChildren(); siteLayer.replaceChildren(); focusLayer.replaceChildren();
+  const R = M.ring_radius_deg * K;
+  const at = (s) => `translate(${X(s.lon)} ${Y(s.lat)})`;
   for (const s of selected()) {
-    ringLayer.append(svg("circle", { class: `ring ${mode}`, cx: X(s.lon), cy: Y(s.lat), r: M.ring_radius_deg * K }));
-    const dot = svg("circle", { class: `site ${mode}`, cx: X(s.lon), cy: Y(s.lat), r: 9, tabindex: 0,
-      role: "button", "aria-label": `${s.label}, rank ${s.rank}, score ${s.score}` });
-    activate(dot, () => showSite(s.candidate_id, true), s);
-    siteLayer.append(dot);
+    ringLayer.append(svg("circle", { class: `ring ${mode}`, cx: X(s.lon), cy: Y(s.lat), r: R }));
+    const g = svg("g", { class: `site ${mode}`, transform: at(s), tabindex: 0, role: "button",
+      "aria-label": `${s.label}, score rank ${s.rank} of ${H.candidates}, score ${s.score}` });
+    g.append(svg("circle", { class: "hit" }), svg("circle", { class: "dot" }));
+    activate(g, () => showSite(s.candidate_id, true), s);
+    siteLayer.append(g);
   }
   const active = D.sites.find((s) => s.candidate_id === activeId);
+  map.classList.toggle("focused", Boolean(active));
   if (active) {
-    const cx = X(active.lon); const cy = Y(active.lat);
-    focusLayer.append(svg("circle", { class: "halo-fill", cx, cy, r: 26 }),
-      svg("circle", { class: "halo", cx, cy, r: 17 }), svg("circle", { class: "focusdot", cx, cy, r: 9.5 }));
+    const member = inMode(active, mode);
+    if (member) focusLayer.append(svg("circle", { class: `ring-focus ${mode}`, cx: X(active.lon), cy: Y(active.lat), r: R }));
+    const g = svg("g", { class: `focus ${member ? mode : "off"}`, transform: at(active) });
+    g.append(svg("circle", { class: "halo" }), svg("circle", { class: "focusdot" }));
+    focusLayer.append(g);
   }
   $("legend").replaceChildren(
     el("span", {}, el("i", { class: `node ${mode}` }), `${byKey[mode].label} site`),
-    el("span", {}, el("i", { class: `r ${mode}` }), `${H.service_radius} service radius`),
+    el("span", {}, el("i", { class: "sel" }), "Selected site"),
+    el("span", {}, el("i", { class: `r ${mode}` }), `${H.service_radius} service radius (modelled)`),
     el("span", {}, el("i", { class: "c" }), "Candidate location"),
     el("span", {}, el("i", { class: "k" }), "Known charging site (public data)"));
 }
 
 // --- Opportunity queue --------------------------------------------------------------------------
+// One selection across the list, the map and the dossier. From 1200 px the three sit side by side;
+// below that the dossier takes the list's place until "← Opportunities" brings the list back.
+const workbench = $("workspace");
 const panel = $("panel");
-const oppsView = $("opps-view");
+const dossierCol = $("dossier");
 const sitePane = $("site");
-const workspace = $("workspace");
-const panelScrolls = () => getComputedStyle(panel).overflowY === "auto";
+const scrolls = (node) => getComputedStyle(node).overflowY === "auto";
 
-// Bring a node into view; inside the queue when the queue is its own scroll area.
-function reveal(node) {
-  if (panelScrolls() && panel.contains(node)) {
-    workspace.scrollIntoView({ block: "start", behavior: "smooth" });
-    const top = node.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 12;
-    panel.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-  } else {
-    node.scrollIntoView({ block: "start", behavior: "smooth" });
+function renderList() {
+  const s = byKey[mode];
+  const contributes = mode === "mclp"; // unique coverage is measured in the optimized network only
+  const items = selected();
+  $("q-node").className = `node ${mode}`;
+  $("opps-title").textContent = s.label;
+  $("opps-sub").textContent = `${H.n_sites} locations, ranked by score`;
+  $("opps-cols").textContent = (contributes ? "Score · unique coverage" : "Score") + " · score rank";
+  // The leading number and "Score rank" are two different things: position in this network's list
+  // (1..N) versus rank by score among all candidates (of 300). Spell out both, so neither is guessed.
+  $("opps-note").textContent =
+    `The leading number is a location's position in this ${items.length}-site network. "Score rank" is ` +
+    `its rank by score among all ${H.candidates} candidates.` +
+    (contributes ? " Unique coverage is the weighted demand only that site covers in the network." : "");
+  const marked = activeId || lastId;
+  const list = $("list");
+  list.replaceChildren();
+  list.dataset.mode = mode;
+  items.forEach((site, i) => {
+    const b = el("button", { type: "button", "data-id": site.candidate_id, "aria-current": String(site.candidate_id === marked) },
+      el("span", { class: "rank" }, el("b", {}, pad2(i + 1)), el("small", {}, `/${items.length}`)),
+      el("span", { class: "row" },
+        el("span", { class: "l1" }, el("span", { class: "name" }, site.label), el("b", {}, site.score)),
+        el("span", { class: "l2" }, el("span", {}, `${site.province.replace(" Province", "")} · ${site.profile}`),
+          contributes && site.unique_coverage ? el("span", { class: "contrib" }, site.unique_coverage) : null),
+        el("span", { class: "l2b" }, `Score rank #${site.rank} / ${H.candidates}`),
+        el("span", { class: "l3" }, `${site.confidence} confidence`,
+          site.grid_evidence_status === "UNKNOWN"
+            ? el("span", { class: "verify-tag", title: "No mapped substation or power line nearby; to be verified" }, "Grid not mapped")
+            : null)));
+    b.addEventListener("click", () => showSite(site.candidate_id, true));
+    list.append(el("li", {}, b));
+  });
+}
+
+// Mark the selected row and keep it in view inside the list, below its sticky header.
+function markRow(id) {
+  let row = null;
+  for (const b of $("list").querySelectorAll("button")) {
+    b.setAttribute("aria-current", String(b.dataset.id === id));
+    if (b.dataset.id === id) row = b;
+  }
+  if (!row || !scrolls(panel)) return;
+  const head = panel.querySelector(".qhead").offsetHeight;
+  const top = row.offsetTop; const bottom = top + row.offsetHeight;
+  if (top < panel.scrollTop + head || bottom > panel.scrollTop + panel.clientHeight) {
+    panel.scrollTo({ top: Math.max(0, top - head - (panel.clientHeight - head - row.offsetHeight) / 2), behavior: "smooth" });
   }
 }
 
 function showList() {
   activeId = null;
-  const s = byKey[mode];
-  $("q-node").className = `node ${mode}`;
-  $("opps-title").textContent = s.label;
-  $("opps-sub").textContent = `${H.n_sites} locations, ranked by score`;
-  $("opps-note").textContent = `# is a location's rank by score among all ${H.candidates} candidates.`;
-  const list = $("list");
-  list.replaceChildren();
-  let current = null;
-  for (const site of selected()) {
-    const b = el("button", { type: "button", "aria-current": String(site.candidate_id === lastId) },
-      el("span", { class: "rank" }, `#${pad2(site.rank)}`),
-      el("span", {}, el("span", { class: "name" }, site.label),
-        el("span", { class: "meta" }, el("b", {}, site.score), ` · ${site.confidence} · ${site.province}`)));
-    b.addEventListener("click", () => showSite(site.candidate_id, true));
-    if (site.candidate_id === lastId) current = b;
-    list.append(el("li", {}, b));
-  }
+  renderList();
   sitePane.hidden = true;
   sitePane.replaceChildren();
-  oppsView.hidden = false;
+  $("dossier-empty").hidden = false;
+  workbench.dataset.view = "list";
   panel.scrollTop = 0;
-  if (current && panelScrolls()) panel.scrollTop = Math.max(0, current.offsetTop - panel.clientHeight / 2);
+  if (lastId) markRow(lastId);
   drawSelection();
 }
 
@@ -956,8 +1155,14 @@ function componentTable(site) {
       return el("tr", {}, el("td", { class: "lab" }, c.label, flag ? el("em", {}, flag) : null),
         el("td", { class: "bar" }, el("div", { class: "track" }, el("div", { class: "fill", style: `width:${c.value}%` }))),
         el("td", { class: "v" }, c.display), el("td", { class: "w" }, weight ? weight.display : ""));
-    })));
+    })),
+    el("tfoot", {}, el("tr", {}, el("td", { class: "lab" }, "Score"), el("td"), el("td", { class: "v" }, site.score), el("td"))));
 }
+// What the score is, from SPEC section 5: a weighted sum, built from percentile ranks, not a forecast.
+const scoreNote = (site) => el("p", { class: "caption" },
+  `Score = sum of weight × component for the ${site.profile} profile. Components run 0–100 and are built from ` +
+  "percentile ranks among the candidates, plus host and road bonuses where they apply. The score ranks locations; " +
+  "it is not a probability or a forecast of use.");
 
 function members(site) {
   return el("ul", { class: "members", id: "site-members" }, H.selections.map((s) => {
@@ -966,6 +1171,10 @@ function members(site) {
       el("i", { class: `node ${on ? s.key : "off"}`, "aria-hidden": "true" }), `${on ? "In" : "Not in"} ${s.label}`);
   }));
 }
+
+// Evidence records the dossier's full table adds around the scored groups; none is scored, none is new.
+const SITE_RECORDS = ["host", "host_osm_id", "coordinates"];
+const REPORTED_RECORDS = ["dist_town", "dist_kigali"]; // reported only, never scored (SPEC section 5)
 
 function evidenceRows(site, records) {
   return el("ul", { class: "evrows" }, EVIDENCE_GROUPS.map(([key, group, , lead]) => {
@@ -978,14 +1187,27 @@ function evidenceRows(site, records) {
           el("span", { class: "f" }, provenance(status.type), status.evidence.source, verifyTag())));
     }
     if (!r) return null;
+    // The charging gap is measured only against the charging sites public data knows about.
+    const context = key === "charging_gap" && ctx.known_sites
+      ? el("span", { class: "c" }, `Measured against the ${ctx.known_sites.display} known charging sites in public data`) : null;
     return el("li", {}, el("span", { class: "g" }, group),
-      el("div", {}, el("b", {}, r.display), el("span", { class: "c" }, r.claim),
+      el("div", {}, el("b", {}, r.display), el("span", { class: "c" }, r.claim), context,
         el("span", { class: "f" }, provenance(r.type), r.evidence.source)));
   }));
 }
 
 function evidenceTable(site, records, inv) {
   const rows = [];
+  const plain = (title, ids) => {
+    const present = ids.map((rid) => records[rid]).filter(Boolean);
+    if (!present.length) return;
+    rows.push(el("tr", { class: "group" }, el("td", { colspan: 3 }, el("div", { class: "cell" }, title))));
+    for (const r of present) {
+      rows.push(el("tr", {}, el("td", {}, r.claim.split(":")[0]), el("td", { class: "v" }, r.display),
+        el("td", { class: "t" }, provenance(r.type))));
+    }
+  };
+  plain("Site", SITE_RECORDS);
   for (const [key, group, ids] of EVIDENCE_GROUPS) {
     const explain = investigationAction("Explain", { kind: "evidence_explanation", candidate_id: site.candidate_id, group: key }, inv);
     rows.push(el("tr", { class: "group" }, el("td", { colspan: 3 }, el("div", { class: "cell" }, group, explain))));
@@ -998,8 +1220,32 @@ function evidenceTable(site, records, inv) {
         el("td", { class: "t" }, provenance(r.type))));
     }
   }
+  plain("Reported, not scored", REPORTED_RECORDS);
   return el("details", { class: "allev" }, el("summary", {}, "View all evidence"),
     el("table", { class: "ev" }, el("tbody", {}, rows)));
+}
+
+function roleBlock(site) {
+  const active = byKey[mode];
+  const optimized = byKey.mclp.label.toLowerCase();
+  const inActive = inMode(site, mode);
+  const status = el("p", { class: `role-status${inActive ? "" : " out"}` },
+    el("i", { class: `node ${inActive ? mode : "off"}`, "aria-hidden": "true" }),
+    `${inActive ? "In" : "Not in"} the ${active.label}`);
+  // Network contribution: the one figure that matters most about a network member, so it carries
+  // slightly more visual weight than a generic score/rank/confidence tile, and always in the
+  // optimized network's own colour, whichever network is the active one.
+  const contribution = site.selected_mclp && site.unique_coverage
+    ? el("div", { class: "contrib-wrap" },
+        el("p", { class: "label" }, "Network contribution"),
+        el("div", { class: "role-fig contrib" }, el("b", {}, site.unique_coverage),
+          el("p", {}, `Weighted demand only this site covers in the ${optimized}: removing it lowers the network's `,
+            "weighted demand coverage by this much."),
+          mode === "mclp" ? null
+            : el("p", { class: "caption" }, `Measured in the ${optimized} only; SiteScout exports no contribution for the ${active.label}.`)))
+    : el("p", { class: "role-line" }, `Not selected for the ${optimized}, so SiteScout exports no network contribution for this candidate.`);
+  return el("section", { class: "block", id: "site-role" },
+    el("div", { class: "bh" }, el("h3", { class: "label" }, "Network role")), status, contribution, members(site));
 }
 
 function queueNav(site) {
@@ -1040,56 +1286,62 @@ function showSite(id, fromUser) {
   });
   const verify = investigationAction("What would we need to verify?", { kind: "unknowns", candidate_id: id }, inv);
 
+  // Identity: what and where, then score (the prominent figure), rank and confidence.
   const head = el("header", { class: "dhead" },
     el("p", { class: "label" }, "Site"),
     el("h2", {}, site.label),
-    el("p", { class: "sub" }, `${site.district} · ${site.province} · ${cap(site.profile)} profile · `,
-      el("span", { class: "mono" }, site.candidate_id)),
+    el("p", { class: "sub" }, `${site.district} · ${site.province} · ${cap(site.profile)} profile`),
+    el("p", { class: "cid mono" }, site.candidate_id),
     el("div", { class: "dfig" },
-      el("div", {}, el("b", {}, site.score), el("span", {}, "Score, 0–100")),
-      el("div", {}, el("b", {}, `#${site.rank}`, el("small", {}, ` / ${H.candidates}`)), el("span", {}, "Rank by score")),
-      el("div", {}, el("b", { class: "conf-v" }, site.confidence), el("span", {}, "Confidence"))));
+      el("div", { class: "lead" }, el("b", {}, site.score), el("span", {}, "Score, 0–100")),
+      el("div", {}, el("b", {}, `#${site.rank}`, el("small", {}, ` / ${H.candidates}`)), el("span", {}, "Score rank")),
+      el("div", {}, el("b", {}, site.confidence), el("span", {}, "Confidence"))));
 
-  const role = block("Network role", null,
-    inNetwork
-      ? el("p", { class: "role-line" }, `Removing this site reduces the ${byKey.mclp.label.toLowerCase()}'s weighted demand coverage by `,
-          el("b", {}, site.unique_coverage), ".")
-      : el("p", { class: "role-line" }, `Not selected for the ${byKey.mclp.label.toLowerCase()}.`),
-    members(site));
+  const confidence = block("Confidence", null,
+    el("p", { class: "conf" }, el("b", {}, site.confidence), ` — ${site.confidence_reasons}.`),
+    el("p", { class: "caption" }, "A level set only by factors that differ between sites: missing grid evidence, sparse " +
+      "public mapping, no identified host or a remote location. It is separate from the score and from the evidence labels."));
+  const openNote = el("p", { class: "caption" },
+    "Not established by the public evidence. These are open questions to verify, not findings that the answer is no.");
 
-  const parts = [queueNav(site), head, role];
+  const parts = [queueNav(site), head, roleBlock(site)];
+  const briefLink = (b) => el("a", { class: "brieflink", href: `../${b.brief_path}` }, "Full Site Evidence Brief →");
   if (inNetwork) {
     const b = site.brief;
     const records = Object.fromEntries(site.evidence.map((r) => [r.id, r]));
     parts.push(
-      block("Why this location", null, el("p", {}, b.opportunity), componentTable(site)),
+      block("Why this location", null, componentTable(site), scoreNote(site), el("p", { class: "brief" }, b.opportunity)),
       el("section", { class: "block", id: "site-evidence" }, el("div", { class: "bh" }, el("h3", { class: "label" }, "Evidence")),
+        el("p", { class: "caption keyline" }, "Each label says how SiteScout knows the value: retrieved from a source, " +
+          "calculated, inferred or unknown. It is not a confidence rating."),
         evidenceRows(site, records), evidenceTable(site, records, inv), el("p", { class: "disclaimer" }, gridDisclaimer)),
-      block("Confidence", null, el("p", {}, `${site.confidence} — ${site.confidence_reasons}.`)),
-      block("What we don't know yet", verify,
+      confidence,
+      block("What we don't know yet", verify, openNote,
         el("ul", { class: "verify" }, b.unknowns.map((u) => verifyRow(u))),
         b.risks.length ? el("p", { class: "subh" }, "Known risks") : null,
         el("ul", { class: "risks" }, b.risks.map((r) => el("li", {}, r)))),
-      el("section", { class: "block", id: "site-investigation" }, inv || ""),
       block("Next checks", null,
-        el("ol", { class: "checks-next" }, b.actions.map((a) => el("li", {}, el("div", {}, el("b", {}, actionTitle(a)), el("span", {}, a)))))),
-      el("a", { class: "brieflink", href: `../${b.brief_path}` }, "Full Site Evidence Brief →"));
+        el("ol", { class: "checks-next" }, b.actions.map((a) => el("li", {}, el("div", {}, el("b", {}, actionTitle(a)), el("span", {}, a))))),
+        briefLink(b)),
+      el("section", { class: "block", id: "site-investigation" }, inv || ""));
   } else {
     parts.push(
-      block("Score", null, componentTable(site)),
-      block("Confidence", null, el("p", {}, `${site.confidence} — ${site.confidence_reasons}.`)),
-      block("What we don't know yet", verify,
+      block("Score", null, componentTable(site), scoreNote(site), el("p", { class: "disclaimer" }, gridDisclaimer)),
+      confidence,
+      block("What we don't know yet", verify, openNote,
         el("ul", { class: "verify" }, unknowns.map((u) => verifyRow(cap(u)))),
         el("p", { class: "note" }, "Detailed evidence and next checks are prepared for the network's sites.")),
       el("section", { class: "block", id: "site-investigation" }, inv || ""));
   }
   const dossier = el("article", { class: "dossier", "aria-label": `Site: ${site.label}` }, parts);
   sitePane.replaceChildren(dossier);
-  oppsView.hidden = true;
+  $("dossier-empty").hidden = true;
   sitePane.hidden = false;
-  panel.scrollTop = 0;
+  workbench.dataset.view = "site";
+  dossierCol.scrollTop = 0;
+  markRow(id);
   enter(dossier);
-  if (fromUser && !panelScrolls()) panel.scrollIntoView({ block: "start", behavior: "smooth" });
+  if (fromUser && !scrolls(dossierCol)) dossierCol.scrollIntoView({ block: "start", behavior: "smooth" });
   if (location.hash.slice(1) !== id) history.replaceState(null, "", `#${id}`);
 }
 
@@ -1101,10 +1353,12 @@ function setMode(key) {
   for (const row of document.querySelectorAll(".cmp tbody tr")) row.classList.toggle("current", row.dataset.mode === key);
   renderStatus();
   if (activeId) {
+    renderList();
     drawSelection();
-    for (const li of document.querySelectorAll("#site-members li")) li.classList.toggle("current", li.dataset.mode === key);
-    const nav = sitePane.querySelector(".dnav");
     const site = D.sites.find((s) => s.candidate_id === activeId);
+    const role = $("site-role");
+    if (role && site) role.replaceWith(roleBlock(site)); // membership and contribution for the new network
+    const nav = sitePane.querySelector(".dnav");
     if (nav && site) nav.replaceWith(queueNav(site));
   } else {
     showList();
@@ -1112,7 +1366,7 @@ function setMode(key) {
 }
 for (const s of H.selections) {
   const button = el("button", { type: "button", class: s.key, "data-mode": s.key, "aria-pressed": String(s.key === mode) },
-    el("span", {}, s.label, el("small", {}, `${s.population_display} coverage`)));
+    el("span", {}, s.label));
   button.addEventListener("click", () => {
     if (location.hash && !activeId) history.replaceState(null, "", location.pathname + location.search);
     setMode(s.key);
@@ -1143,7 +1397,7 @@ $("strategies").append(
         [i ? " · " : "", el("span", {}, `${province.replace(" Province", "")} `, el("b", {}, count))])));
     row.addEventListener("click", () => {
       setMode(s.key);
-      workspace.scrollIntoView({ block: "start", behavior: "smooth" });
+      $("overview").scrollIntoView({ block: "start", behavior: "smooth" }); // the outcome, then the map
     });
     return row;
   })));
@@ -1246,7 +1500,7 @@ $("limits").append(...[
   ["Permit approval", "District and national permit requirements are not assessed."],
   ["Commercial viability", "No tariffs, costs, revenue or payback are modelled."],
   ["Actual charger utilization", "Coverage is modelled population, not charging sessions."],
-].map(([title, text]) => verifyRow(el("b", {}, title), text)));
+].map(([title, text]) => limitRow(title, text)));
 $("limits-disclaimer").textContent = gridDisclaimer;
 
 // --- Footer: licence and attribution ------------------------------------------------------------
@@ -1256,43 +1510,21 @@ $("footer").append(
   el("p", {}, `Data as of ${D.meta.data_date} · export written ${D.meta.generated_at}`));
 
 // --- Navigation ---------------------------------------------------------------------------------
-const sidebar = $("sidebar"); const scrim = $("scrim"); const menu = $("menu");
-function setDrawer(open) {
-  sidebar.classList.toggle("open", open);
+// The top bar: the network workspace, then the reference sections. Below 900 px the same links
+// open from the menu button. Opportunities, evidence and investigation live in the workspace itself.
+const topbar = $("topbar"); const menu = $("menu");
+function setMenu(open) {
+  topbar.classList.toggle("open", open);
   menu.setAttribute("aria-expanded", String(open));
-  scrim.hidden = !open;
-  requestAnimationFrame(() => scrim.classList.toggle("show", open));
+  menu.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
 }
-menu.addEventListener("click", () => setDrawer(!sidebar.classList.contains("open")));
-scrim.addEventListener("click", () => setDrawer(false));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") setDrawer(false); });
+menu.addEventListener("click", () => setMenu(!topbar.classList.contains("open")));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
+document.addEventListener("click", (e) => { if (!topbar.contains(e.target)) setMenu(false); });
 
-function flashHint(text) {
-  const hint = $("opps-hint");
-  hint.textContent = text;
-  hint.classList.add("flash");
-  setTimeout(() => hint.classList.remove("flash"), 1400);
-}
-const activeNetworkSite = () => D.sites.find((s) => s.candidate_id === activeId && s.selected_mclp);
 const toSection = (id) => $(id).scrollIntoView({ block: "start", behavior: "smooth" });
 const NAV = {
-  overview: () => window.scrollTo({ top: 0, behavior: "smooth" }),
-  network: () => toSection("network"),
-  opportunities: () => {
-    if (activeId) showList();
-    workspace.scrollIntoView({ block: "start", behavior: "smooth" });
-  },
-  evidence: () => {
-    if (activeNetworkSite()) return reveal($("site-evidence"));
-    if (activeId) showList();
-    workspace.scrollIntoView({ block: "start", behavior: "smooth" });
-    flashHint("Select one of the network's locations to see the evidence behind it.");
-  },
-  investigate: () => {
-    const target = activeId && $("site-investigation");
-    if (target) reveal(target);
-    else $("network-investigation").scrollIntoView({ block: "center", behavior: "smooth" });
-  },
+  network: () => window.scrollTo({ top: 0, behavior: "smooth" }),
   evaluation: () => toSection("evaluation"),
   sources: () => toSection("sources"),
   method: () => toSection("method"),
@@ -1305,7 +1537,7 @@ function markNav(key) {
 for (const b of navButtons) {
   b.addEventListener("click", () => {
     markNav(b.dataset.nav);
-    setDrawer(false);
+    setMenu(false);
     NAV[b.dataset.nav]();
   });
 }
@@ -1316,7 +1548,7 @@ if ("IntersectionObserver" in window) {
   }, { rootMargin: "-40% 0px -55% 0px" });
   for (const node of document.querySelectorAll("[data-section]")) if (NAV[node.dataset.section]) observer.observe(node);
 }
-markNav("overview");
+markNav("network");
 
 // Deep links for demos: #top30 or #greedy opens that selection; #<candidate_id> opens that site.
 const hash = decodeURIComponent(location.hash.slice(1));

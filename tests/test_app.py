@@ -115,3 +115,147 @@ def test_the_client_shows_only_what_the_server_returns():
     for field in ("data.answer", "data.records", "data.trace", "data.validation"):
         assert field in CLIENT
     assert "reason" not in CLIENT  # the server never sends a fallback's reason
+
+
+# --- Typefaces (D-065) -------------------------------------------------------------------------
+
+
+def test_the_page_typefaces_are_shipped_licensed_and_served():
+    from sitescout.server import STATIC
+
+    fonts = re.findall(r'url\("(fonts/[^"]+\.woff2)"\)', PAGE)
+    assert len(fonts) == 4
+    for font in fonts:
+        path = PROJECT_ROOT / "app" / font
+        assert path.is_file() and path.read_bytes()[:4] == b"wOF2", font
+        assert STATIC[f"/app/{font}"] == (f"app/{font}", "font/woff2")  # served, not only from disk
+    licence = (PROJECT_ROOT / "app" / "fonts" / "LICENSE.txt").read_text(encoding="utf-8")
+    assert "SIL Open Font License, Version 1.1" in licence
+    # A system stack follows each face, so the page still reads if a file cannot load.
+    assert '--sans: "IBM Plex Sans", ui-sans-serif' in PAGE
+    assert '--mono: "IBM Plex Mono", ui-monospace' in PAGE
+
+
+# --- Network outcome and navigation (visual redesign, Phase 2) ----------------------------------
+
+
+def test_the_outcome_strip_shows_coverage_and_reach_but_not_the_mean_score():
+    body = PAGE[PAGE.index("function renderStatus()") : PAGE.index("enter(figure);")]
+    assert "s.population_display" in body  # the one large figure
+    for reach in ("H.n_sites", "s.districts_display", "s.provinces_display"):
+        assert reach in body
+    assert "mean_score" not in body  # the mean score belongs to the comparison
+
+
+def test_the_top_bar_links_the_workspace_and_every_reference_section():
+    tabs = re.findall(r'data-nav="([a-z]+)"', PAGE)
+    assert tabs == ["network", "evaluation", "sources", "method", "limitations"]
+    for section in ("workspace", "network", "evaluation", "sources", "method", "limitations"):
+        assert f'id="{section}"' in PAGE
+
+
+# --- Network workspace (visual redesign, Phase 3) -------------------------------------------------
+
+
+def test_the_workspace_reads_outcome_list_map_then_dossier():
+    order = [PAGE.index(f'id="{i}"') for i in ("overview", "panel", "mapwrap", "dossier")]
+    assert order == sorted(order)
+
+
+def test_the_network_site_dossier_keeps_the_approved_order():
+    start = PAGE.index("  if (inNetwork) {")
+    branch = PAGE[start : PAGE.index("  } else {", start)]
+    sections = (
+        '"Why this location"',
+        '"Evidence"',
+        '"What we don\'t know yet"',
+        '"Next checks"',
+        '"site-investigation"',
+    )
+    positions = [branch.index(s) for s in sections]
+    assert positions == sorted(positions)
+
+
+# --- Map (visual redesign, Phase 4) --------------------------------------------------------------
+
+
+def test_the_map_legend_says_public_data_and_modelled_radius():
+    # The chargers are the publicly known sites, not a market inventory; the ring is an assumption.
+    assert '"Known charging site (public data)"' in PAGE
+    assert "service radius (modelled)" in PAGE
+
+
+# --- Site dossier (visual redesign, Phase 5) -----------------------------------------------------
+
+
+def test_the_network_role_keeps_the_optimized_contribution_with_the_optimized_network():
+    # unique_coverage exists for the optimized network only: it is shown only for its sites,
+    # labelled as measured there, and the role is redrawn whenever the active network changes.
+    role = PAGE[PAGE.index("function roleBlock(site)") : PAGE.index("function queueNav(site)")]
+    assert "site.selected_mclp && site.unique_coverage" in role
+    assert "Measured in the ${optimized} only" in role
+    start = PAGE.index("function setMode(key)")
+    set_mode = PAGE[start : PAGE.index("for (const s of H.selections)", start)]
+    assert "roleBlock(site)" in set_mode
+
+
+# --- Network position vs global score rank, verification presentation, network contribution -----
+# (targeted clarity fix; presentation only, no change to scoring, ranking or selection)
+
+
+def test_the_opportunity_list_shows_network_position_not_global_score_rank():
+    render_list = PAGE[PAGE.index("function renderList()") : PAGE.index("function markRow(id)")]
+    # The leading rank badge counts the site's position in the *currently shown* list (1..N)...
+    assert "pad2(i + 1)" in render_list
+    assert "`/${items.length}`" in render_list
+    # ...never the candidate's rank among all 300, and the two are named differently in the row.
+    assert "pad2(site.rank)" not in render_list
+    assert "Score rank #${site.rank} / ${H.candidates}" in render_list
+    # The help note spells out the distinction in words, not only in the row's own labels.
+    assert "position in this" in render_list and "Score rank" in render_list
+
+
+def test_the_dossier_labels_the_global_rank_score_rank_not_rank_by_score():
+    start = PAGE.index("function showSite(id, fromUser)")
+    show_site = PAGE[start : PAGE.index("function setMode(key)")]
+    assert '"Rank by score"' not in show_site
+    assert '"Score rank"' in show_site
+    # The value itself is untouched: still the candidate's rank of all candidates, unchanged.
+    assert "`#${site.rank}`" in show_site and "` / ${H.candidates}`" in show_site
+
+
+def test_the_limitations_section_reads_as_open_items_not_a_list_of_verify_tags():
+    assert "What still needs verification" in PAGE
+    assert "What this does not establish" not in PAGE
+    limits = PAGE[PAGE.index('$("limits").append') : PAGE.index('$("limits-disclaimer")')]
+    assert "limitRow(title, text)" in limits
+    # No per-row "Verify" tag repeated once for each of the 7 items.
+    assert "verifyRow" not in limits
+    # One clear framing replaces it, still amber, still not a functional control.
+    cue = '<p class="verify-cue">Verify with operator, utility, site owner or authorities</p>'
+    assert cue in PAGE
+    near = PAGE[PAGE.index(cue) - 200 : PAGE.index(cue) + 200]
+    assert "<button" not in near
+    # The items and their meaning are unchanged: still open questions, not a claim of "no".
+    for item in (
+        "Grid connection capacity",
+        "Transformer capacity",
+        "Land availability",
+        "Landowner / host willingness",
+        "Permit approval",
+        "Commercial viability",
+        "Actual charger utilization",
+    ):
+        assert item in PAGE
+
+
+def test_network_contribution_is_never_presented_as_a_greedy_or_top30_contribution():
+    role = PAGE[PAGE.index("function roleBlock(site)") : PAGE.index("function queueNav(site)")]
+    # The "Network contribution" label is gated by the same optimized-only condition as
+    # unique_coverage, appears exactly once, and comes before the plain sentence used when a
+    # candidate (Greedy- or Top-30-only) has no exported contribution at all.
+    assert "site.selected_mclp && site.unique_coverage\n    ? el(" in role
+    assert role.count('"Network contribution"') == 1
+    label_at = role.index('"Network contribution"')
+    no_contribution_at = role.index("exports no network contribution for this candidate")
+    assert label_at < no_contribution_at

@@ -15,3 +15,4 @@
 *.tif binary
 *.tiff binary
 *.pbf binary
+*.woff2 binary

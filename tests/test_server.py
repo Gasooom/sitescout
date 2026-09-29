@@ -278,6 +278,8 @@ def test_the_root_redirects_to_the_page(context, config):
     ("path", "content_type"),
     [
         ("/app/index.html", "text/html; charset=utf-8"),
+        ("/app/fonts/IBMPlexSans-Regular.woff2", "font/woff2"),
+        ("/app/fonts/IBMPlexMono-Regular.woff2", "font/woff2"),
         ("/data/export/sitescout.js", "text/javascript; charset=utf-8"),
         ("/data/export/sitescout.json", "application/json"),
         ("/reports/evaluation.md", "text/plain; charset=utf-8"),
@@ -438,8 +440,8 @@ def test_a_sentinel_key_never_reaches_a_response_or_the_app(context, config, mon
             bodies.append(client.request("GET", "/api/status")[2])
             bodies.append(client.investigate(SITE)[2])
     assert all(sentinel.encode() not in body for body in bodies)
-    for path in (PROJECT_ROOT / "app").iterdir():
-        assert sentinel not in path.read_text(encoding="utf-8")
+    for path in (PROJECT_ROOT / "app").rglob("*"):  # every file, binary fonts included (D-065)
+        assert not path.is_file() or sentinel.encode() not in path.read_bytes()
 
 
 def _snapshot(*roots):

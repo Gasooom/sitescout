@@ -695,6 +695,17 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** Relaxing the word rules or matching quotations loosely (weakens grounding); a second retry (changes the fixed single retry of D-052); replacing the model's quotation with the chunk span automatically (code would then write part of the answer); a different HTTP server (a new dependency for a two-endpoint local server).
 - **Reason:** The validator defines what SiteScout will show. When answers fail it, the fix belongs in what the model is told and how a rejection is explained, so that a correct answer becomes reachable without lowering the bar.
 
+## D-065: IBM Plex Sans and Mono, shipped with the page, and the design tokens of the network workspace
+
+- **Date:** 2026-09-29 (Milestone 11, visual redesign Phase 1; approved by Gasim)
+- **Decision:**
+  - **Typeface:** IBM Plex Sans 400, 500 and 600 and IBM Plex Mono 400, the unmodified `complete` WOFF2 files of the `@ibm/plex-sans` 1.1.0 and `@ibm/plex-mono` 2.5.0 packages, in `app/fonts/` with their SIL Open Font License 1.1 text (`app/fonts/LICENSE.txt`, identical in both packages). Four files, 246 KB together. The system font stacks follow each face as the fallback. Plex Mono is used only for identifiers and coordinates.
+  - **Why ship the files:** the page opens from disk and makes no external request (D-048), and the served page's content security policy allows only its own origin, so neither a font CDN nor `data:` fonts would load in both views. The local server's static allow-list gains the four font paths with `font/woff2`; its CSP `default-src 'self'` already covers fonts. `.gitattributes` marks `*.woff2` binary.
+  - **Design tokens** (`app/index.html`, `:root`): colour (no general brand colour; ink for the interface; optimized network `#1f4e79`, greedy `#5f6b78`, Top-30 `#7b4b72`; unknown and verify `#855a0c`), a six-step type scale (11, 12, 13, 15, 20 and 32 px, tabular figures throughout), a 4 px spacing base, borders, four radii (0, 2, 4, 6 px) and one shadow for what floats over the map. The earlier token names remain as aliases until the later redesign phases move each component onto the new tokens.
+  - Presentation only: no score, rank, selection, coverage, evidence record, brief, export field, investigation or validation rule changes.
+- **Alternatives:** Inter with the system monospace (named in the page before but never loaded, so the page rendered in each system's own face; Inter is also the default look of generated dashboards, and the system monospace differs on every platform); a font CDN (an external request, refused by D-048 and the CSP); fonts inlined as `data:` URIs (refused by the served CSP, and 330 KB of base64 in the page); the split Latin-1 subsets (smaller, but without glyphs the page uses, such as `→`).
+- **Reason:** A matched sans and mono with tabular figures suit dense numbers and identifiers, and shipping them keeps the page self-contained in both views. The Reserved Font Name "Plex" is respected because the files are redistributed unmodified.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.

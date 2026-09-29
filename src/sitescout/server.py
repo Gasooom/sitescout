@@ -95,6 +95,11 @@ TRACE_LABELS: dict[str, str] = {
 STATIC: dict[str, tuple[str, str]] = {
     "/app/index.html": ("app/index.html", "text/html; charset=utf-8"),
     "/app/investigation.js": ("app/investigation.js", "text/javascript; charset=utf-8"),
+    # The page's typefaces (D-065); the CSP's default-src 'self' already covers fonts.
+    "/app/fonts/IBMPlexSans-Regular.woff2": ("app/fonts/IBMPlexSans-Regular.woff2", "font/woff2"),
+    "/app/fonts/IBMPlexSans-Medium.woff2": ("app/fonts/IBMPlexSans-Medium.woff2", "font/woff2"),
+    "/app/fonts/IBMPlexSans-SemiBold.woff2": ("app/fonts/IBMPlexSans-SemiBold.woff2", "font/woff2"),
+    "/app/fonts/IBMPlexMono-Regular.woff2": ("app/fonts/IBMPlexMono-Regular.woff2", "font/woff2"),
     "/data/export/sitescout.js": ("data/export/sitescout.js", "text/javascript; charset=utf-8"),
     "/data/export/sitescout.json": ("data/export/sitescout.json", "application/json"),
 }
