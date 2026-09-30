@@ -58,7 +58,7 @@ uv sync --extra analyst
 uv run --env-file .env python scripts/serve.py
 ```
 
-Then open http://127.0.0.1:8765/. On the overview, **Investigate network difference** asks why the optimized network differs from the Top-30 by score; on a site you can investigate the site, have an evidence group explained, or ask what would need to be verified. The page sends a fixed investigation type, never free text. Each answer shows the records and document passages it cites and the steps the agent took. If no answer passes validation after one retry, the page shows the retrieved evidence instead of generated text. The server listens on 127.0.0.1 only, the key never reaches the browser, and nothing an investigation returns is saved ([D-062](docs/decisions.md), [D-064](docs/decisions.md)).
+Then open http://127.0.0.1:8765/. On the overview, **Investigate network difference** asks why the optimized network differs from the Top-30 by score; on a site you can investigate the site, have an evidence group explained, or ask what would need to be verified. The page sends a fixed investigation type, never free text. Each answer shows the records and document passages it cites and the steps the agent took. If no answer passes validation after one retry, the page shows the retrieved evidence instead of generated text. Run this way, the server listens on 127.0.0.1 only (the public deployment behind the GitHub Pages copy is [D-066](docs/decisions.md)), the key never reaches the browser, and nothing an investigation returns is saved ([D-062](docs/decisions.md), [D-064](docs/decisions.md)).
 
 ## What it answers
 
@@ -128,7 +128,7 @@ tests/     pytest suite
 docs/      specification, methodology, decisions, case study and demo script
 app/       the decision page (index.html) and its optional investigation client
 reports/   evaluation, the 30 site briefs, and the agent and demo-gate reports
-data/      local data, never committed except the small demo export
+data/      local data, never committed except the demo export and the agent's processed files
 ```
 
 Built in 12 milestones, from repository setup to this demo: data ingestion, candidates, features, scoring, evaluation, network optimization, evidence, the export and page, the AI Site Analyst, the agentic investigation and packaging.

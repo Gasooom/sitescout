@@ -3,7 +3,8 @@
 
   The decision page is complete without this file's features. Opened from disk, it makes no
   request and every investigation block says the investigation is unavailable. Served by
-  scripts/serve.py, it asks the local server whether investigation is available, and shows
+  scripts/serve.py (or, for the GitHub Pages copy, from the public deployment in BACKENDS,
+  D-066), it asks that server whether investigation is available, and shows
   contextual actions that send a fixed investigation kind plus identifiers (never free text).
   It renders only what the server returns: the validated answer with its cited records, or the
   fallback's retrieved records, plus the recorded trace. Text is inserted with textContent only,
@@ -12,6 +13,12 @@
 "use strict";
 
 window.SiteScoutInvestigation = (function () {
+  // D-066: where a static copy of the page finds the investigation server, by the page's own
+  // origin. Every other view asks the server that served it. An empty address means none.
+  const BACKENDS = { "https://gasooom.github.io": "" };
+  const API = BACKENDS[location.origin] || "";
+  const api = (path) => API + path;
+
   const KIND_TITLES = {
     site_investigation: "Site investigation",
     network_comparison: "Network difference",
@@ -99,7 +106,7 @@ window.SiteScoutInvestigation = (function () {
       availability = Promise.resolve(false);
       return availability;
     }
-    availability = fetch("/api/status", { cache: "no-store", credentials: "same-origin" })
+    availability = fetch(api("/api/status"), { cache: "no-store", credentials: "same-origin" })
       .then((response) => (response.ok ? response.json() : {}))
       .then((body) => body.investigation_available === true)
       .catch(() => false);
@@ -165,7 +172,7 @@ window.SiteScoutInvestigation = (function () {
     parts.result.replaceChildren();
     parts.line.textContent = "Investigating…";
     if (target.scrollIntoView) target.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    fetch("/api/investigate", {
+    fetch(api("/api/investigate"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",

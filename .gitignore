@@ -2,11 +2,25 @@
 # docs/data_sources.md and config/ describe how to rebuild them.
 data/*
 # Explicit M8 exception (D-048): the small demo export app/index.html reads is committed.
-# Nothing else under data/ is ever committed.
 !data/export/
 data/export/*
 !data/export/sitescout.json
 !data/export/sitescout.js
+# Explicit exception (D-066): the processed layers the investigation agent reads, so the public
+# deployment builds from the repository. Nothing else under data/ is ever committed.
+!data/processed/
+data/processed/*
+!data/processed/candidates.parquet
+!data/processed/candidates.meta.json
+!data/processed/scores_production.parquet
+!data/processed/scores_production.meta.json
+!data/processed/features_production.parquet
+!data/processed/features_production.meta.json
+!data/processed/network.parquet
+!data/processed/network.meta.json
+!data/processed/network.json
+!data/processed/osm_pois.meta.json
+!data/processed/chargers_manual.meta.json
 
 # Python environment, build output and tool caches
 .venv/

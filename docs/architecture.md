@@ -156,7 +156,7 @@ See [scoring.md](scoring.md).
 
 ## Milestone 8: export and the decision page
 
-`sitescout/export.py` (run by `scripts/export.py`, after `evaluate.py`) assembles `data/export/sitescout.json` and `sitescout.js` from the M2-M7 outputs, reusing `briefs.brief_sections()` and `evaluation.known_charging_sites()`, and validates them with pydantic models (D-048). `app/index.html` loads `sitescout.js` and draws: an inline SVG map, the network comparison, the site list and each site's evidence. It computes nothing. The two export files are the only committed files under `data/`.
+`sitescout/export.py` (run by `scripts/export.py`, after `evaluate.py`) assembles `data/export/sitescout.json` and `sitescout.js` from the M2-M7 outputs, reusing `briefs.brief_sections()` and `evaluation.known_charging_sites()`, and validates them with pydantic models (D-048). `app/index.html` loads `sitescout.js` and draws: an inline SVG map, the network comparison, the site list and each site's evidence. It computes nothing. The two export files and the agent's eleven processed files (D-066) are the only committed files under `data/`.
 
 ## Milestone 9: the SiteScout Analyst (optional)
 
@@ -204,11 +204,13 @@ http://127.0.0.1:<port> -> the same page + investigation.js
    POST /api/investigate  {kind, candidate_id?, group?}
         -> sitescout/server.py: fixed question -> agent_provider.ask (unchanged, agent: limits)
         -> answer + cited records | fallback records, recorded trace, validation rules
+https://gasooom.github.io/sitescout/app/ -> the same page (GitHub Pages) + investigation.js
+   -> the same two endpoints on the public deployment (Render, D-066), cross-origin
 ```
 
 - **Page** (`app/index.html`, D-048, D-062, D-065): a map-first network workspace. A top bar links the workspace and the reference sections; the outcome strip shows the selected network's coverage and reach with the network switch (exact, greedy, Top-30). Below it one workspace holds the opportunity list, the SVG map and the **site dossier** (score, rank, confidence, network role, why this location, components, typed evidence, unknowns, risks, next checks, investigation) side by side from 1200 px; narrower, the dossier takes the list's place. List, map and dossier share one selection. The network comparison, evaluation, sources, method and limitations follow as report sections. It still computes nothing and still opens from disk.
 - **Investigation client** (`app/investigation.js`): no request when opened from disk; otherwise one status request, then contextual actions (investigate this site, explain an evidence group, what would need to be verified, investigate the network difference) shown only when available. It renders the validated answer with typed statements and their citations (records with value and source; documents with section and quotation), or the fallback's retrieved records with no generated text, and the recorded steps and validation outcome. "Investigating…" is the only loading state. Text goes in through `textContent`; nothing is stored in the browser.
-- **Server** (`sitescout/server.py`, `scripts/serve.py`, D-062): Python's standard library, 127.0.0.1 only, one investigation at a time. The page sends a kind and validated ids; the server writes the question. Host, origin, content-type and size checks; an allow-list of static files; a content security policy. Responses carry no fallback reason, exception text, rejected answer text or credential, and nothing is written.
+- **Server** (`sitescout/server.py`, `scripts/serve.py`, D-062): Python's standard library, 127.0.0.1 unless started with `--public-host` for the public deployment (`render.yaml`, D-066: that hostname only, CORS for `server.public_origins` only), one investigation at a time. The page sends a kind and validated ids; the server writes the question. Host, origin, content-type and size checks; an allow-list of static files; a content security policy. Responses carry no fallback reason, exception text, rejected answer text or credential, and nothing is written.
 - **Demo-readiness gate** (`sitescout/demo_gate.py`, `scripts/demo_gate.py`, D-063): the deterministic items are tests; the live part runs three investigation kinds through the server's own path and writes `reports/demo_gate.md` with metadata only.
 - **QA** (`tests/qa_server.py`): serves the real page and data with scripted models so each state (answered, fallback, provider error, unavailable) can be inspected in a browser without a key.
 
@@ -224,7 +226,7 @@ http://127.0.0.1:<port> -> the same page + investigation.js
 - **Scripts.** Files in `scripts/` only parse arguments and call `src/sitescout/`.
 - **Synthetic data.** Allowed only when labelled synthetic in code, UI and docs. The export records `data_status` as `pipeline` or `synthetic`.
 - **Names.** Outputs use generic host labels plus OSM IDs, never business, brand or operator names.
-- **Data in git.** Nothing under `data/` is committed. [data_sources.md](data_sources.md) and `config/` describe how to rebuild it.
+- **Data in git.** Nothing under `data/` is committed except the demo export (D-048) and the agent's eleven processed files (D-066). [data_sources.md](data_sources.md) and `config/` describe how to rebuild it.
 
 ## Configuration
 

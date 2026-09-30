@@ -845,11 +845,16 @@ class AgentSettings(_Model):
     live_eval: LiveEvalSettings
 
 
+WebOrigin = Annotated[str, Strict(), Field(pattern=r"^https://[a-z0-9-]+(\.[a-z0-9-]+)+$")]
+
+
 class ServerSettings(_Model):
     """Milestone 11 (D-062): the local server behind the page's optional investigation layer.
-    It always binds 127.0.0.1, which is fixed in code; only the port is configurable."""
+    The bind address is never a setting: 127.0.0.1 unless ``scripts/serve.py --public-host``
+    starts the public deployment (D-066), which accepts ``public_origins`` cross-origin."""
 
     port: Annotated[int, Strict(), Field(ge=1024, le=65535)]
+    public_origins: Annotated[tuple[WebOrigin, ...], AfterValidator(_no_duplicates)]
 
 
 class DemoGateSettings(_Model):

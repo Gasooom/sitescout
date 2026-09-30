@@ -1,6 +1,6 @@
 # Data sources
 
-Every external source SiteScout uses, with its URL, licence, retrieval date and known gaps, and the schema of every processed layer built from them. No dataset is committed to this repository. This page and `config/settings.yaml` are what you need to rebuild `data/`. If a source cannot be verified or accessed, the pipeline stops that source and reports it; it never substitutes another source silently.
+Every external source SiteScout uses, with its URL, licence, retrieval date and known gaps, and the schema of every processed layer built from them. No source dataset is committed to this repository; the only committed files under `data/` are the demo export and the agent's processed files (D-048, D-066). This page and `config/settings.yaml` are what you need to rebuild `data/`. If a source cannot be verified or accessed, the pipeline stops that source and reports it; it never substitutes another source silently.
 
 **Status (Milestone 1):** every source below was verified and retrieved on 2026-09-24, except the manual charger list, which does not exist yet (see [below](#manual-charger-list-datamanualchargerscsv)).
 
@@ -430,7 +430,7 @@ Milestone 6 network selection in production mode (SPEC §8, D-046): for each of 
 
 ## The demo export
 
-`data/export/sitescout.json` and `data/export/sitescout.js` (the same data for `app/index.html` opened from disk) are written by `scripts/export.py` from the processed layers and reports (D-048). They are the only files under `data/` that are committed: generic host labels, OSM ids, positions, derived values and display text, no raw data and no business names. They contain information derived from OpenStreetMap (© OpenStreetMap contributors), available under the Open Database License (ODbL-1.0), and derived values credited to WorldPop and geoBoundaries (CC BY 4.0). Everything but `meta.generated_at` is identical from run to run.
+`data/export/sitescout.json` and `data/export/sitescout.js` (the same data for `app/index.html` opened from disk) are written by `scripts/export.py` from the processed layers and reports (D-048). They hold generic host labels, OSM ids, positions, derived values and display text, no raw data and no business names. Besides them, only the eleven processed files the investigation agent reads are committed (D-066): `candidates`, `scores_production`, `features_production` and `network` with their `.meta.json`, `network.json`, `osm_pois.meta.json` and `chargers_manual.meta.json`, from the same pipeline run as the export. They contain information derived from OpenStreetMap (© OpenStreetMap contributors), available under the Open Database License (ODbL-1.0), and derived values credited to WorldPop and geoBoundaries (CC BY 4.0). Everything but `meta.generated_at` is identical from run to run.
 
 ## Checks every processed layer passes
 

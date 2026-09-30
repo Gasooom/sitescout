@@ -13,6 +13,7 @@ from typing import get_args
 import pytest
 
 from agent_support import call, final, limits, make_context, reactive, script, stmt
+from sitescout import server as server_module
 from sitescout.agent import AGENT_TOOL_NAMES
 from sitescout.analyst.credentials import CredentialError
 from sitescout.analyst.provider import Provider
@@ -20,6 +21,7 @@ from sitescout.analyst.provider_common import ProviderError
 from sitescout.config import PROJECT_ROOT, load_config
 from sitescout.server import (
     CANDIDATE_ID,
+    PUBLIC_BIND,
     QUESTIONS,
     SECURITY_HEADERS,
     TRACE_LABELS,
@@ -425,6 +427,152 @@ def test_the_server_binds_loopback_only(context, config):
         assert server.server_address[0] == "127.0.0.1"
     finally:
         server.server_close()
+
+
+# --- The public deployment (D-066): one hostname, CORS for the configured origins only -------
+
+PUBLIC_HOST = "sitescout-test.onrender.com"
+PAGES = "https://gasooom.github.io"
+
+
+@pytest.fixture
+def public_on_loopback(monkeypatch):
+    # These tests never listen beyond 127.0.0.1; the address itself is checked separately.
+    monkeypatch.setattr(server_module, "PUBLIC_BIND", "127.0.0.1")
+
+
+@contextmanager
+def serving_publicly(config, svc):
+    server = build_server(config, svc, port=0, public_host=PUBLIC_HOST)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield Client(server)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_the_configured_cross_origin_is_the_github_pages_site(config):
+    assert config.settings.server.public_origins == (PAGES,)
+
+
+def test_the_public_address_is_every_interface():
+    assert PUBLIC_BIND == "0.0.0.0"
+
+
+def test_only_a_public_host_listens_on_the_public_address(context, config, monkeypatch):
+    # HOST made unbindable: the public server must not use it, and must say where it is served.
+    monkeypatch.setattr(server_module, "HOST", "256.0.0.1")
+    monkeypatch.setattr(server_module, "PUBLIC_BIND", "127.0.0.1")
+    server = build_server(config, service(context, config, NeverCalled()), port=0,
+                          public_host=PUBLIC_HOST)  # fmt: skip
+    try:
+        assert server.server_address[0] == "127.0.0.1"
+        assert server.url == f"https://{PUBLIC_HOST}/"
+    finally:
+        server.server_close()
+
+
+@pytest.mark.parametrize("host", ["", "0.0.0.0:80", "Sitescout.onrender.com", "a b.example", "x"])
+def test_the_public_hostname_is_checked(context, config, host):
+    with pytest.raises(ValueError, match="public-host"):
+        build_server(config, service(context, config, NeverCalled()), port=0, public_host=host)
+
+
+@pytest.mark.usefixtures("public_on_loopback")
+def test_the_public_server_answers_its_hostname_and_no_other(context, config):
+    with serving_publicly(config, service(context, config, NeverCalled())) as client:
+        own, _, body = client.request("GET", "/api/status", host=PUBLIC_HOST)
+        loopback, _, _ = client.request("GET", "/api/status")
+        foreign, _, _ = client.request("GET", "/api/status", host="attacker.example")
+    assert own == 200 and json.loads(body) == {"investigation_available": True}
+    assert loopback == 403 and foreign == 403
+
+
+@pytest.mark.usefixtures("public_on_loopback")
+def test_the_status_carries_cors_for_the_pages_origin_only(context, config):
+    with serving_publicly(config, service(context, config, NeverCalled())) as client:
+        _, pages, _ = client.request("GET", "/api/status", headers={"Origin": PAGES},
+                                     host=PUBLIC_HOST)  # fmt: skip
+        _, other, _ = client.request("GET", "/api/status", host=PUBLIC_HOST,
+                                     headers={"Origin": "https://attacker.example"})  # fmt: skip
+    assert pages["Access-Control-Allow-Origin"] == PAGES and pages["Vary"] == "Origin"
+    assert "Access-Control-Allow-Origin" not in other
+    assert "Access-Control-Allow-Credentials" not in pages  # no cookies, ever
+
+
+@pytest.mark.usefixtures("public_on_loopback")
+@pytest.mark.parametrize("path", ["/api/status", "/api/investigate"])
+def test_a_preflight_from_the_pages_origin_is_answered(context, config, path):
+    preflight = {"Origin": PAGES, "Access-Control-Request-Method": "POST",
+                 "Access-Control-Request-Headers": "content-type"}  # fmt: skip
+    with serving_publicly(config, service(context, config, NeverCalled())) as client:
+        code, headers, body = client.request("OPTIONS", path, headers=preflight, host=PUBLIC_HOST)
+    assert code == 204 and body == b""
+    assert headers["Access-Control-Allow-Origin"] == PAGES
+    assert headers["Access-Control-Allow-Methods"] == "GET, POST"
+    assert headers["Access-Control-Allow-Headers"] == "Content-Type"
+
+
+@pytest.mark.usefixtures("public_on_loopback")
+@pytest.mark.parametrize(
+    ("origin", "path", "host"),
+    [
+        ("https://attacker.example", "/api/investigate", PUBLIC_HOST),
+        (None, "/api/investigate", PUBLIC_HOST),
+        (PAGES, "/data/export/sitescout.js", PUBLIC_HOST),
+        (PAGES, "/api/investigate", "attacker.example"),
+    ],
+)
+def test_any_other_preflight_is_refused(context, config, origin, path, host):
+    # A browser accepts a preflight only with a 2xx status and the allowed methods.
+    headers = {"Origin": origin} if origin else {}
+    with serving_publicly(config, service(context, config, NeverCalled())) as client:
+        code, response, _ = client.request("OPTIONS", path, headers=headers, host=host)
+    assert code == 403 and "Access-Control-Allow-Methods" not in response
+
+
+def test_a_loopback_server_answers_no_preflight(context, config):
+    with serving(config, service(context, config, NeverCalled())) as client:
+        code, headers, _ = client.request("OPTIONS", "/api/investigate", headers={"Origin": PAGES})
+    assert code == 403 and "Access-Control-Allow-Origin" not in headers
+
+
+def _investigate_from(client, origin):
+    headers = {"Content-Type": "application/json", "Origin": origin}
+    return client.request("POST", "/api/investigate", json.dumps(SITE), headers, PUBLIC_HOST)
+
+
+@pytest.mark.usefixtures("public_on_loopback")
+def test_the_pages_origin_and_the_own_origin_may_investigate_and_no_other(context, config):
+    with serving_publicly(config, service(context, config, answered_model())) as client:
+        pages, headers, body = _investigate_from(client, PAGES)
+    assert pages == 200 and json.loads(body)["status"] == "answered"
+    assert headers["Access-Control-Allow-Origin"] == PAGES
+    with serving_publicly(config, service(context, config, answered_model())) as client:
+        own, _, body = _investigate_from(client, f"https://{PUBLIC_HOST}")
+    assert own == 200 and json.loads(body)["status"] == "answered"
+    with serving_publicly(config, service(context, config, NeverCalled())) as client:
+        foreign = _investigate_from(client, "https://attacker.example")[0]
+        loopback_page = _investigate_from(client, "http://127.0.0.1:8765")[0]
+    assert foreign == 403 and loopback_page == 403
+
+
+@pytest.mark.usefixtures("public_on_loopback")
+def test_the_pages_origin_can_read_a_refusal(context, config):
+    # Without CORS on errors the page would see a network failure instead of the status.
+    unavailable = InvestigationService(None, config.settings.agent, None)
+    with serving_publicly(config, unavailable) as client:
+        code, headers, body = _investigate_from(client, PAGES)
+    assert code == 503 and json.loads(body) == {"status": "unavailable"}
+    assert headers["Access-Control-Allow-Origin"] == PAGES
+
+
+def test_a_loopback_server_still_refuses_the_pages_origin(context, config):
+    with serving(config, service(context, config, NeverCalled())) as client:
+        code, headers, _ = client.investigate(SITE, {"Origin": PAGES})
+    assert code == 403 and "Access-Control-Allow-Origin" not in headers
 
 
 # --- Nothing reaches the browser or the disk -------------------------------------------------

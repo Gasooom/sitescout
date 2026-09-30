@@ -1,0 +1,16 @@
+# D-066: the public investigation server behind the GitHub Pages copy of the decision page.
+# Render Blueprint. Python 3.12 comes from .python-version; dependencies from uv.lock.
+# The provider key is set in the Render dashboard (sync: false); it is never in the repository.
+services:
+  - type: web
+    name: sitescout-investigation
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: uv sync --frozen --no-dev --extra analyst
+    startCommand: uv run --no-sync python scripts/serve.py --public-host "$RENDER_EXTERNAL_HOSTNAME" --port "$PORT"
+    healthCheckPath: /api/status
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false

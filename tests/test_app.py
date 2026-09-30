@@ -1,5 +1,6 @@
 """app/index.html is a read-only view over the export (SPEC §10; D-048), and
-app/investigation.js is its optional, locally served investigation layer (D-062)."""
+app/investigation.js is its optional investigation layer, served locally (D-062) or, for the
+GitHub Pages copy, by the public deployment (D-066)."""
 
 import json
 import re
@@ -53,8 +54,8 @@ def test_the_page_loads_the_investigation_client_locally_after_the_export():
     assert export_tag < client_tag
 
 
-def test_the_client_requests_only_its_two_local_endpoints():
-    targets = re.findall(r"fetch\(\s*\"([^\"]*)\"", CLIENT)
+def test_the_client_requests_only_its_two_endpoints():
+    targets = re.findall(r"fetch\(\s*api\(\"([^\"]*)\"\)", CLIENT)
     assert sorted(set(targets)) == ["/api/investigate", "/api/status"]
     assert CLIENT.count("fetch(") == len(targets)  # every request names a literal endpoint
     for other in ("XMLHttpRequest", "WebSocket", "EventSource", "sendBeacon", "import("):
@@ -65,8 +66,22 @@ def test_the_client_makes_no_request_when_the_page_is_opened_from_disk():
     assert CLIENT.index('location.protocol === "file:"') < CLIENT.index("fetch(")
 
 
-def test_the_client_uses_no_external_resource():
-    assert re.findall(r"https?://", CLIENT) == []
+BACKENDS = re.search(r"const BACKENDS = \{ \"([^\"]*)\": \"([^\"]*)\" \};", CLIENT)
+
+
+def test_only_the_github_pages_copy_asks_another_server():
+    # D-066: one entry, keyed by the GitHub Pages origin; every other view (served by
+    # scripts/serve.py, or by the deployment itself) keeps asking its own origin.
+    assert BACKENDS is not None
+    page, backend = BACKENDS.groups()
+    assert page == "https://gasooom.github.io"
+    assert backend == "" or re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)+", backend)
+    assert 'const API = BACKENDS[location.origin] || "";' in CLIENT
+    assert "const api = (path) => API + path;" in CLIENT
+
+
+def test_the_client_uses_no_other_external_resource():
+    assert re.findall(r"https?://[^\s\"']*", CLIENT) == [u for u in BACKENDS.groups() if u]
 
 
 @pytest.mark.parametrize("text", [PAGE, CLIENT], ids=["index.html", "investigation.js"])

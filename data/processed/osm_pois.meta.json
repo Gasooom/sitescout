@@ -1,0 +1,133 @@
+{
+  "bounds": [
+    28.8625351,
+    -2.8240799,
+    30.8492446,
+    -1.0419539
+  ],
+  "columns": [
+    {
+      "description": "OSM object as type/id, e.g. 'way/123'. Unique.",
+      "name": "feature_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "OSM object type: node, way or relation.",
+      "name": "osm_type",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "OSM object id.",
+      "name": "osm_id",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "OSM amenity tag.",
+      "name": "amenity",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "OSM shop tag.",
+      "name": "shop",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "OSM tourism tag.",
+      "name": "tourism",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "OSM office tag.",
+      "name": "office",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "OSM industrial tag.",
+      "name": "industrial",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "OSM landuse tag.",
+      "name": "landuse",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "OSM building tag.",
+      "name": "building",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "OSM man_made tag.",
+      "name": "man_made",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "JSON object of the feature's socket:* tags, keys sorted; null when it has none.",
+      "name": "socket_tags",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "True if the OSM area was invalid and made valid with shapely.make_valid (D-020).",
+      "name": "geometry_repaired",
+      "required": true,
+      "type": "bool"
+    }
+  ],
+  "content_sha256": "5474291a0fbfbad6d9c01587ff9fc89a7fbb862779893c0bf4f3f2c0314c0b37",
+  "crs": "EPSG:4326",
+  "description": "OSM places matching sources.osm_tags.pois: a broad superset, not yet host types (M2).",
+  "file": "osm_pois.parquet",
+  "format": "GeoParquet",
+  "geometry_types": {
+    "MultiPolygon": 2398,
+    "Point": 5234
+  },
+  "id_column": "feature_id",
+  "layer": "osm_pois",
+  "notes": [
+    "OpenStreetMap data, © OpenStreetMap contributors, ODbL 1.0.",
+    "Name, brand and operator tags are not extracted (D-012)."
+  ],
+  "row_count": 7632,
+  "schema_version": 1,
+  "sources": [
+    {
+      "bytes": 67381229,
+      "credit": "© OpenStreetMap contributors",
+      "filename": "rwanda-latest.osm.pbf",
+      "http_etag": "\"40427ed-65c2ea7d4efbb\"",
+      "http_last_modified": "Wed, 23 Sep 2026 23:15:14 GMT",
+      "licence": "ODbL-1.0",
+      "licence_url": "https://www.openstreetmap.org/copyright",
+      "resolved_url": "https://download.geofabrik.de/africa/rwanda-260923.osm.pbf",
+      "retrieved_at": "2026-09-24T17:50:49+00:00",
+      "sha256": "52a8bcfa6881e531befd62130071dacd53f41a37f528b372042ec94d672f3a45",
+      "source_id": "osm",
+      "url": "https://download.geofabrik.de/africa/rwanda-latest.osm.pbf",
+      "versioning": "rolling"
+    }
+  ],
+  "stats": {
+    "by_osm_type": {
+      "node": 5234,
+      "relation": 24,
+      "way": 2374
+    },
+    "features": 7632,
+    "features_crossing_envelope": 0,
+    "osm_data_timestamp": "2026-09-23T20:22:04Z"
+  },
+  "status": "ok"
+}

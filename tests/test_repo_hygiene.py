@@ -1,5 +1,6 @@
 """The repository is public: everything git could commit must be safe to publish."""
 
+import json
 import re
 import shutil
 import subprocess
@@ -84,7 +85,7 @@ def test_no_committable_file_is_larger_than_5_mb():
         "data/raw/osm/rwanda-latest.osm.pbf",
         "data/raw/osm/source.json",
         "data/raw/worldpop/rwa_pop_2025_CN_100m_R2025A_v1.tif",
-        "data/processed/candidates.parquet",
+        "data/processed/scores_backtest.parquet",
         "data/processed/osm_roads.parquet",
         "data/processed/admin_districts.meta.json",
         "data/processed/population_worldpop.tif",
@@ -101,15 +102,33 @@ def test_data_environments_and_secrets_are_ignored(path):
     assert result.returncode == 0, f"{path} is not ignored by .gitignore"
 
 
-# The one explicit exception (D-048): the small demo export app/index.html reads.
+# The explicit exceptions: the small demo export app/index.html reads (D-048), and the
+# processed layers the investigation agent reads, so the public deployment builds from git (D-066).
 DEMO_EXPORT = {"data/export/sitescout.json", "data/export/sitescout.js"}
+AGENT_DATA = {
+    f"data/processed/{name}"
+    for name in (
+        "candidates.parquet",
+        "candidates.meta.json",
+        "scores_production.parquet",
+        "scores_production.meta.json",
+        "features_production.parquet",
+        "features_production.meta.json",
+        "network.parquet",
+        "network.meta.json",
+        "network.json",
+        "osm_pois.meta.json",
+        "chargers_manual.meta.json",
+    )
+}
+COMMITTED_DATA = DEMO_EXPORT | AGENT_DATA
 
 
 def test_every_local_data_file_is_ignored_and_none_is_tracked():
-    """Whatever the pipeline has written under data/ stays out of git, except the demo export."""
+    """Whatever the pipeline has written under data/ stays out of git, except the exceptions."""
     data = PROJECT_ROOT / "data"
     files = [_relative(p) for p in data.rglob("*") if p.is_file()] if data.is_dir() else []
-    files = [name for name in files if name not in DEMO_EXPORT]
+    files = [name for name in files if name not in COMMITTED_DATA]
     if files:
         # NUL-separated bytes: text-mode pipes on Windows would turn "\n" into "\r\n".
         result = subprocess.run(
@@ -123,18 +142,21 @@ def test_every_local_data_file_is_ignored_and_none_is_tracked():
     tracked = subprocess.run(
         [_git(), "ls-files", "--", "data"], cwd=PROJECT_ROOT, capture_output=True, text=True
     )
-    assert set(tracked.stdout.split()) <= DEMO_EXPORT
+    assert set(tracked.stdout.split()) <= COMMITTED_DATA
 
 
-def test_only_the_demo_export_is_exempt_from_the_data_rule():
-    for path in sorted(DEMO_EXPORT):
+def test_only_the_export_and_the_agent_data_are_exempt_from_the_data_rule():
+    for path in sorted(COMMITTED_DATA):
         ignored = subprocess.run(
             [_git(), "check-ignore", "-q", "--no-index", path], cwd=PROJECT_ROOT
         )
-        assert ignored.returncode == 1, f"{path} should be committable (D-048)"
+        assert ignored.returncode == 1, f"{path} should be committable (D-048, D-066)"
     for path in (
         "data/export/other.json",
-        "data/processed/network.json",
+        "data/processed/evidence.json",
+        "data/processed/scores_backtest.parquet",
+        "data/processed/admin_districts.parquet",
+        "data/processed/other.json",
         "data/raw/osm/rwanda-latest.osm.pbf",
         "data/manual/chargers.csv",
     ):
@@ -148,9 +170,33 @@ def test_no_dataset_files_outside_test_fixtures():
     datasets = [
         _relative(p)
         for p in _committable_files()
-        if p.suffix.lower() in DATASET_SUFFIXES and not _relative(p).startswith(FIXTURES)
+        if p.suffix.lower() in DATASET_SUFFIXES
+        and not _relative(p).startswith(FIXTURES)
+        and _relative(p) not in AGENT_DATA  # the named D-066 exception, file by file
     ]
     assert datasets == []
+
+
+def test_the_agent_data_and_the_export_come_from_the_same_run():
+    """The public deployment answers from the agent data while the page shows the export (D-066):
+    both must describe the same candidates, ranks, scores and networks."""
+    missing = sorted(p for p in COMMITTED_DATA if not (PROJECT_ROOT / p).is_file())
+    if missing:
+        pytest.skip(f"not in this checkout: {missing}")
+    from sitescout.config import load_config
+    from sitescout.evidence import all_sites, one_decimal
+
+    config = load_config()
+    # read_layer checks each layer against its schema and recorded fingerprint on the way.
+    sites = all_sites(config, PROJECT_ROOT / "data" / "processed").set_index("candidate_id")
+    export = json.loads((PROJECT_ROOT / "data" / "export" / "sitescout.json").read_text("utf-8"))
+    assert {site["candidate_id"] for site in export["sites"]} == set(sites.index)
+    for site in export["sites"]:
+        row = sites.loc[site["candidate_id"]]
+        assert site["rank"] == row["rank"], site["candidate_id"]
+        assert site["score"] == one_decimal(row["score"]), site["candidate_id"]
+        for flag in ("selected_mclp", "selected_greedy", "selected_top30"):
+            assert site[flag] == bool(row[flag]), (site["candidate_id"], flag)
 
 
 def test_no_secrets_in_committable_files():

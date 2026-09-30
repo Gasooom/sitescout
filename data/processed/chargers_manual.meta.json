@@ -1,0 +1,8 @@
+{
+  "description": "Public chargers from the hand-filled data/manual/chargers.csv. Names and operator_public_name are provenance only and are not carried into this layer.",
+  "expected_source": "data/manual/chargers.csv",
+  "layer": "chargers_manual",
+  "reason": "data/manual/chargers.csv does not exist; it is filled by hand from public charger maps (docs/data_sources.md). No charger records were created.",
+  "schema_version": 1,
+  "status": "missing"
+}

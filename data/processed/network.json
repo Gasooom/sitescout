@@ -1,0 +1,233 @@
+{
+  "demand_nodes": 4094,
+  "eligible_sites": 108,
+  "exact_vs_greedy_gap": 0.006424,
+  "h3_resolution": 7,
+  "known_charging_sites": 5,
+  "known_sites_by_province": {
+    "City of Kigali": 4,
+    "Eastern Province": 1
+  },
+  "mode": "production",
+  "overlap": {
+    "greedy_top30": 7,
+    "mclp_greedy": 28,
+    "mclp_top30": 5
+  },
+  "parameters": {
+    "existing_charger_demand_factor": 0.5,
+    "lambda": 0.01,
+    "min_score_percentile": 50,
+    "min_spacing_m": 2000,
+    "n_sites": 30,
+    "require_host": true,
+    "service_radius_m": 10000
+  },
+  "population_total": 14406785.992,
+  "selections": {
+    "greedy": {
+      "by_province": {
+        "City of Kigali": 4,
+        "Eastern Province": 7,
+        "Northern Province": 4,
+        "Southern Province": 6,
+        "Western Province": 9
+      },
+      "candidate_ids": [
+        "cand-051d849523f2",
+        "cand-08bbf9faab9c",
+        "cand-0dc7d16470ae",
+        "cand-2299807a43d8",
+        "cand-2706af89a9e3",
+        "cand-2b490f9c2e87",
+        "cand-2bb9e0d1626b",
+        "cand-2f5daf7324d3",
+        "cand-350b8e1e574d",
+        "cand-3a0504ad7c94",
+        "cand-3a8fa00f876a",
+        "cand-529c02bdee7d",
+        "cand-5776f20d56ba",
+        "cand-69c047f251b4",
+        "cand-6c1904cd3247",
+        "cand-6cb639302d07",
+        "cand-71c93f889a54",
+        "cand-7d87f5076f27",
+        "cand-8a28f0db0618",
+        "cand-9b264bff5fa2",
+        "cand-a02a7bdb7f1c",
+        "cand-a1d54a93431a",
+        "cand-a87b26eba027",
+        "cand-adbef2c455e6",
+        "cand-b16676ab5c36",
+        "cand-c59aebb33384",
+        "cand-cc16126782f0",
+        "cand-e787eb3dc05a",
+        "cand-e9fa414b7177",
+        "cand-f0dffb6f5f10"
+      ],
+      "covered_demand": 0.463249,
+      "districts": 23,
+      "mean_score": 65.315,
+      "objective": 0.659194,
+      "population_covered_share": 0.491671,
+      "provinces": 5,
+      "sites": 30
+    },
+    "mclp": {
+      "by_province": {
+        "City of Kigali": 3,
+        "Eastern Province": 7,
+        "Northern Province": 4,
+        "Southern Province": 7,
+        "Western Province": 9
+      },
+      "candidate_ids": [
+        "cand-051d849523f2",
+        "cand-08bbf9faab9c",
+        "cand-0bd87a61afe8",
+        "cand-0dc7d16470ae",
+        "cand-2299807a43d8",
+        "cand-2706af89a9e3",
+        "cand-2b490f9c2e87",
+        "cand-2bb9e0d1626b",
+        "cand-2f5daf7324d3",
+        "cand-350b8e1e574d",
+        "cand-3a0504ad7c94",
+        "cand-3a8fa00f876a",
+        "cand-529c02bdee7d",
+        "cand-5776f20d56ba",
+        "cand-688321f09799",
+        "cand-69c047f251b4",
+        "cand-6c1904cd3247",
+        "cand-6cb639302d07",
+        "cand-71c93f889a54",
+        "cand-7d87f5076f27",
+        "cand-9b264bff5fa2",
+        "cand-a02a7bdb7f1c",
+        "cand-a1d54a93431a",
+        "cand-a87b26eba027",
+        "cand-adbef2c455e6",
+        "cand-b16676ab5c36",
+        "cand-c59aebb33384",
+        "cand-cc16126782f0",
+        "cand-e9fa414b7177",
+        "cand-f0dffb6f5f10"
+      ],
+      "covered_demand": 0.469624,
+      "districts": 22,
+      "mean_score": 64.611,
+      "objective": 0.663456,
+      "population_covered_share": 0.49761,
+      "provinces": 5,
+      "sites": 30
+    },
+    "top30": {
+      "by_province": {
+        "City of Kigali": 23,
+        "Northern Province": 2,
+        "Southern Province": 1,
+        "Western Province": 4
+      },
+      "candidate_ids": [
+        "cand-00965cea0888",
+        "cand-0dc7d16470ae",
+        "cand-17d2f571fd7f",
+        "cand-1dd99617aca9",
+        "cand-2b6a9c406b34",
+        "cand-2e8f1a2055ed",
+        "cand-3a53308ea7ac",
+        "cand-3a8fa00f876a",
+        "cand-3ac16b38fda4",
+        "cand-3e01099ae5bc",
+        "cand-461af76e1316",
+        "cand-51a1dbe77443",
+        "cand-51ab0b20735d",
+        "cand-5372dc97c265",
+        "cand-6c1904cd3247",
+        "cand-6d3049c39c52",
+        "cand-7330041f9832",
+        "cand-8366165e2a19",
+        "cand-86e7e315c807",
+        "cand-8a28f0db0618",
+        "cand-97126e96ae6e",
+        "cand-98cb32c55c77",
+        "cand-98cd3a2fbe28",
+        "cand-a1d54a93431a",
+        "cand-a3a8a37caeda",
+        "cand-a636cae163d1",
+        "cand-b16676ab5c36",
+        "cand-c04e6a382e77",
+        "cand-cd61861223da",
+        "cand-e787eb3dc05a"
+      ],
+      "covered_demand": 0.200457,
+      "districts": 8,
+      "mean_score": 73.81,
+      "objective": 0.421888,
+      "population_covered_share": 0.239675,
+      "provinces": 4,
+      "sites": 30
+    }
+  },
+  "sensitivity": [
+    {
+      "covered_demand": 0.472076,
+      "overlap_with_base": 26,
+      "parameter": "lambda",
+      "population_covered_share": 0.499577,
+      "provinces": 5,
+      "status": "Optimal",
+      "value": 0.0
+    },
+    {
+      "covered_demand": 0.444707,
+      "overlap_with_base": 24,
+      "parameter": "lambda",
+      "population_covered_share": 0.474398,
+      "provinces": 5,
+      "status": "Optimal",
+      "value": 0.05
+    },
+    {
+      "covered_demand": 0.244159,
+      "overlap_with_base": 21,
+      "parameter": "service_radius_m",
+      "population_covered_share": 0.262513,
+      "provinces": 5,
+      "status": "Optimal",
+      "value": 5000
+    },
+    {
+      "covered_demand": 0.663702,
+      "overlap_with_base": 25,
+      "parameter": "service_radius_m",
+      "population_covered_share": 0.689065,
+      "provinces": 5,
+      "status": "Optimal",
+      "value": 15000
+    },
+    {
+      "covered_demand": 0.454031,
+      "overlap_with_base": 30,
+      "parameter": "existing_charger_demand_factor",
+      "population_covered_share": 0.49761,
+      "provinces": 5,
+      "status": "Optimal",
+      "value": 0.25
+    },
+    {
+      "covered_demand": 0.484113,
+      "overlap_with_base": 30,
+      "parameter": "existing_charger_demand_factor",
+      "population_covered_share": 0.49761,
+      "provinces": 5,
+      "status": "Optimal",
+      "value": 0.75
+    }
+  ],
+  "solver": {
+    "solution": "Optimal Solution Found",
+    "status": "Optimal"
+  },
+  "spacing_conflicts": 138
+}

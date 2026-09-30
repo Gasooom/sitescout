@@ -1,7 +1,9 @@
 """Milestone 11 (D-062): the local server behind the decision page's optional investigation layer.
 
 The page (``app/index.html``) is complete on its own and still opens from disk. Served by this
-module on 127.0.0.1, it can also ask the M10 agent to investigate a site or the network:
+module on 127.0.0.1, it can also ask the M10 agent to investigate a site or the network. Only
+when started with an explicit public hostname (the Render deployment, D-066) does it listen
+publicly, for that hostname alone, and answer the configured cross origins (CORS):
 
 - ``GET /api/status`` answers ``{"investigation_available": bool}`` and nothing else;
 - ``POST /api/investigate`` takes a fixed investigation *kind* plus validated identifiers, never
@@ -40,7 +42,10 @@ from sitescout.config import AgentSettings, Config
 
 log = logging.getLogger(__name__)
 
-HOST = "127.0.0.1"  # D-062: loopback only, never a setting
+HOST = "127.0.0.1"  # D-062: loopback by default, never a setting
+PUBLIC_BIND = "0.0.0.0"  # D-066: only when started with an explicit public hostname
+HOSTNAME = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+)+$")
+PREFLIGHT_PATHS = frozenset({"/api/status", "/api/investigate"})
 CANDIDATE_ID = re.compile(r"^cand-[0-9a-f]{12}$")
 MAX_BODY_BYTES = 2048  # an investigation request is a kind and two identifiers
 DRAIN_BYTES = 65536  # at most this much of a refused request's body is read and dropped
@@ -366,21 +371,39 @@ class SiteScoutServer(ThreadingHTTPServer):
         service: InvestigationService,
         port: int,
         handler: type[BaseHTTPRequestHandler] | None = None,  # tests/qa_server.py only
+        *,
+        public_host: str | None = None,
     ) -> None:
-        super().__init__((HOST, port), handler or _Handler)
+        if public_host is not None and not HOSTNAME.fullmatch(public_host):
+            raise ValueError(f"--public-host must be a lowercase hostname, not {public_host!r}")
+        super().__init__((HOST if public_host is None else PUBLIC_BIND, port), handler or _Handler)
         self.config = config
         self.service = service
         bound = self.server_address[1]
-        self.allowed_hosts = frozenset({f"{HOST}:{bound}", f"localhost:{bound}"})
+        if public_host is None:
+            self.allowed_hosts = frozenset({f"{HOST}:{bound}", f"localhost:{bound}"})
+            self.cross_origins: frozenset[str] = frozenset()
+            self.page_origins = frozenset(f"http://{h}" for h in self.allowed_hosts)
+            self.url = f"http://{HOST}:{bound}/"
+        else:
+            # Behind the host's TLS proxy the page's own origin is https and carries no port.
+            self.allowed_hosts = frozenset({public_host})
+            self.cross_origins = frozenset(config.settings.server.public_origins)
+            self.page_origins = frozenset({f"https://{public_host}"}) | self.cross_origins
+            self.url = f"https://{public_host}/"
 
-    @property
-    def url(self) -> str:
-        return f"http://{HOST}:{self.server_address[1]}/"
 
-
-def build_server(config: Config, service: InvestigationService, port: int | None = None):
-    """The server for ``config`` on 127.0.0.1; ``port`` 0 picks a free port (tests)."""
-    return SiteScoutServer(config, service, config.settings.server.port if port is None else port)
+def build_server(
+    config: Config,
+    service: InvestigationService,
+    port: int | None = None,
+    *,
+    public_host: str | None = None,
+):
+    """The server for ``config`` on 127.0.0.1, or on all interfaces for ``public_host`` only
+    (D-066); ``port`` 0 picks a free port (tests)."""
+    port = config.settings.server.port if port is None else port
+    return SiteScoutServer(config, service, port, public_host=public_host)
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -405,6 +428,13 @@ class _Handler(BaseHTTPRequestHandler):
     def end_headers(self) -> None:
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
+        if self.server.cross_origins:
+            # A request line can fail before any header is parsed.
+            headers = getattr(self, "headers", None)
+            origin = headers.get("Origin") if headers is not None else None
+            if origin in self.server.cross_origins:
+                self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         super().end_headers()
 
     def _send(self, code: int, body: bytes, content_type: str, *, no_store: bool = False):
@@ -463,6 +493,22 @@ class _Handler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:
         self.do_GET()
 
+    def do_OPTIONS(self) -> None:
+        """A browser's CORS preflight, answered only for an allowed cross origin (D-066)."""
+        if (
+            not self._host_allowed()
+            or self.headers.get("Origin") not in self.server.cross_origins
+            or urlsplit(self.path).path not in PREFLIGHT_PATHS
+        ):
+            self._refuse(403, "forbidden")
+            return
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "600")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _refuse(self, code: int, status: str) -> None:
         """Refuse a POST before reading its body. The unread body (at most ``DRAIN_BYTES``) is
         read and dropped first: closing a socket with unread data resets the connection, and
@@ -484,7 +530,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._refuse(404, "not_found")
             return
         origin = self.headers.get("Origin")
-        if origin is not None and origin not in {f"http://{h}" for h in self.server.allowed_hosts}:
+        if origin is not None and origin not in self.server.page_origins:
             self._refuse(403, "forbidden")
             return
         content_type = self.headers.get("Content-Type", "").split(";")[0].strip().lower()

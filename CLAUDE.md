@@ -29,7 +29,8 @@ SiteScout is an independent portfolio project for EV charging network intelligen
 - `.gitattributes` with `* text=auto eol=lf` from the first commit.
 - The GitHub repo is **public** during development. Do not make it private.
 - All of `data/` (raw, processed, manual and generated) and `.venv/` are gitignored. The repository holds the schemas and documentation needed to reproduce the pipeline, not the datasets.
-- One explicit exception (Milestone 8, D-048): the small demo export `data/export/sitescout.json` and `data/export/sitescout.js`, written only by `scripts/export.py`, is committed so the demo runs from the public repository. It is the only exception to the generated-datasets rule below: it must contain no raw data, secrets, personal data or business names, and every other rule still applies. Nothing else under `data/` is committed.
+- One explicit exception (Milestone 8, D-048): the small demo export `data/export/sitescout.json` and `data/export/sitescout.js`, written only by `scripts/export.py`, is committed so the demo runs from the public repository. It must contain no raw data, secrets, personal data or business names, and every other rule still applies.
+- A second explicit exception (D-066): the eleven processed files the investigation agent reads (`candidates`, `scores_production`, `features_production`, `network` with their `.meta.json`, `network.json`, `osm_pois.meta.json`, `chargers_manual.meta.json`) are committed so the public deployment builds from the repository. They follow the same rules as the export and are committed together with it, from the same pipeline run. These two are the only exceptions to the generated-datasets rule below; nothing else under `data/` is committed.
 - Never commit a file larger than 5 MB.
 
 ## Git authorship and milestone delivery

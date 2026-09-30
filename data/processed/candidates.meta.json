@@ -1,0 +1,412 @@
+{
+  "bounds": [
+    28.8765192,
+    -2.797479,
+    30.8446066,
+    -1.0598903
+  ],
+  "columns": [
+    {
+      "description": "'cand-' + first 12 hex of SHA-256 of the host's OSM id, or of 'lat,lon' for a corridor point without a host.",
+      "name": "candidate_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Latitude, EPSG:4326.",
+      "name": "lat",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Longitude, EPSG:4326.",
+      "name": "lon",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Generic label: host type and district.",
+      "name": "host_name",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "fuel, mall, supermarket, logistics, industrial, hotel or none.",
+      "name": "host_type",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "OSM id of the host as type/id; null if none.",
+      "name": "host_osm_id",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "host, corridor_snapped or corridor.",
+      "name": "origin",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Candidates within 300 m merged into this one.",
+      "name": "merged_count",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "admin_districts.district_id.",
+      "name": "district_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "District name.",
+      "name": "district",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "ISO 3166-2 province code.",
+      "name": "province_code",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Province name.",
+      "name": "province",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "highway value of the nearest drivable road.",
+      "name": "nearest_road_class",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Distance to the nearest drivable road, metres, EPSG:32735.",
+      "name": "dist_road_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "urban or corridor; null until the profile rule is decided (pending, D-030).",
+      "name": "profile",
+      "required": false,
+      "type": "string"
+    }
+  ],
+  "content_sha256": "8e636fb0ddb03d630b0ada3cde3457171626a9a9ecee0f43702a7c4e8c62edaf",
+  "crs": "EPSG:4326",
+  "description": "Candidate charging sites generated in code from OSM hosts and trunk/primary road corridors (SPEC §3, Milestone 2). Generic labels only; no business names.",
+  "file": "candidates.parquet",
+  "format": "GeoParquet",
+  "geometry_types": {
+    "Point": 300
+  },
+  "id_column": "candidate_id",
+  "layer": "candidates",
+  "notes": [
+    "Generated in code from OpenStreetMap data, © OpenStreetMap contributors, ODbL 1.0.",
+    "Existing chargers are not used by generation or by the budget (D-029, D-031).",
+    "profile is null until the profile rule's pending parameters are decided (D-030)."
+  ],
+  "row_count": 300,
+  "schema_version": 1,
+  "sources": [],
+  "stats": {
+    "budget": {
+      "districts": {
+        "39286606B14277660644276": {
+          "district": "Nyamagabe",
+          "eligible": 22,
+          "quota": 11,
+          "radius_m": 5160.152,
+          "selected": 11
+        },
+        "39286606B14634167117771": {
+          "district": "Kirehe",
+          "eligible": 14,
+          "quota": 7,
+          "radius_m": 8095.949,
+          "selected": 7
+        },
+        "39286606B17052688720067": {
+          "district": "Musanze",
+          "eligible": 38,
+          "quota": 19,
+          "radius_m": 2328.215,
+          "selected": 19
+        },
+        "39286606B2179123121438": {
+          "district": "Karongi",
+          "eligible": 35,
+          "quota": 18,
+          "radius_m": 3770.857,
+          "selected": 18
+        },
+        "39286606B22601397790462": {
+          "district": "Nyamasheke",
+          "eligible": 16,
+          "quota": 8,
+          "radius_m": 4995.045,
+          "selected": 8
+        },
+        "39286606B23352434464252": {
+          "district": "Kamonyi",
+          "eligible": 8,
+          "quota": 4,
+          "radius_m": 5936.959,
+          "selected": 4
+        },
+        "39286606B27612515465928": {
+          "district": "Gasabo",
+          "eligible": 60,
+          "quota": 30,
+          "radius_m": 892.212,
+          "selected": 30
+        },
+        "39286606B28964371534134": {
+          "district": "Ngoma",
+          "eligible": 8,
+          "quota": 4,
+          "radius_m": 7912.742,
+          "selected": 4
+        },
+        "39286606B3134655885223": {
+          "district": "Bugesera",
+          "eligible": 22,
+          "quota": 11,
+          "radius_m": 2366.296,
+          "selected": 11
+        },
+        "39286606B31387731734731": {
+          "district": "Nyagatare",
+          "eligible": 26,
+          "quota": 13,
+          "radius_m": 6885.168,
+          "selected": 13
+        },
+        "39286606B38837433870904": {
+          "district": "Rulindo",
+          "eligible": 9,
+          "quota": 5,
+          "radius_m": 7222.941,
+          "selected": 5
+        },
+        "39286606B38913138871456": {
+          "district": "Ngororero",
+          "eligible": 7,
+          "quota": 3,
+          "radius_m": 13696.793,
+          "selected": 3
+        },
+        "39286606B41980105768775": {
+          "district": "Burera",
+          "eligible": 14,
+          "quota": 7,
+          "radius_m": 6396.692,
+          "selected": 7
+        },
+        "39286606B43223731633869": {
+          "district": "Gakenke",
+          "eligible": 7,
+          "quota": 3,
+          "radius_m": 16377.606,
+          "selected": 3
+        },
+        "39286606B49553879902836": {
+          "district": "Rutsiro",
+          "eligible": 10,
+          "quota": 5,
+          "radius_m": 6853.037,
+          "selected": 5
+        },
+        "39286606B50862047870193": {
+          "district": "Huye",
+          "eligible": 23,
+          "quota": 12,
+          "radius_m": 2140.487,
+          "selected": 12
+        },
+        "39286606B51470133526692": {
+          "district": "Rwamagana",
+          "eligible": 10,
+          "quota": 5,
+          "radius_m": 5130.869,
+          "selected": 5
+        },
+        "39286606B52583425373362": {
+          "district": "Ruhango",
+          "eligible": 14,
+          "quota": 7,
+          "radius_m": 6501.234,
+          "selected": 7
+        },
+        "39286606B53863210323147": {
+          "district": "Gatsibo",
+          "eligible": 9,
+          "quota": 5,
+          "radius_m": 8150.358,
+          "selected": 5
+        },
+        "39286606B56607574087647": {
+          "district": "Kicukiro",
+          "eligible": 41,
+          "quota": 21,
+          "radius_m": 1010.11,
+          "selected": 21
+        },
+        "39286606B59170295238138": {
+          "district": "Kayonza",
+          "eligible": 33,
+          "quota": 17,
+          "radius_m": 3775.45,
+          "selected": 17
+        },
+        "39286606B61881490568352": {
+          "district": "Nyabihu",
+          "eligible": 8,
+          "quota": 4,
+          "radius_m": 6590.84,
+          "selected": 4
+        },
+        "39286606B66592032419282": {
+          "district": "Nyanza",
+          "eligible": 14,
+          "quota": 7,
+          "radius_m": 6524.869,
+          "selected": 7
+        },
+        "39286606B69204186902764": {
+          "district": "Nyaruguru",
+          "eligible": 11,
+          "quota": 6,
+          "radius_m": 7791.993,
+          "selected": 6
+        },
+        "39286606B71619932434084": {
+          "district": "Muhanga",
+          "eligible": 24,
+          "quota": 12,
+          "radius_m": 5074.706,
+          "selected": 12
+        },
+        "39286606B86206624572237": {
+          "district": "Rubavu",
+          "eligible": 26,
+          "quota": 13,
+          "radius_m": 2436.845,
+          "selected": 13
+        },
+        "39286606B87181547360532": {
+          "district": "Gisagara",
+          "eligible": 9,
+          "quota": 4,
+          "radius_m": 13525.453,
+          "selected": 4
+        },
+        "39286606B89224673348511": {
+          "district": "Rusizi",
+          "eligible": 22,
+          "quota": 11,
+          "radius_m": 4939.067,
+          "selected": 11
+        },
+        "39286606B91255837333217": {
+          "district": "Nyarugenge",
+          "eligible": 35,
+          "quota": 18,
+          "radius_m": 806.858,
+          "selected": 18
+        },
+        "39286606B99169436422336": {
+          "district": "Gicumbi",
+          "eligible": 20,
+          "quota": 10,
+          "radius_m": 7208.28,
+          "selected": 10
+        }
+      },
+      "eligible_count": 595,
+      "method": "ADM2 district quotas proportional to eligible candidates (largest remainder, ties by district_id), then per district greedy spacing in priority order (host priority, origin, candidate_id) at the largest pairwise-distance radius that keeps the quota",
+      "selected_count": 300,
+      "target_budget": 300
+    },
+    "generation": {
+      "after_dedup": 606,
+      "before_dedup": 945,
+      "by_host_type": {
+        "fuel": 128,
+        "hotel": 128,
+        "industrial": 80,
+        "logistics": 3,
+        "mall": 6,
+        "none": 218,
+        "supermarket": 32
+      },
+      "by_origin": {
+        "corridor": 218,
+        "host": 377
+      },
+      "by_province": {
+        "City of Kigali": 136,
+        "Eastern Province": 122,
+        "Northern Province": 88,
+        "Southern Province": 125,
+        "Western Province": 124
+      },
+      "corridor_points": 273,
+      "corridor_snapped": 51,
+      "corridor_without_host": 222,
+      "dropped_far_from_road": 3,
+      "dropped_in_protected_area": 8,
+      "dropped_in_water": 1,
+      "dropped_total": 11,
+      "final": 595,
+      "hosts_found": {
+        "fuel": 173,
+        "hotel": 280,
+        "industrial": 137,
+        "logistics": 5,
+        "mall": 14,
+        "supermarket": 80
+      },
+      "hosts_outside_rwanda": 17,
+      "inputs": {
+        "admin_country": "0e9fc60fc06b6c5a184bf5bfffcf1955fa047e8913a8365a7ebf03b679ed14f9",
+        "admin_districts": "49a1b83e97fb63b39f64dd336ede9e904e98ff67aa6f8e1405900979aa7ae51b",
+        "osm_pois": "5474291a0fbfbad6d9c01587ff9fc89a7fbb862779893c0bf4f3f2c0314c0b37",
+        "osm_protected_areas": "757b892bdca54f9aec33fb335fcc330702b4a75e0ea67c1bbb70f187f152afb5",
+        "osm_roads": "812e502f81486df37417d02295ae1a54bbb79d08e86accc8f422e832257045ba",
+        "osm_water": "d4f88b105f23c3ba21ae528471b97bfe6c6aad97b013ca375e448f58be2ac31b"
+      },
+      "merged_into_dropped": 0,
+      "removed_by_dedup": 339
+    },
+    "selected": {
+      "by_host_type": {
+        "fuel": 76,
+        "hotel": 31,
+        "industrial": 49,
+        "logistics": 2,
+        "mall": 3,
+        "none": 128,
+        "supermarket": 11
+      },
+      "by_origin": {
+        "corridor": 128,
+        "host": 172
+      },
+      "by_province": {
+        "City of Kigali": 69,
+        "Eastern Province": 62,
+        "Northern Province": 44,
+        "Southern Province": 63,
+        "Western Province": 62
+      }
+    }
+  },
+  "status": "ok"
+}

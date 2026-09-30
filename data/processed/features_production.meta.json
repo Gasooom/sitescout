@@ -1,0 +1,644 @@
+{
+  "bounds": [
+    28.8765192,
+    -2.797479,
+    30.8446066,
+    -1.0598903
+  ],
+  "columns": [
+    {
+      "description": "candidates.candidate_id.",
+      "name": "candidate_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.host_type (host / commercial).",
+      "name": "host_type",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.host_osm_id; null for no host.",
+      "name": "host_osm_id",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "candidates.origin.",
+      "name": "origin",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.district_id.",
+      "name": "district_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.district.",
+      "name": "district",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.province_code.",
+      "name": "province_code",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.province.",
+      "name": "province",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Modelled population (WorldPop) of pixels whose centre is within 1 km; people. Population outside Rwanda is not in the raster.",
+      "name": "pop_1km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Modelled population (WorldPop) of pixels whose centre is within 5 km; people. Population outside Rwanda is not in the raster.",
+      "name": "pop_5km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Modelled population (WorldPop) of pixels whose centre is within 10 km; people. Population outside Rwanda is not in the raster.",
+      "name": "pop_10km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "candidates.dist_road_m: nearest drivable road, metres, EPSG:32735.",
+      "name": "dist_road_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "candidates.nearest_road_class (highway value).",
+      "name": "road_class",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Nearest road in features.trunk_road_classes, metres, EPSG:32735; null if none is mapped.",
+      "name": "dist_trunk_m",
+      "required": false,
+      "type": "float64"
+    },
+    {
+      "description": "Distinct POIs of any configured type within 1 km.",
+      "name": "poi_1km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Distinct POIs of any configured type within 3 km.",
+      "name": "poi_3km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type amenity within 1 km (same rules as poi_1km).",
+      "name": "poi_amenity_1km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type amenity within 3 km (same rules as poi_3km).",
+      "name": "poi_amenity_3km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type shop within 1 km (same rules as poi_1km).",
+      "name": "poi_shop_1km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type shop within 3 km (same rules as poi_3km).",
+      "name": "poi_shop_3km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type tourism within 1 km (same rules as poi_1km).",
+      "name": "poi_tourism_1km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type tourism within 3 km (same rules as poi_3km).",
+      "name": "poi_tourism_3km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type office within 1 km (same rules as poi_1km).",
+      "name": "poi_office_1km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type office within 3 km (same rules as poi_3km).",
+      "name": "poi_office_3km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type industrial within 1 km (same rules as poi_1km).",
+      "name": "poi_industrial_1km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Reported only: POIs of type industrial within 3 km (same rules as poi_3km).",
+      "name": "poi_industrial_3km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Nearest existing charging site for this mode, metres, EPSG:32735; null when there is none.",
+      "name": "dist_charger_m",
+      "required": false,
+      "type": "float64"
+    },
+    {
+      "description": "Existing charging sites within 10 km.",
+      "name": "chargers_10km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Existing charging sites within 25 km.",
+      "name": "chargers_25km",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Nearest mapped OSM substation (grid evidence), metres, EPSG:32735; null if none is mapped.",
+      "name": "dist_substation_m",
+      "required": false,
+      "type": "float64"
+    },
+    {
+      "description": "Nearest mapped OSM power line (grid evidence), metres, EPSG:32735; null if none is mapped.",
+      "name": "dist_line_m",
+      "required": false,
+      "type": "float64"
+    },
+    {
+      "description": "Proxy: the district's mapped power features per km² divided by the national median district density.",
+      "name": "grid_completeness_ratio",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Reported only: to the Kigali city centre as mapped in OSM, metres, EPSG:32735.",
+      "name": "dist_kigali_cbd_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Reported only: nearest OSM town or city centre node, metres, EPSG:32735.",
+      "name": "dist_town_m",
+      "required": false,
+      "type": "float64"
+    },
+    {
+      "description": "Reported only: share of the 10 km circle's area outside Rwanda, where the population raster has no data.",
+      "name": "outside_rwanda_share_10km",
+      "required": true,
+      "type": "float64"
+    }
+  ],
+  "content_sha256": "f662ff26a0aa1dcd433e0499b5c6abb3792fe0abdb89cc558a90e748d503dbc7",
+  "crs": "EPSG:4326",
+  "description": "Milestone 3 features for the candidates, production mode: existing chargers included (SPEC §5). Raw values in natural units; scoring is Milestone 4.",
+  "file": "features_production.parquet",
+  "format": "GeoParquet",
+  "geometry_types": {
+    "Point": 300
+  },
+  "id_column": "candidate_id",
+  "layer": "features_production",
+  "notes": [
+    "Raw feature values only; scoring (percentile rank, log1p, inversion, bonuses, weights, profile) is Milestone 4 (SPEC §5).",
+    "Grid evidence: distances to and counts of mapped OSM power features. They say nothing about grid capacity, transformer capacity or a connection.",
+    "grid_completeness_ratio is a proxy for mapping completeness, not a measure of the grid.",
+    "Population: WorldPop R2025A constrained, a modelled estimate. The raster ends at the border, so circles that cross it count only people inside Rwanda (outside_rwanda_share_10km shows the share of the circle outside).",
+    "Existing chargers merge within sources.charger_match_radius_m (50 m): a project data-matching choice, not a definition of a charging site (D-034).",
+    "Kigali city centre as mapped in OSM (node/60485579), not an official CBD boundary (D-035).",
+    "Elevation and slope are not computed: the Copernicus DEM is deferred (SPEC §2, D-037).",
+    "OpenStreetMap data © OpenStreetMap contributors, ODbL 1.0. WorldPop, CC BY 4.0."
+  ],
+  "row_count": 300,
+  "schema_version": 1,
+  "sources": [],
+  "stats": {
+    "candidates": 300,
+    "chargers": {
+      "merge_radius_m": 50,
+      "merged_groups": [
+        [
+          "node/8816058906",
+          "node/8816058907",
+          "node/8816068253"
+        ]
+      ],
+      "mode": "production",
+      "records": 7,
+      "sites": 5,
+      "sources": {
+        "chargers_manual": {
+          "records": 0,
+          "status": "missing: data/manual/chargers.csv does not exist; it is filled by hand from public charger maps (docs/data_sources.md). No charger records were created."
+        },
+        "osm_charging_stations": {
+          "excluded_access": 0,
+          "records": 7
+        },
+        "osm_fuel_with_sockets": {
+          "counted": true,
+          "records": 0
+        }
+      }
+    },
+    "decisions": {
+      "D-032": "dist_trunk_m uses features.trunk_road_classes (trunk, trunk_link)",
+      "D-033": "POI types by OSM key; charging stations and the candidate's own host excluded; grid evidence power values are an allow-list",
+      "D-034": "production chargers: OSM (not private or no access) + socket-tagged fuel stations + manual CSV if present, merged within 50 m; backtest: none",
+      "D-035": "town and city centres are OSM place=city/town nodes in Rwanda; Kigali city centre is features.kigali_cbd",
+      "D-036": "population sums pixel centres within the radius; outside_rwanda_share_10km is reported only",
+      "D-037": "elevation and slope deferred",
+      "D-038": "two layers, production and backtest, each built from its own inputs; raw values only"
+    },
+    "grid_completeness": {
+      "counted_values": [
+        "cable",
+        "connection",
+        "generator",
+        "line",
+        "minor_line",
+        "plant",
+        "pole",
+        "portal",
+        "substation",
+        "tower",
+        "transformer"
+      ],
+      "districts": {
+        "39286606B14277660644276": {
+          "area_km2": 1092.197,
+          "district": "Nyamagabe",
+          "features_per_km2": 0.204176,
+          "power_features": 223,
+          "ratio": 1.085509
+        },
+        "39286606B14634167117771": {
+          "area_km2": 1192.778,
+          "district": "Kirehe",
+          "features_per_km2": 0.105636,
+          "power_features": 126,
+          "ratio": 0.561617
+        },
+        "39286606B17052688720067": {
+          "area_km2": 528.097,
+          "district": "Musanze",
+          "features_per_km2": 0.274571,
+          "power_features": 145,
+          "ratio": 1.459769
+        },
+        "39286606B2179123121438": {
+          "area_km2": 990.026,
+          "district": "Karongi",
+          "features_per_km2": 0.438372,
+          "power_features": 434,
+          "ratio": 2.330627
+        },
+        "39286606B22601397790462": {
+          "area_km2": 1171.95,
+          "district": "Nyamasheke",
+          "features_per_km2": 0.261957,
+          "power_features": 307,
+          "ratio": 1.392704
+        },
+        "39286606B23352434464252": {
+          "area_km2": 661.004,
+          "district": "Kamonyi",
+          "features_per_km2": 0.098335,
+          "power_features": 65,
+          "ratio": 0.522804
+        },
+        "39286606B27612515465928": {
+          "area_km2": 430.217,
+          "district": "Gasabo",
+          "features_per_km2": 1.245882,
+          "power_features": 536,
+          "ratio": 6.623788
+        },
+        "39286606B28964371534134": {
+          "area_km2": 871.061,
+          "district": "Ngoma",
+          "features_per_km2": 0.101026,
+          "power_features": 88,
+          "ratio": 0.537111
+        },
+        "39286606B3134655885223": {
+          "area_km2": 1296.322,
+          "district": "Bugesera",
+          "features_per_km2": 0.185911,
+          "power_features": 241,
+          "ratio": 0.988402
+        },
+        "39286606B31387731734731": {
+          "area_km2": 1923.314,
+          "district": "Nyagatare",
+          "features_per_km2": 0.072791,
+          "power_features": 140,
+          "ratio": 0.386997
+        },
+        "39286606B38837433870904": {
+          "area_km2": 568.416,
+          "district": "Rulindo",
+          "features_per_km2": 0.360651,
+          "power_features": 205,
+          "ratio": 1.91742
+        },
+        "39286606B38913138871456": {
+          "area_km2": 677.312,
+          "district": "Ngororero",
+          "features_per_km2": 0.047246,
+          "power_features": 32,
+          "ratio": 0.251183
+        },
+        "39286606B41980105768775": {
+          "area_km2": 646.308,
+          "district": "Burera",
+          "features_per_km2": 0.100571,
+          "power_features": 65,
+          "ratio": 0.534692
+        },
+        "39286606B43223731633869": {
+          "area_km2": 705.046,
+          "district": "Gakenke",
+          "features_per_km2": 0.173038,
+          "power_features": 122,
+          "ratio": 0.919966
+        },
+        "39286606B49553879902836": {
+          "area_km2": 1161.85,
+          "district": "Rutsiro",
+          "features_per_km2": 0.089512,
+          "power_features": 104,
+          "ratio": 0.475897
+        },
+        "39286606B50862047870193": {
+          "area_km2": 581.91,
+          "district": "Huye",
+          "features_per_km2": 0.04468,
+          "power_features": 26,
+          "ratio": 0.237546
+        },
+        "39286606B51470133526692": {
+          "area_km2": 682.547,
+          "district": "Rwamagana",
+          "features_per_km2": 0.671016,
+          "power_features": 458,
+          "ratio": 3.567487
+        },
+        "39286606B52583425373362": {
+          "area_km2": 626.903,
+          "district": "Ruhango",
+          "features_per_km2": 0.250438,
+          "power_features": 157,
+          "ratio": 1.331463
+        },
+        "39286606B53863210323147": {
+          "area_km2": 1588.745,
+          "district": "Gatsibo",
+          "features_per_km2": 0.160504,
+          "power_features": 255,
+          "ratio": 0.853327
+        },
+        "39286606B56607574087647": {
+          "area_km2": 167.392,
+          "district": "Kicukiro",
+          "features_per_km2": 0.782595,
+          "power_features": 131,
+          "ratio": 4.160703
+        },
+        "39286606B59170295238138": {
+          "area_km2": 1938.249,
+          "district": "Kayonza",
+          "features_per_km2": 0.028376,
+          "power_features": 55,
+          "ratio": 0.150863
+        },
+        "39286606B61881490568352": {
+          "area_km2": 538.376,
+          "district": "Nyabihu",
+          "features_per_km2": 0.22475,
+          "power_features": 121,
+          "ratio": 1.194893
+        },
+        "39286606B66592032419282": {
+          "area_km2": 672.965,
+          "district": "Nyanza",
+          "features_per_km2": 0.156026,
+          "power_features": 105,
+          "ratio": 0.82952
+        },
+        "39286606B69204186902764": {
+          "area_km2": 1012.33,
+          "district": "Nyaruguru",
+          "features_per_km2": 0.021732,
+          "power_features": 22,
+          "ratio": 0.115539
+        },
+        "39286606B71619932434084": {
+          "area_km2": 647.564,
+          "district": "Muhanga",
+          "features_per_km2": 0.029341,
+          "power_features": 19,
+          "ratio": 0.155991
+        },
+        "39286606B86206624572237": {
+          "area_km2": 386.568,
+          "district": "Rubavu",
+          "features_per_km2": 0.300077,
+          "power_features": 116,
+          "ratio": 1.595372
+        },
+        "39286606B87181547360532": {
+          "area_km2": 681.254,
+          "district": "Gisagara",
+          "features_per_km2": 0.262751,
+          "power_features": 179,
+          "ratio": 1.396927
+        },
+        "39286606B89224673348511": {
+          "area_km2": 960.712,
+          "district": "Rusizi",
+          "features_per_km2": 0.313309,
+          "power_features": 301,
+          "ratio": 1.665724
+        },
+        "39286606B91255837333217": {
+          "area_km2": 132.73,
+          "district": "Nyarugenge",
+          "features_per_km2": 0.730809,
+          "power_features": 97,
+          "ratio": 3.88538
+        },
+        "39286606B99169436422336": {
+          "area_km2": 830.383,
+          "district": "Gicumbi",
+          "features_per_km2": 0.190274,
+          "power_features": 158,
+          "ratio": 1.011598
+        }
+      },
+      "features_counted": 5206,
+      "national_median_per_km2": 0.18809205370660753
+    },
+    "grid_features": {
+      "lines": 122,
+      "substations": 43
+    },
+    "inputs": {
+      "admin_country": "0e9fc60fc06b6c5a184bf5bfffcf1955fa047e8913a8365a7ebf03b679ed14f9",
+      "admin_districts": "49a1b83e97fb63b39f64dd336ede9e904e98ff67aa6f8e1405900979aa7ae51b",
+      "candidates": "8e636fb0ddb03d630b0ada3cde3457171626a9a9ecee0f43702a7c4e8c62edaf",
+      "osm_charging_stations": "e919d04c3dde89dae3baaab6765c0e98e1e1cb7a2b0277f3d7da37c99504e8ee",
+      "osm_places": "6303e3acfedeec7d898d2f4dca5978ae68ed955233b0b5239792898c3fee1ff9",
+      "osm_pois": "5474291a0fbfbad6d9c01587ff9fc89a7fbb862779893c0bf4f3f2c0314c0b37",
+      "osm_power": "b3ecd6b2f03217a4670c199464d7a1f5cc268dd2600fa421c19f22abbdcce447",
+      "osm_roads": "812e502f81486df37417d02295ae1a54bbb79d08e86accc8f422e832257045ba",
+      "population_worldpop": "93bb39bbd91e2bd6dfcf659a22a0bd03beb0e247f0e4d4061e9540819f87580b"
+    },
+    "manual_chargers": "missing: data/manual/chargers.csv does not exist; it is filled by hand from public charger maps (docs/data_sources.md). No charger records were created.",
+    "mode": "production",
+    "places": {
+      "by_place": {
+        "city": 11,
+        "town": 98
+      },
+      "kigali_centre": {
+        "label": "Kigali city centre as mapped in OSM",
+        "osm_id": "node/60485579"
+      },
+      "place_nodes_outside_rwanda": 1,
+      "town_centres": 109
+    },
+    "pois": {
+      "by_type": {
+        "amenity": 4896,
+        "industrial": 13,
+        "office": 298,
+        "shop": 811,
+        "tourism": 665
+      },
+      "pois_counted": 6664
+    },
+    "removed_charger_objects": [],
+    "settings_used": {
+      "crs": {
+        "metric": "EPSG:32735",
+        "storage": "EPSG:4326"
+      },
+      "features": {
+        "charger_count_radii_m": [
+          10000,
+          25000
+        ],
+        "chargers": {
+          "exclude_access": [
+            "private",
+            "no"
+          ],
+          "fuel_sockets_count_as_chargers": true
+        },
+        "grid_osm_tags": {
+          "completeness": [
+            "power=line",
+            "power=minor_line",
+            "power=cable",
+            "power=substation",
+            "power=transformer",
+            "power=tower",
+            "power=pole",
+            "power=portal",
+            "power=plant",
+            "power=generator",
+            "power=connection"
+          ],
+          "line": [
+            "power=line",
+            "power=minor_line",
+            "power=cable"
+          ],
+          "substation": [
+            "power=substation"
+          ]
+        },
+        "kigali_cbd": {
+          "label": "Kigali city centre as mapped in OSM",
+          "osm_id": "node/60485579"
+        },
+        "poi_exclude": [
+          "amenity=charging_station"
+        ],
+        "poi_radii_m": [
+          1000,
+          3000
+        ],
+        "poi_types": {
+          "amenity": [
+            "amenity=*"
+          ],
+          "industrial": [
+            "industrial=*"
+          ],
+          "office": [
+            "office=*"
+          ],
+          "shop": [
+            "shop=*"
+          ],
+          "tourism": [
+            "tourism=*"
+          ]
+        },
+        "population_radii_m": [
+          1000,
+          5000,
+          10000
+        ],
+        "reported_only": [
+          "dist_town_m",
+          "dist_kigali_cbd_m",
+          "outside_rwanda_share_10km",
+          "elevation",
+          "slope"
+        ],
+        "town_centres": [
+          "place=city",
+          "place=town"
+        ],
+        "trunk_road_classes": [
+          "trunk",
+          "trunk_link"
+        ]
+      },
+      "sources.charger_match_radius_m": 50
+    },
+    "trunk_roads": 544
+  },
+  "status": "ok"
+}

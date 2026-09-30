@@ -491,10 +491,14 @@ agent:
     price_table: null
 
 # Milestone 11 (D-062): the optional local server behind the decision page's investigation
-# layer (scripts/serve.py). It always binds 127.0.0.1; the address is fixed in code and is not
-# a setting. The port is only where the page is served locally, not an analytical value.
+# layer (scripts/serve.py). It binds 127.0.0.1; the address is fixed in code and is not a
+# setting. The port is only where the page is served locally, not an analytical value.
+# D-066: started with --public-host (the Render deployment, render.yaml), it listens publicly
+# and lets these origins, and no other, call its two endpoints cross-origin.
 server:
   port: 8765
+  public_origins:
+    - https://gasooom.github.io
 
 # Milestone 11 (D-063): the demo-readiness gate's live part (scripts/demo_gate.py). Each of the
 # three gated investigation kinds runs runs_per_kind times through the page's own server path;

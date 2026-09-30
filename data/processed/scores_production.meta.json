@@ -1,0 +1,367 @@
+{
+  "bounds": [
+    28.8765192,
+    -2.797479,
+    30.8446066,
+    -1.0598903
+  ],
+  "columns": [
+    {
+      "description": "candidates.candidate_id.",
+      "name": "candidate_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.host_type.",
+      "name": "host_type",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.origin.",
+      "name": "origin",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.district_id.",
+      "name": "district_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.district.",
+      "name": "district",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "candidates.province.",
+      "name": "province",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "urban or corridor (SPEC §3 profile rule, D-039).",
+      "name": "profile",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Overall score, 0-100: profile weights x components.",
+      "name": "score",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "1 = highest score in this mode; ties by candidate_id.",
+      "name": "rank",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "High, Medium or Low (SPEC §6, D-041).",
+      "name": "confidence",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Why the level was given, as text.",
+      "name": "confidence_reasons",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "The demand component score, 0-100, after any bonus and the cap at 100.",
+      "name": "component_demand",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "The access component score, 0-100, after any bonus and the cap at 100.",
+      "name": "component_access",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "The host_commercial component score, 0-100, after any bonus and the cap at 100.",
+      "name": "component_host_commercial",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "The charging_gap component score, 0-100, after any bonus and the cap at 100.",
+      "name": "component_charging_gap",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "The grid_evidence component score, 0-100, after any bonus and the cap at 100.",
+      "name": "component_grid_evidence",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Points added to host_commercial for host_type.",
+      "name": "host_bonus",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "Points added to access for the exact road_class.",
+      "name": "road_bonus",
+      "required": true,
+      "type": "int64"
+    },
+    {
+      "description": "CALCULATED, or UNKNOWN when no mapped substation or line lies within 5 km (the grid-evidence component is then 0).",
+      "name": "grid_evidence_status",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "description": "Percentile points of pop_5km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_pop_5km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of pop_1km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_pop_1km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of pop_10km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_pop_10km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of dist_road_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_dist_road_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of dist_trunk_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_dist_trunk_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of poi_1km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_poi_1km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of poi_3km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_poi_3km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of dist_charger_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_dist_charger_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of chargers_10km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_chargers_10km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of chargers_25km, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_chargers_25km",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of dist_substation_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_dist_substation_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "Percentile points of dist_line_m, 0-100, higher is better (inverted if lower is better); 0 when the feature is missing.",
+      "name": "pct_dist_line_m",
+      "required": true,
+      "type": "float64"
+    },
+    {
+      "description": "The fixed list of unknowns every site shares (SPEC §6), separated by '; '.",
+      "name": "universal_unknowns",
+      "required": true,
+      "type": "string"
+    }
+  ],
+  "content_sha256": "affd2134db1ae828248ea96965ce9dc99fd8ec3af3d1402c33f49d217b4b7bbe",
+  "crs": "EPSG:4326",
+  "description": "Milestone 4 scores and confidence for the candidates, production mode (SPEC §5, §6), from features_production.",
+  "file": "scores_production.parquet",
+  "format": "GeoParquet",
+  "geometry_types": {
+    "Point": 300
+  },
+  "id_column": "candidate_id",
+  "layer": "scores_production",
+  "notes": [
+    "Scores rank candidates for investigation; they are not a measure of demand, revenue or grid capacity. Actual grid connection feasibility requires utility confirmation.",
+    "Percentiles are within the candidates of this mode, not a national reference.",
+    "Backtest mode: with no existing charger, the charging-gap component is the same for every candidate (SPEC §5); it is not compensated, so it adds more to corridor scores (weight 0.25) than to urban ones (0.15).",
+    "Universal unknowns: grid connection capacity; transformer capacity; land availability; landowner willingness; permit requirements."
+  ],
+  "row_count": 300,
+  "schema_version": 1,
+  "sources": [],
+  "stats": {
+    "by_confidence": {
+      "High": 113,
+      "Low": 128,
+      "Medium": 59
+    },
+    "by_grid_evidence_status": {
+      "CALCULATED": 186,
+      "UNKNOWN": 114
+    },
+    "by_profile": {
+      "corridor": 193,
+      "urban": 107
+    },
+    "candidates": 300,
+    "decisions": {
+      "D-039": "profile: urban within 10 km of the Kigali city centre or 3 km of a town or city centre, else corridor",
+      "D-040": "percentile = 100 x (below + 0.5 x equal) / n within the mode; ties share a value; missing = 0; lower-is-better inverted; log1p on the skewed counts",
+      "D-041": "confidence: grid evidence missing -> Low; else 0/1/2+ of sparse coverage, no host, remote -> High/Medium/Low",
+      "D-042": "components, exact road-class bonuses, cap at 100, grid evidence missing -> 0 (UNKNOWN); backtest charging gap left constant"
+    },
+    "inputs": {
+      "features_production": "f662ff26a0aa1dcd433e0499b5c6abb3792fe0abdb89cc558a90e748d503dbc7"
+    },
+    "mode": "production",
+    "score": {
+      "max": 77.55,
+      "median": 52.320833,
+      "min": 21.595833
+    },
+    "settings_used": {
+      "confidence": {
+        "factor_count_levels": [
+          "High",
+          "Medium",
+          "Low"
+        ],
+        "grid_evidence_missing_level": "Low",
+        "remote_location_rule": {
+          "max_poi_3km": 0
+        },
+        "sparse_coverage_threshold": 0.5,
+        "universal_unknowns": [
+          "grid connection capacity",
+          "transformer capacity",
+          "land availability",
+          "landowner willingness",
+          "permit requirements"
+        ]
+      },
+      "profile": {
+        "kigali_radius_m": 10000,
+        "town_radius_m": 3000
+      },
+      "scoring": {
+        "grid_evidence": {
+          "missing_component_score": 0,
+          "missing_radius_m": 5000
+        },
+        "log1p_features": [
+          "poi_1km",
+          "poi_3km",
+          "chargers_10km",
+          "chargers_25km"
+        ],
+        "lower_is_better": [
+          "dist_road_m",
+          "dist_trunk_m",
+          "dist_substation_m",
+          "dist_line_m",
+          "chargers_10km",
+          "chargers_25km"
+        ],
+        "scale_max": 100
+      }
+    },
+    "universal_unknowns": [
+      "grid connection capacity",
+      "transformer capacity",
+      "land availability",
+      "landowner willingness",
+      "permit requirements"
+    ],
+    "weights": {
+      "bonuses": {
+        "access": {
+          "road_class": {
+            "primary": 5,
+            "trunk": 10
+          }
+        },
+        "host_commercial": {
+          "host_type": {
+            "fuel": 10,
+            "hotel": 5,
+            "industrial": 0,
+            "logistics": 5,
+            "mall": 10,
+            "none": 0,
+            "supermarket": 5
+          }
+        }
+      },
+      "components": {
+        "access": {
+          "dist_road_m": 0.5,
+          "dist_trunk_m": 0.5
+        },
+        "charging_gap": {
+          "chargers_10km": 0.25,
+          "chargers_25km": 0.25,
+          "dist_charger_m": 0.5
+        },
+        "demand": {
+          "pop_10km": 0.25,
+          "pop_1km": 0.25,
+          "pop_5km": 0.5
+        },
+        "grid_evidence": {
+          "dist_line_m": 0.5,
+          "dist_substation_m": 0.5
+        },
+        "host_commercial": {
+          "poi_1km": 0.5,
+          "poi_3km": 0.5
+        }
+      },
+      "profiles": {
+        "corridor": {
+          "access": 0.3,
+          "charging_gap": 0.25,
+          "demand": 0.15,
+          "grid_evidence": 0.15,
+          "host_commercial": 0.15
+        },
+        "urban": {
+          "access": 0.2,
+          "charging_gap": 0.15,
+          "demand": 0.3,
+          "grid_evidence": 0.1,
+          "host_commercial": 0.25
+        }
+      }
+    }
+  },
+  "status": "ok"
+}

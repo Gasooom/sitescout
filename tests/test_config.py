@@ -386,6 +386,8 @@ EXPECTED_M10_PHASE6_SETTINGS = {
 # Milestone 11 decision (D-062): the local server's port; the bind address is not a setting.
 EXPECTED_M11_SETTINGS = {
     "server.port": 8765,
+    # D-066: the only origin the public deployment answers cross-origin.
+    "server.public_origins": ["https://gasooom.github.io"],
     # D-063: the demo-readiness gate.
     "paths.demo_gate_report": "reports/demo_gate.md",
     "demo_gate.runs_per_kind": 2,
@@ -444,6 +446,24 @@ def test_the_demo_gate_settings_are_checked(settings_data, weights_data, dotted,
 def test_the_server_bind_address_is_not_a_setting(settings_data, weights_data):
     settings_data["server"]["host"] = "0.0.0.0"
     with pytest.raises(ConfigError, match="Extra inputs are not permitted"):
+        build_config(settings_data, weights_data)
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        (["http://gasooom.github.io"], "should match pattern"),
+        (["https://gasooom.github.io/"], "should match pattern"),
+        (["https://gasooom.github.io/sitescout"], "should match pattern"),
+        (["https://Gasooom.github.io"], "should match pattern"),
+        (["*"], "should match pattern"),
+        (["https://a.example", "https://a.example"], "duplicate"),
+    ],
+)
+def test_the_public_origins_are_checked(settings_data, weights_data, value, message):
+    # D-066: exact https origins only; no scheme downgrade, path, wildcard or duplicate.
+    set_path(settings_data, "server.public_origins", value)
+    with pytest.raises(ConfigError, match=message):
         build_config(settings_data, weights_data)
 
 
