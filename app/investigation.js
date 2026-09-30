@@ -15,7 +15,7 @@
 window.SiteScoutInvestigation = (function () {
   // D-066: where a static copy of the page finds the investigation server, by the page's own
   // origin. Every other view asks the server that served it. An empty address means none.
-  const BACKENDS = { "https://gasooom.github.io": "" };
+  const BACKENDS = { "https://gasooom.github.io": "https://sitescout-investigation.onrender.com" };
   const API = BACKENDS[location.origin] || "";
   const api = (path) => API + path;
 
