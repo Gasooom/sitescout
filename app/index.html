@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8.6' fill='none' stroke='%231f4e79' stroke-opacity='.5'/%3E%3Ccircle cx='10' cy='10' r='3.6' fill='%231f4e79'/%3E%3C/svg%3E">
 <title>SiteScout · Charging network expansion · Rwanda</title>
 <!--
   SiteScout decision page (Milestones 8 and 11). A read-only view over data/export/sitescout.js,
   which scripts/export.py writes from the pipeline's outputs. This page computes nothing: every
-  number it shows is a display string from the export; it only draws and lays out.
-  investigation.js adds the optional investigation layer when the page is served locally by
-  scripts/serve.py (D-062); opened from disk, the page is the complete decision view on its own.
+  number it shows is a display string from the export; it only draws, lays out and formats.
+  investigation.js adds the optional investigation layer when a server answers for it (D-062,
+  D-066); opened from disk, the page is the complete decision view on its own.
 -->
 <style>
   /* IBM Plex Sans and Mono, SIL OFL 1.1 (app/fonts/LICENSE.txt), shipped with the page so it needs no
@@ -24,143 +26,177 @@
     src: url("fonts/IBMPlexMono-Regular.woff2") format("woff2"); }
 
   :root {
-    /* Colour. No general brand colour: interface in ink, one colour per network, one for "verify". */
-    --bg: #f5f4f0; --surface: #ffffff; --surface-2: #f8f7f3; --land: #fbfaf7;
-    --ink: #17191c; --ink-2: #3a4047; --muted: #5f666e;
+    /* Colour (D-067). Paper, ink, one colour per network, and one amber for what is not yet known. */
+    --bg: #f2f0ea; --surface: #fdfcf9; --surface-2: #f7f5ee; --land: #faf8f2; --sel: #eeebe2;
+    --ink: #17191c; --ink-2: #363c43; --muted: #58606a;
     --faint: #8b9298; /* candidate dots and disabled states; never text a reader needs */
-    --line: #d6d2c8; --line-soft: #e7e3dc; --boundary: #a39b8c;
+    --line: #d3cfc3; --line-soft: #e6e2d8; --boundary: #a49c8b;
     --net-optimized: #1f4e79; --net-greedy: #5f6b78; --net-top30: #7b4b72;
-    --verify: #855a0c; --verify-soft: #f7efdc; --verify-line: #d9bf8a;
+    --verify: #7a5108; --verify-soft: #f7efdc; --verify-line: #d6bb84;
     --warn: #a0431a; /* a failed validation step in the investigation trace */
 
-    /* Type: six steps; every number uses tabular figures. */
+    /* Type: Plex Sans for reading, Plex Mono for identifiers, coordinates and section numbers. */
     --sans: "IBM Plex Sans", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    --fs-label: 11px; --fs-meta: 12px; --fs-body: 13px; --fs-title: 15px; --fs-site: 20px; --fs-outcome: 32px;
-    --lh-label: 14px; --lh-meta: 16px; --lh-body: 19px; --lh-title: 20px; --lh-site: 26px; --lh-outcome: 36px;
+    --fs-label: 11px; --fs-meta: 12px; --fs-body: 13px; --fs-lead: 15px; --fs-title: 17px; --fs-site: 22px; --fs-outcome: 44px;
+    --lh-label: 14px; --lh-meta: 17px; --lh-body: 20px; --lh-lead: 23px; --lh-title: 24px; --lh-site: 28px; --lh-outcome: 46px;
 
     /* Space: a 4 px base. */
-    --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px;
+    --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
 
-    /* Borders, radius and the one shadow (for what floats over the map). */
+    /* Lines, radius and the one shadow (for what floats over the map). */
     --border-zone: 1px solid var(--line); --border-row: 1px solid var(--line-soft);
     --border-verify: 1px dashed var(--verify-line);
-    --r-0: 0; --r-1: 2px; --r-2: 4px; --r-3: 6px;
-    --shadow-float: 0 1px 2px rgba(23, 25, 28, 0.08), 0 4px 12px rgba(23, 25, 28, 0.08);
+    --r-1: 2px; --r-2: 4px;
+    --shadow-float: 0 1px 2px rgba(23, 25, 28, 0.08), 0 4px 12px rgba(23, 25, 28, 0.06);
 
-    /* Earlier names, kept as aliases until the later phases move each component onto the tokens above. */
-    --line-2: var(--line-soft); --accent: var(--ink); --accent-strong: var(--ink); --accent-soft: var(--surface-2);
+    /* Motion: short, purposeful, and off entirely when the reader asks for less. */
+    --dur-fast: 120ms; --dur: 200ms; --ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* Network colours as the map draws them. */
     --mclp: var(--net-optimized); --greedy: var(--net-greedy); --top30: var(--net-top30);
-    --mclp-ring: rgba(31, 78, 121, 0.09); --greedy-ring: rgba(95, 107, 120, 0.09); --top30-ring: rgba(123, 75, 114, 0.09);
     --mclp-halo: rgba(31, 78, 121, 0.16); --greedy-halo: rgba(95, 107, 120, 0.16); --top30-halo: rgba(123, 75, 114, 0.16);
-    --candidate: #bdc4cb; --charger: var(--ink); --district: #edebe5; --province: var(--boundary);
-    --focus: var(--ink);
+    --candidate: #bdc4cb; --focus: var(--ink);
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; scroll-padding-top: 56px; }
   html, body { margin: 0; }
   body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: var(--fs-body);
     line-height: var(--lh-body); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  a { color: var(--accent); text-underline-offset: 2px; }
+  a { color: var(--ink); text-decoration-color: var(--boundary); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-color: currentColor; }
   h1, h2, h3, h4, h5, p { margin: 0; }
   .mono { font-family: var(--mono); font-size: var(--fs-meta); }
-  [data-section] { scroll-margin-top: 64px; }
+  [data-section] { scroll-margin-top: 56px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+    white-space: nowrap; border: 0; }
+  .skip { position: absolute; left: var(--s-2); top: -56px; z-index: 100; background: var(--ink); color: #fff;
+    padding: var(--s-2) var(--s-3); border-radius: var(--r-1); text-decoration: none; font-weight: 500; }
+  .skip:focus { top: var(--s-2); }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; }
     html { scroll-behavior: auto; } }
 
-  /* Section labels: the only routine use of uppercase */
-  .label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; letter-spacing: 0.06em;
+  /* A small mono kicker: the one routine use of capitals, for section numbers and instrument labels. */
+  .kicker { font-family: var(--mono); font-size: var(--fs-label); line-height: var(--lh-label); letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--muted); }
+  .label { font-size: var(--fs-meta); line-height: var(--lh-meta); font-weight: 500; color: var(--muted); }
 
   /* --- Top bar: the product, the network workspace and the reference sections --------------- */
   .app { min-height: 100vh; }
   .topbar { position: sticky; top: 0; z-index: 30; height: 48px; display: flex; align-items: center; gap: var(--s-5);
     padding: 0 var(--s-5); background: var(--surface); border-bottom: var(--border-zone); }
-  .brand { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .brand { display: inline-flex; align-items: center; gap: 9px; font-size: var(--fs-lead); line-height: var(--lh-title);
+    font-weight: 600; letter-spacing: -0.005em; color: var(--ink); white-space: nowrap; }
+  .brand svg { width: 20px; height: 20px; color: var(--mclp); flex: none; }
   .tabs { display: flex; align-items: stretch; align-self: stretch; }
   .nav { display: flex; align-items: center; border: 0; background: none; padding: 0 var(--s-3); cursor: pointer;
-    color: var(--muted); font-size: var(--fs-body); white-space: nowrap; position: relative; transition: color 0.15s; }
+    color: var(--muted); font-size: var(--fs-body); white-space: nowrap; position: relative;
+    transition: color var(--dur-fast) var(--ease); }
   .nav:hover { color: var(--ink); }
   .nav:focus-visible { outline-offset: -2px; }
   .nav[aria-current="true"] { color: var(--ink); font-weight: 500; }
   .nav[aria-current="true"]::after { content: ""; position: absolute; left: var(--s-3); right: var(--s-3); bottom: -1px;
     height: 2px; background: var(--ink); }
-  .tabsep { width: 1px; background: var(--line); margin: 14px var(--s-2); }
-  .through { margin-left: auto; font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; }
-  .menu { display: none; border: var(--border-zone); background: var(--surface); border-radius: var(--r-2); width: 32px; height: 32px;
+  .tabsep { width: 1px; background: var(--line); margin: 16px var(--s-2); }
+  .through { margin-left: auto; color: var(--muted); white-space: nowrap; }
+  .menu { display: none; border: var(--border-zone); background: var(--surface); border-radius: var(--r-2); width: 36px; height: 36px;
     padding: 0; cursor: pointer; align-items: center; justify-content: center; flex: none; }
   .menu svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 1.6; stroke-linecap: round; }
   .banner { background: var(--verify-soft); border-bottom: 1px solid var(--verify-line); padding: var(--s-2) var(--s-5);
     font-size: var(--fs-body); }
 
-  /* --- Network outcome: one large figure, its reach, and the network switch ------------------- */
-  .outcome { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s-3) var(--s-6);
-    padding: var(--s-4) var(--s-5); background: var(--surface); border-bottom: var(--border-zone); scroll-margin-top: 48px; }
-  .oc-kicker { grid-column: 1 / -1; display: flex; gap: var(--s-3); align-items: baseline; flex-wrap: wrap; color: var(--ink-2); }
-  .oc-kicker .label { color: var(--ink-2); }
-  .oc-figure { display: flex; align-items: flex-end; gap: var(--s-3); min-width: 0; }
-  .oc-big { font-size: var(--fs-outcome); line-height: var(--lh-outcome); font-weight: 600; letter-spacing: -0.01em;
-    color: var(--mclp); transition: color 0.25s; }
+  /* --- Masthead: the question, the answer for the network in view, and the three networks to compare --- */
+  .outcome { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s-2) var(--s-6);
+    padding: var(--s-4) var(--s-5) 0; background: var(--surface); border-bottom: var(--border-zone); scroll-margin-top: 48px; }
+  .oc-lead { min-width: 0; padding-bottom: var(--s-3); }
+  .oc-question { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--muted); }
+  .oc-figure { display: flex; align-items: flex-end; gap: var(--s-3); min-width: 0; margin-top: var(--s-1); }
+  .oc-big { font-size: var(--fs-outcome); line-height: var(--lh-outcome); font-weight: 600; letter-spacing: -0.02em;
+    color: var(--mclp); transition: color var(--dur) var(--ease); }
   .oc-figure[data-mode="greedy"] .oc-big { color: var(--greedy); }
   .oc-figure[data-mode="top30"] .oc-big { color: var(--top30); }
-  .oc-text { display: flex; flex-direction: column; padding-bottom: 3px; color: var(--muted); }
+  .oc-text { display: flex; flex-direction: column; padding-bottom: 4px; color: var(--muted); min-width: 0; }
   .oc-facts { color: var(--ink-2); }
   .oc-facts b { font-weight: 600; color: var(--ink); }
-  .oc-facts .sep { color: var(--faint); margin: 0 var(--s-2); }
-  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
-    white-space: nowrap; border: 0; }
+  .oc-facts .sep { color: var(--muted); margin: 0 var(--s-2); }
+  .fade { transition: opacity var(--dur) var(--ease); }
+  .enter .fade { opacity: 0; transition: none; }
 
-  /* The network switch: one joined control; the pressed network shows its map colour. */
-  .seg { display: inline-flex; border: var(--border-zone); border-radius: var(--r-2); overflow: hidden; background: var(--surface); }
-  .seg button { display: flex; align-items: center; gap: var(--s-2); height: 32px; padding: 0 var(--s-3); border: 0;
-    border-left: var(--border-zone); background: transparent; cursor: pointer; font-size: var(--fs-body); color: var(--muted);
-    white-space: nowrap; text-align: left; transition: background 0.15s, color 0.15s; }
-  .seg button:first-child { border-left: 0; }
-  .seg button:focus-visible { outline-offset: -2px; }
-  .seg button:hover { color: var(--ink); }
-  .seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 500; }
-  .seg button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--line); }
-  .seg button.mclp[aria-pressed="true"]::before { background: var(--mclp); }
-  .seg button.greedy[aria-pressed="true"]::before { background: var(--greedy); }
-  .seg button.top30[aria-pressed="true"]::before { background: var(--top30); }
+  /* The network switch reads as the masthead's tabs: each network with its coverage, side by side. */
+  .compare { display: flex; align-items: stretch; gap: var(--s-1); }
+  .compare button { display: grid; gap: 1px; text-align: left; align-content: start; min-width: 148px; padding: var(--s-2) var(--s-3) 10px;
+    border: 0; border-bottom: 3px solid transparent; background: none; cursor: pointer; color: var(--muted);
+    transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); margin-bottom: -1px; }
+  .compare button:hover { background: var(--surface-2); color: var(--ink); }
+  .compare button:focus-visible { outline-offset: -2px; }
+  .compare .t-name { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); font-size: var(--fs-body);
+    font-weight: 500; }
+  .compare .t-fig { font-weight: 600; }
+  .compare .t-how { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); max-width: 190px; }
+  .compare button[aria-pressed="true"] { color: var(--ink); }
+  .compare button[aria-pressed="true"] .t-name { font-weight: 600; }
+  .compare button.mclp[aria-pressed="true"] { border-bottom-color: var(--mclp); }
+  .compare button.greedy[aria-pressed="true"] { border-bottom-color: var(--greedy); }
+  .compare button.top30[aria-pressed="true"] { border-bottom-color: var(--top30); }
+  .compare .t-name::before { content: ""; order: -1; width: 8px; height: 8px; border-radius: 50%; background: var(--line);
+    margin-right: var(--s-2); align-self: center; flex: none; }
+  .compare button.mclp[aria-pressed="true"] .t-name::before { background: var(--mclp); }
+  .compare button.greedy[aria-pressed="true"] .t-name::before { background: var(--greedy); }
+  .compare button.top30[aria-pressed="true"] .t-name::before { background: var(--top30); }
+  .compare .t-name > span:first-child { flex: 1; }
 
+  .oc-how { display: none; grid-column: 1 / -1; font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); padding: var(--s-2) 0 var(--s-3); }
   .main { min-width: 0; }
   .content { display: block; width: 100%; }
-  .report { padding: var(--s-5) var(--s-5) 40px; max-width: 1520px; }
+  .writeup { padding: var(--s-7) var(--s-5) 48px; max-width: 1240px; margin: 0 auto; }
 
-  /* --- The recurring motif: a site node inside its service ring, as drawn on the map -------- */
+  /* The recurring motif: a site node inside its service ring, as drawn on the map. */
   .node { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--mclp);
     box-shadow: 0 0 0 2px var(--surface), 0 0 0 5px var(--mclp-halo); }
   .node.greedy { background: var(--greedy); box-shadow: 0 0 0 2px var(--surface), 0 0 0 5px var(--greedy-halo); }
   .node.top30 { background: var(--top30); box-shadow: 0 0 0 2px var(--surface), 0 0 0 5px var(--top30-halo); }
   .node.off { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--candidate); }
 
-  /* --- The deck: the outcome over one workspace that fills the screen under the top bar -------
-     Opportunities | map | site dossier, divided by lines, not cards. The map takes the free width. */
+  /* --- The deck: the masthead over one workspace that fills the screen under the top bar -------
+     Opportunities | map | site dossier, divided by hairlines. The map takes every spare pixel. */
   .deck { display: flex; flex-direction: column; height: calc(100vh - 48px); min-height: 640px; }
-  .workbench { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr) 380px;
+  .workbench { flex: 1; min-height: 0; display: grid;
+    grid-template-columns: clamp(276px, 21vw, 328px) minmax(0, 1fr) clamp(364px, 28vw, 440px);
     grid-template-areas: "list map dossier"; background: var(--surface); border-bottom: var(--border-zone); }
   .queue { grid-area: list; border-right: var(--border-zone); }
   .mapcol { grid-area: map; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   .dcol { grid-area: dossier; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-left: var(--border-zone);
     background: var(--surface); }
-  .dempty { padding: var(--s-4) 18px; }
-  .dempty p:not(.label) { margin-top: var(--s-2); color: var(--muted); max-width: 320px; }
-  .enter .fade { opacity: 0; transition: none; }
-  .fade { transition: opacity 0.25s; }
+  .dempty { padding: var(--s-6) var(--s-5); }
+  .dempty h2 { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 600; margin-top: var(--s-2); }
+  .dempty p:not(.kicker) { margin-top: var(--s-2); color: var(--muted); max-width: 340px; font-size: var(--fs-lead); line-height: var(--lh-lead); }
 
   .mapwrap { position: relative; flex: 1; min-height: 0; display: flex; background: var(--bg); }
-  /* --u is map units per screen pixel (set by the page on resize): symbols, lines and labels keep one
-     screen size at every width, while boundaries, rings and the scale bar stay geographic. */
-  #map { --u: 1.4; width: 100%; height: 100%; display: block; }
+  .mapwrap:focus-visible { outline-offset: -3px; }
+  /* --u is map units per screen pixel (set by the page on resize and zoom): symbols, lines and labels keep
+     one screen size at every width, while boundaries, rings and the scale bar stay geographic. */
+  #map { --u: 1.4; width: 100%; height: 100%; display: block; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  #map.zoomed { touch-action: none; cursor: grab; }
+  #map.panning { cursor: grabbing; }
   #map * { vector-effect: non-scaling-stroke; }
 
-  /* Legend: the one element floating over the map. */
-  .legend { position: absolute; right: var(--s-3); bottom: var(--s-3); z-index: 1; display: grid; gap: var(--s-1);
-    font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--ink-2); background: var(--surface);
-    border: var(--border-zone); border-radius: var(--r-3); box-shadow: var(--shadow-float); padding: var(--s-2) var(--s-3); }
+  /* Map controls: four quiet buttons, square-cornered like the rest of the instrument. */
+  .mapctl { position: absolute; top: var(--s-3); right: var(--s-3); z-index: 2; display: grid; background: var(--surface);
+    border: var(--border-zone); border-radius: var(--r-2); overflow: hidden; }
+  .mapctl button { width: 34px; height: 34px; padding: 0; border: 0; border-top: var(--border-row); background: none; cursor: pointer;
+    display: grid; place-items: center; color: var(--ink-2); transition: background var(--dur-fast) var(--ease); }
+  .mapctl button:first-child { border-top: 0; }
+  .mapctl button:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+  .mapctl button:disabled { color: var(--faint); cursor: default; opacity: 0.55; }
+  .mapctl button:focus-visible { outline-offset: -2px; }
+  .mapctl svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Legend: a quiet key over the map's lower right corner. */
+  .legend { position: absolute; right: var(--s-3); bottom: var(--s-3); z-index: 1; display: grid; gap: 3px;
+    font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--ink-2); background: rgba(253, 252, 249, 0.92);
+    border: var(--border-zone); border-radius: var(--r-2); padding: var(--s-2) var(--s-3); }
   .legend span { display: inline-flex; align-items: center; gap: var(--s-2); white-space: nowrap; }
   .legend i { display: inline-block; flex: none; width: 12px; height: 12px; border-radius: 50%; position: relative; }
   .legend i.node { width: 9px; height: 9px; margin: 0 1.5px; box-shadow: none; }
@@ -174,307 +210,323 @@
 
   /* Ground: the country outline, quiet land, district lines under province lines, a graticule outside. */
   .graticule { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; pointer-events: none; }
-  .country { fill: var(--land); stroke: var(--ink-2); stroke-width: 2; pointer-events: none; }
-  .district { fill: var(--land); stroke: var(--line-soft); stroke-width: 1; transition: fill 0.2s; }
-  .district:hover { fill: #f3f1eb; }
+  .country { fill: var(--land); stroke: var(--ink-2); stroke-width: 1.75; pointer-events: none; }
+  .district { fill: var(--land); stroke: var(--line-soft); stroke-width: 1; transition: fill var(--dur) var(--ease); }
+  .district:hover { fill: #f1eee5; }
   .province { fill: none; stroke: var(--boundary); stroke-width: 1; pointer-events: none; }
-  .plabel { fill: var(--muted); font-family: var(--sans); font-size: calc(10px * var(--u)); font-weight: 500;
-    letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; paint-order: stroke; stroke: var(--land);
-    stroke-width: calc(3px * var(--u)); stroke-linejoin: round; vector-effect: none; }
+  .plabel, .dlabel { font-family: var(--sans); pointer-events: none; paint-order: stroke; stroke: var(--land); stroke-linejoin: round;
+    vector-effect: none; text-anchor: middle; }
+  .plabel { fill: #857d6e; font-size: calc(10px * var(--u)); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+    stroke-width: calc(3px * var(--u)); }
+  .dlabel { fill: var(--muted); font-size: calc(11px * var(--u)); stroke-width: calc(3px * var(--u)); display: none; }
+  #map[data-zoom="in"] .dlabel { display: block; }
+  #map[data-zoom="in"] .plabel { opacity: 0.4; }
 
   /* Instruments: graticule labels, scale bar, north arrow. Thin, compact, low contrast. */
-  .gratlabel { fill: var(--faint); font-family: var(--sans); font-size: calc(10px * var(--u)); pointer-events: none; }
+  .gratlabel { fill: var(--muted); font-family: var(--mono); font-size: calc(10px * var(--u)); pointer-events: none; opacity: 0.8; }
   .scalebar { fill: none; stroke: var(--ink-2); stroke-width: 1.5; pointer-events: none; }
-  .maptext { fill: var(--ink-2); font-family: var(--sans); font-size: calc(11px * var(--u)); font-weight: 500; pointer-events: none; }
+  .maptext { fill: var(--ink-2); font-family: var(--mono); font-size: calc(11px * var(--u)); pointer-events: none; }
 
   /* Candidates: small and quiet, with a slightly larger transparent edge to click. */
   .cand { r: calc(2.25px * var(--u)); fill: var(--faint); stroke: transparent; stroke-width: 6; cursor: pointer;
-    transition: fill 0.15s, opacity 0.15s; }
+    transition: fill var(--dur-fast), opacity var(--dur-fast); }
   .cand:hover, .cand:focus { fill: var(--ink-2); outline: none; }
+  #map.focused .cand { opacity: 0.55; }
 
   /* Known charging sites (public data): a dark square of their own. */
   .charger rect { transform: scale(var(--u)); fill: var(--ink); stroke: var(--surface); stroke-width: 1; pointer-events: none; }
 
   /* The modelled 10 km service radius: an outline with a trace of fill, so overlaps stay readable. */
   .ring { pointer-events: none; stroke-width: 1; }
-  .ring.mclp { fill: rgba(31, 78, 121, 0.04); stroke: rgba(31, 78, 121, 0.32); }
-  .ring.greedy { fill: rgba(95, 107, 120, 0.04); stroke: rgba(95, 107, 120, 0.32); }
-  .ring.top30 { fill: rgba(123, 75, 114, 0.04); stroke: rgba(123, 75, 114, 0.32); }
+  .ring.mclp { fill: rgba(31, 78, 121, 0.035); stroke: rgba(31, 78, 121, 0.3); }
+  .ring.greedy { fill: rgba(95, 107, 120, 0.035); stroke: rgba(95, 107, 120, 0.3); }
+  .ring.top30 { fill: rgba(123, 75, 114, 0.035); stroke: rgba(123, 75, 114, 0.3); }
   .ring-focus { pointer-events: none; stroke-width: 1.5; }
   .ring-focus.mclp { fill: rgba(31, 78, 121, 0.1); stroke: var(--mclp); }
   .ring-focus.greedy { fill: rgba(95, 107, 120, 0.1); stroke: var(--greedy); }
   .ring-focus.top30 { fill: rgba(123, 75, 114, 0.1); stroke: var(--top30); }
 
-  /* Active network sites: the dominant marks. The visible dot stays small; the hit area is larger. */
+  /* Network sites: the dominant marks. The visible dot stays small; the hit area is larger. */
   .site { cursor: pointer; outline: none; }
-  .site .hit { r: calc(10px * var(--u)); fill: transparent; }
-  .site .dot { r: calc(5.5px * var(--u)); stroke: var(--surface); stroke-width: 1.5; transition: r 0.15s, opacity 0.15s; }
+  .site .hit { r: calc(11px * var(--u)); fill: transparent; }
+  .site .dot { r: calc(5.5px * var(--u)); stroke: var(--surface); stroke-width: 1.5; transition: r var(--dur-fast), opacity var(--dur-fast); }
   .site.mclp .dot { fill: var(--mclp); } .site.greedy .dot { fill: var(--greedy); } .site.top30 .dot { fill: var(--top30); }
-  .site:hover .dot { r: calc(7px * var(--u)); }
+  .site:hover .dot, .site.hl .dot { r: calc(7px * var(--u)); }
+  .site.hl .dot { stroke: var(--ink); stroke-width: 1.75; }
   .site:focus-visible .dot { r: calc(7px * var(--u)); stroke: var(--ink); stroke-width: 2; }
   @media (pointer: coarse) { .site .hit { r: calc(22px * var(--u)); } } /* 44 px to tap */
   #map.compact .site .dot { r: calc(4.5px * var(--u)); }
-  #map.compact .site:hover .dot, #map.compact .site:focus-visible .dot { r: calc(5.5px * var(--u)); }
+  #map.compact .site:hover .dot, #map.compact .site.hl .dot, #map.compact .site:focus-visible .dot { r: calc(5.5px * var(--u)); }
   #map.compact .focus .halo { r: calc(9px * var(--u)); }
   #map.compact .focus .focusdot { r: calc(5.5px * var(--u)); }
 
-  /* The selected site: its dot inside an ink ring, over its own service ring; the rest steps back. */
-  #map.focused .site .dot { opacity: 0.7; }
-  #map.focused .cand { opacity: 0.5; }
+  /* The selected site is a place: its dot inside an ink ring, over its own service ring, named on the
+     map. Every other site steps back. */
+  #map.focused .site .dot { opacity: 0.68; }
+  #map.focused .site.hl .dot { opacity: 1; }
   .focus { pointer-events: none; }
   .focus .halo { r: calc(11px * var(--u)); fill: none; stroke: var(--ink); stroke-width: 2; }
   .focus .focusdot { r: calc(7px * var(--u)); fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
   .focus.mclp .focusdot { fill: var(--mclp); } .focus.greedy .focusdot { fill: var(--greedy); }
   .focus.top30 .focusdot { fill: var(--top30); }
+  .flabel { pointer-events: none; font-family: var(--sans); fill: var(--ink); font-size: calc(12px * var(--u)); font-weight: 600;
+    paint-order: stroke; stroke: var(--land); stroke-width: calc(4px * var(--u)); stroke-linejoin: round; vector-effect: none; }
+  .flabel tspan.sub { font-weight: 400; fill: var(--ink-2); font-size: calc(11px * var(--u)); }
 
   .maptip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; border-radius: var(--r-2); padding: 7px 10px;
     font-size: var(--fs-meta); line-height: 1.35; transform: translate(-50%, calc(-100% - 12px)); white-space: nowrap; opacity: 0;
-    transition: opacity 0.12s; z-index: 2; }
+    transition: opacity var(--dur-fast); z-index: 3; }
   .maptip.show { opacity: 1; }
   .maptip b { display: block; font-weight: 600; font-size: var(--fs-meta); }
-  .maptip span { color: #c9d0d6; }
+  .maptip span { color: #ccd2d8; }
 
-  /* --- Opportunity queue -------------------------------------------------------------------- */
+  /* --- Opportunity queue: a working list, set in type and divided by hairlines -------------- */
   .queue { min-height: 0; overflow-y: auto; position: relative; overscroll-behavior: contain; }
-  .qhead { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: var(--s-4) var(--s-4) var(--s-2);
+  .qhead { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: var(--s-4) var(--s-4) var(--s-3);
     border-bottom: var(--border-zone); }
-  .qhead h2 { display: flex; align-items: center; gap: 10px; font-size: var(--fs-title); font-weight: 600; margin-top: 6px; }
-  .qhead p { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
-  .qlist { list-style: none; margin: 0; padding: 0 0 8px; }
-  .qhead p.qcols { display: flex; justify-content: space-between; gap: var(--s-2); margin-top: var(--s-3);
-    font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--muted); }
-  /* A row: rank, then the location and its score, where it is and what it adds, and how sure we are. */
-  .qlist button { width: 100%; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--s-1); text-align: left;
-    background: none; border: 0; border-bottom: var(--border-row); padding: var(--s-2) var(--s-4); cursor: pointer;
-    position: relative; transition: background 0.12s; }
-  .qlist button:hover { background: var(--surface-2); }
-  .qlist button[aria-current="true"] { background: var(--surface-2); }
+  .qhead h2 { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 600; margin-top: var(--s-1); }
+  .qhead p.sub { display: flex; align-items: center; gap: 10px; font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); margin-top: 6px; }
+  .qhead p.sub .node { width: 8px; height: 8px; }
+  .hint { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--s-2); transition: color 0.4s; }
+  .qlist { list-style: none; margin: 0; padding: 0 0 var(--s-2); }
+  .qlist button { width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 0 var(--s-2); text-align: left;
+    background: none; border: 0; border-bottom: var(--border-row); padding: 11px var(--s-4) 11px var(--s-3); cursor: pointer;
+    position: relative; transition: background var(--dur-fast) var(--ease); }
+  .qlist button:hover, .qlist button.hl { background: var(--surface-2); }
+  .qlist button:focus-visible { outline-offset: -2px; }
+  .qlist button[aria-current="true"] { background: var(--sel); }
   .qlist button[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
     background: var(--mclp); }
   .qlist[data-mode="greedy"] button[aria-current="true"]::before { background: var(--greedy); }
   .qlist[data-mode="top30"] button[aria-current="true"]::before { background: var(--top30); }
   /* The leading number is the site's position in this network's list (1..N), never its global score
      rank (of 300); that number is spelled out on its own line below as "Score rank #X / 300". */
-  .qlist .rank { display: flex; flex-direction: column; padding-top: 1px; font-variant-numeric: tabular-nums; line-height: 1.15; }
-  .qlist .rank b { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
-  .qlist .rank small { font-size: 10px; color: var(--faint); }
-  .qlist .row { display: flex; flex-direction: column; min-width: 0; }
-  .qlist .l1, .qlist .l2 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); min-width: 0; }
-  .qlist .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .qlist .l1 b { font-weight: 600; flex: none; }
-  .qlist .l2 { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); }
-  .qlist .l2b { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--faint); margin-top: 1px; }
-  .qlist .contrib { color: var(--ink-2); flex: none; }
-  .qlist .l3 { display: flex; align-items: center; gap: var(--s-3); font-size: var(--fs-meta); line-height: var(--lh-meta);
+  .qlist .rank { display: flex; flex-direction: column; padding-top: 1px; font-family: var(--mono); line-height: 1.2; }
+  .qlist .rank b { font-size: var(--fs-meta); font-weight: 400; color: var(--ink); }
+  .qlist .rank small { font-size: 10px; color: var(--muted); }
+  .qlist .row { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+  .qlist .l1 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); min-width: 0; }
+  .qlist .name { font-size: 13.5px; font-weight: 500; overflow-wrap: anywhere; }
+  .qlist button[aria-current="true"] .name { font-weight: 600; }
+  .qlist .l1 b { font-weight: 600; font-size: var(--fs-lead); flex: none; }
+  .qlist .where { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); }
+  .qlist .why { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--ink-2); margin-top: 3px; }
+  .qlist .why b { font-weight: 600; color: var(--ink); }
+  .qlist .l3 { display: flex; align-items: center; flex-wrap: wrap; gap: 0 var(--s-2); font-size: var(--fs-meta); line-height: var(--lh-meta);
     color: var(--muted); margin-top: 2px; }
   .qlist .l3 .verify-tag { font-weight: 500; }
-  .qnote { font-size: var(--fs-meta); color: var(--muted); padding: var(--s-2) var(--s-4) var(--s-4); }
-  .hint { font-size: var(--fs-meta); color: var(--muted); margin-top: 6px; transition: color 0.4s; }
+  .qnote { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); padding: var(--s-3) var(--s-4) var(--s-5); }
 
-  /* Provenance: how SiteScout knows something. Small, typographic, never a badge. */
-  .prov { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; color: var(--muted); white-space: nowrap; cursor: help; }
-  .prov::before { content: ""; width: 6px; height: 6px; flex: none; box-sizing: border-box; }
-  .p-RETRIEVED_FACT::before { background: var(--ink-2); border-radius: 50%; }
-  .p-CALCULATED::before { background: var(--faint); border-radius: 1px; }
+  /* Provenance: how SiteScout knows something. Four marks, set in type; uncertainty is amber and dashed. */
+  .prov { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-meta); font-weight: 500; color: var(--ink-2);
+    white-space: nowrap; cursor: help; }
+  .prov::before { content: ""; width: 8px; height: 8px; flex: none; box-sizing: border-box; }
+  .p-RETRIEVED_FACT::before { background: var(--ink); border-radius: 50%; }
+  .p-CALCULATED::before { background: var(--ink-2); border-radius: 1px; }
+  .p-INFERRED { color: var(--muted); }
   .p-INFERRED::before { border: 1.5px solid var(--muted); border-radius: 50%; }
   .p-UNKNOWN { color: var(--verify); }
-  .p-UNKNOWN::before { border: 1.5px dashed var(--verify); border-radius: 50%; width: 7px; height: 7px; }
+  .p-UNKNOWN::before { border: 1.5px dashed var(--verify); border-radius: 50%; width: 9px; height: 9px; }
 
-  /* Unknown → Verify: the explicit boundary of the evidence */
-  .verify-tag { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; color: var(--verify); white-space: nowrap; flex: none; }
-  .verify-tag::before { content: ""; width: 7px; height: 7px; border: 1.5px dashed var(--verify); border-radius: 50%; }
+  /* Unknown → Verify: the explicit boundary of the evidence. Open questions, never an error. */
+  .verify-tag { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-meta); font-weight: 500; color: var(--verify);
+    white-space: nowrap; flex: none; }
+  .verify-tag::before { content: ""; width: 8px; height: 8px; border: 1.5px dashed var(--verify); border-radius: 50%; }
   .verify { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--verify-line); }
-  .verify li { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 8px 2px;
+  .verify li { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 9px 2px;
     border-bottom: 1px solid var(--verify-line); font-size: var(--fs-body); }
   .verify li span.d { display: block; font-size: var(--fs-meta); color: var(--muted); }
 
-  /* --- Site dossier ------------------------------------------------------------------------- */
-  .dossier { transition: opacity 0.2s; }
+  /* --- Site dossier: a research note about one place --------------------------------------- */
+  .dossier { transition: opacity var(--dur) var(--ease); }
   .dossier.enter { opacity: 0; transition: none; }
-  .dnav { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 18px 0; font-size: var(--fs-meta); }
-  .back, .step-btn { background: none; border: 0; padding: 0; cursor: pointer; color: var(--accent); font-size: var(--fs-meta); font-weight: 500; }
-  .back:hover, .step-btn:hover { color: var(--accent-strong); }
-  .step-btn:disabled { color: var(--faint); cursor: default; }
-  .qpos { display: flex; align-items: center; gap: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .dhead { padding: 14px 18px 16px; border-bottom: 1px solid var(--line-2); }
-  .dhead h2 { font-size: var(--fs-site); line-height: 1.25; font-weight: 600; letter-spacing: 0; margin-top: 6px; }
-  .dhead .sub { color: var(--muted); font-size: var(--fs-meta); margin-top: 3px; }
-  .dfig { display: flex; gap: 26px; margin-top: 14px; align-items: flex-end; }
-  .dfig div { display: flex; flex-direction: column; }
-  .dfig b { font-size: var(--fs-site); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .dfig b small { font-size: var(--fs-body); font-weight: 500; color: var(--faint); letter-spacing: 0; }
-  .dfig span { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
-  .dfig div:not(.lead) b { font-size: var(--fs-title); line-height: var(--lh-title); }
-  .dhead .cid { margin-top: 2px; color: var(--muted); }
-  .block { padding: 16px 18px; border-bottom: 1px solid var(--line-2); }
-  .bh { display: flex; justify-content: space-between; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin-bottom: 10px; min-height: 22px; }
-  .bh h3 { white-space: nowrap; }
+  .dnav { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); padding: var(--s-3) var(--s-5) 0;
+    font-size: var(--fs-meta); min-height: 44px; }
+  .back, .step-btn { background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); font-size: var(--fs-meta); font-weight: 500; }
+  .back:hover, .step-btn:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+  .step-btn:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
+  .qpos { display: flex; align-items: center; gap: var(--s-3); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dhead { padding: var(--s-2) var(--s-5) var(--s-5); }
+  .dhead .kicker { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+  .dhead h2 { font-size: var(--fs-site); line-height: var(--lh-site); font-weight: 600; letter-spacing: -0.01em; margin-top: var(--s-2); text-wrap: balance; }
+  .dhead .sub { color: var(--ink-2); font-size: var(--fs-body); margin-top: var(--s-1); }
+  .dhead .coords { color: var(--muted); margin-top: 2px; }
+  .tomap { display: none; margin-top: var(--s-3); background: none; border: var(--border-zone); border-radius: var(--r-1);
+    padding: 0 var(--s-3); min-height: 36px; cursor: pointer; font-size: var(--fs-meta); font-weight: 500; }
+  .tomap:hover { background: var(--surface-2); }
+  .dfig { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; margin-top: var(--s-5); border-top: var(--border-zone);
+    border-bottom: var(--border-row); }
+  .dfig div { display: flex; flex-direction: column; padding: var(--s-3) var(--s-5) var(--s-3) 0; }
+  .dfig div + div { padding-left: var(--s-4); border-left: var(--border-row); }
+  .dfig b { font-size: var(--fs-site); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; }
+  .dfig b small { font-size: var(--fs-body); font-weight: 400; color: var(--muted); letter-spacing: 0; }
+  .dfig span { font-size: var(--fs-meta); color: var(--muted); margin-top: 3px; }
+  .dfig div:not(.lead) b { font-size: var(--fs-title); line-height: 1.3; }
+  .block { padding: var(--s-5); border-top: var(--border-zone); }
+  .block:first-of-type { border-top: 0; }
+  .bh { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 10px; flex-wrap: wrap; margin-bottom: var(--s-3); }
+  .bh h3 { font-size: var(--fs-lead); line-height: var(--lh-title); font-weight: 600; letter-spacing: -0.005em; }
   .block > p { font-size: var(--fs-body); color: var(--ink-2); }
-  .role-line { color: var(--ink-2); margin-top: var(--s-2); }
+  .block p.lead { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--ink); margin-bottom: var(--s-4); }
+  .block p.caption { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); margin-top: var(--s-3); }
+  .block p.caption.first { margin: 0 0 var(--s-3); }
   .role-status { display: flex; align-items: center; gap: var(--s-2); font-weight: 500; color: var(--ink); }
   .role-status.out { color: var(--muted); }
   .role-status .node { width: 8px; height: 8px; }
-  .contrib-wrap { margin-top: var(--s-3); }
-  .role-fig { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-1) var(--s-3); align-items: baseline;
-    margin-top: var(--s-2); }
-  .role-fig b { font-size: var(--fs-site); line-height: var(--lh-site); font-weight: 600; color: var(--mclp); }
+  .role-line { color: var(--ink-2); margin-top: var(--s-3); }
+  .contrib-wrap { margin-top: var(--s-4); }
+  .role-fig { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-1) var(--s-4); align-items: baseline; margin-top: var(--s-2); }
+  .role-fig b { font-size: var(--fs-outcome); line-height: var(--lh-outcome); font-weight: 600; letter-spacing: -0.02em; color: var(--mclp); }
   .role-fig p { color: var(--ink-2); }
   .role-fig p.caption { grid-column: 1 / -1; margin-top: 0; }
-  /* Network contribution: a little more weight than a generic figure, tied to the optimized network's
-     own colour so it reads as belonging there even when another network is the active one. */
-  .role-fig.contrib { border-left: 3px solid var(--mclp); padding-left: var(--s-3); }
-  .role-fig.contrib b { font-size: 28px; line-height: 32px; }
-  .block p.caption { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); margin-top: var(--s-2); }
-  .block p.keyline { margin: 0 0 var(--s-2); }
-  .block p.brief { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--ink-2); margin-top: var(--s-3);
-    padding-top: var(--s-3); border-top: var(--border-row); }
-  .block p.conf b { font-weight: 600; color: var(--ink); }
-  .members { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--fs-meta); color: var(--muted); }
-  .members li { display: inline-flex; align-items: center; gap: 8px; }
+  /* Network contribution is tied to the optimized network's own colour, so it reads as belonging there
+     even when another network is the one in view. */
+  .members { list-style: none; margin: var(--s-4) 0 0; padding: var(--s-3) 0 0; border-top: var(--border-row); display: flex; flex-wrap: wrap;
+    gap: 6px 18px; font-size: var(--fs-meta); color: var(--muted); }
+  .members li { display: inline-flex; align-items: center; gap: var(--s-2); }
   .members .node { width: 8px; height: 8px; }
   .members li.current { color: var(--ink); font-weight: 600; }
-  .comps { margin-top: 12px; width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
-  .comps th { font-size: var(--fs-label); font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 0.06em;
-    text-align: right; padding: 0 0 4px 10px; white-space: nowrap; }
+  .comps { margin-top: var(--s-2); width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+  .comps th { font-size: var(--fs-meta); font-weight: 400; color: var(--muted); text-align: right; padding: 0 0 6px var(--s-3); white-space: nowrap; }
   .comps th:first-child { text-align: left; padding-left: 0; }
-  .comps td { padding: 4px 0; vertical-align: middle; }
-  .comps td.lab { width: 122px; line-height: 1.2; }
-  .comps td.lab em { display: block; font-style: normal; font-size: var(--fs-label); color: var(--muted); }
-  .comps td.bar { padding: 0 10px; }
-  .comps td.v { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; width: 40px; }
-  .comps td.w { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; width: 44px; }
-  .comps tfoot td { border-top: var(--border-zone); padding-top: var(--s-2); font-weight: 600; }
-  .track { height: 5px; background: var(--line-2); border-radius: 3px; position: relative; overflow: hidden; }
-  .fill { position: absolute; inset: 0 auto 0 0; background: var(--ink-2); border-radius: 3px; transition: width 0.3s; }
-  .evrows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-2); }
-  .evrows li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line-2); }
-  .evrows .g { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
-  .evrows b { display: block; font-size: var(--fs-title); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .comps td { padding: 6px 0; vertical-align: middle; border-top: var(--border-row); }
+  .comps td.lab { width: 128px; line-height: 1.25; }
+  .comps td.lab em { display: block; font-style: normal; font-size: var(--fs-meta); color: var(--muted); }
+  .comps td.bar { padding: 0 var(--s-3); }
+  .comps td.v { text-align: right; font-weight: 600; width: 40px; }
+  .comps td.w { text-align: right; color: var(--muted); width: 44px; }
+  .comps tfoot td { border-top: 1px solid var(--ink-2); padding-top: var(--s-2); font-weight: 600; }
+  .track { height: 4px; background: var(--line-soft); position: relative; overflow: hidden; }
+  .fill { position: absolute; inset: 0 auto 0 0; background: var(--ink-2); transition: width var(--dur) var(--ease); }
+  /* Evidence: each value with how it is known and where it comes from. Facts are set solid; an
+     interpretation is lighter; an unknown is amber and dashed, and carries no figure. */
+  .evkey { list-style: none; margin: 0 0 var(--s-3); padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px var(--s-4); }
+  .evkey li { display: flex; flex-direction: column; font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); }
+  .evrows { list-style: none; margin: 0; padding: 0; border-top: var(--border-zone); }
+  .evrows li { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: var(--s-3); padding: var(--s-3) 0; border-bottom: var(--border-row); }
+  .evrows li.open { background: var(--verify-soft); border-bottom: var(--border-verify); margin: 0 calc(-1 * var(--s-2)); padding-left: var(--s-2);
+    padding-right: var(--s-2); }
+  .evrows .g { font-size: var(--fs-meta); font-weight: 500; color: var(--muted); padding-top: 3px; }
+  .evrows b { display: block; font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 600; overflow-wrap: anywhere; }
+  .evrows li.open b { font-weight: 500; color: var(--verify); }
   .evrows .c { display: block; font-size: var(--fs-meta); color: var(--muted); line-height: 1.4; }
-  .evrows .f { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: var(--fs-meta); color: var(--faint); }
-  details.allev { margin-top: 10px; }
-  details.allev > summary { cursor: pointer; font-size: var(--fs-meta); font-weight: 500; color: var(--accent); }
-  .ev { width: 100%; border-collapse: collapse; font-size: var(--fs-body); margin-top: 8px; }
-  .ev td { padding: 5px 0; border-bottom: 1px solid var(--line-2); vertical-align: top; }
-  .ev td.v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; padding: 5px 10px; overflow-wrap: anywhere; }
+  .evrows .f { display: flex; align-items: center; gap: var(--s-2) var(--s-3); flex-wrap: wrap; margin-top: 5px; font-size: var(--fs-meta); color: var(--muted); }
+  .evrows .f .src::before { content: "Source · "; color: var(--faint); }
+  details.allev { margin-top: var(--s-3); }
+  details.allev > summary { cursor: pointer; font-size: var(--fs-meta); font-weight: 500; }
+  details.allev > summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .ev { width: 100%; border-collapse: collapse; font-size: var(--fs-body); margin-top: var(--s-2); }
+  .ev td { padding: 5px 0; border-bottom: var(--border-row); vertical-align: top; }
+  .ev td.v { text-align: right; font-weight: 500; padding: 5px var(--s-3); overflow-wrap: anywhere; }
   .ev td.t { width: 1%; text-align: right; }
-  .ev .group td { padding-top: 12px; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
-  .ev .group .cell { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .ev .group td { padding-top: var(--s-4); font-size: var(--fs-meta); font-weight: 600; color: var(--ink); }
+  .ev .group .cell { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); }
   .ev .open { color: var(--verify); }
-  .disclaimer { font-size: var(--fs-meta); color: var(--muted); border-left: 2px solid var(--line); padding-left: 10px; margin-top: 12px; }
-  .risks { margin: 12px 0 0; padding: 0 0 0 16px; font-size: var(--fs-body); color: var(--ink-2); }
+  .disclaimer { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); border-left: 2px solid var(--line); padding-left: var(--s-3); margin-top: var(--s-4); }
+  .risks { margin: var(--s-2) 0 0; padding: 0 0 0 var(--s-4); font-size: var(--fs-body); color: var(--ink-2); }
   .risks li { margin: 3px 0; }
-  .subh { font-size: var(--fs-meta); font-weight: 600; color: var(--muted); margin-top: 14px; }
+  .subh { font-size: var(--fs-meta); font-weight: 600; color: var(--ink); margin-top: var(--s-4); }
   .checks-next { list-style: none; margin: 0; padding: 0; counter-reset: step; }
-  .checks-next li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--line-2);
+  .checks-next li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: var(--s-2); padding: var(--s-3) 0; border-top: var(--border-row);
     counter-increment: step; }
   .checks-next li:first-child { border-top: 0; padding-top: 0; }
-  .checks-next li::before { content: counter(step, decimal-leading-zero); font-size: var(--fs-meta); font-weight: 600; color: var(--muted);
-    font-variant-numeric: tabular-nums; padding-top: 1px; }
+  .checks-next li::before { content: counter(step, decimal-leading-zero); font-family: var(--mono); font-size: var(--fs-meta); color: var(--muted); padding-top: 2px; }
   .checks-next b { display: block; font-size: var(--fs-body); font-weight: 600; }
-  .checks-next span { display: block; font-size: var(--fs-body); color: var(--muted); }
-  .brieflink { display: inline-block; margin-top: var(--s-3); font-size: var(--fs-meta); }
-  .note { color: var(--muted); font-size: var(--fs-meta); margin-top: 8px; }
+  .checks-next span { display: block; font-size: var(--fs-body); color: var(--ink-2); }
+  .brieflink { display: inline-flex; align-items: center; min-height: 28px; margin-top: var(--s-2); font-size: var(--fs-meta); font-weight: 500; }
+  .note { color: var(--muted); font-size: var(--fs-meta); margin-top: var(--s-2); }
   /* Unknowns in the dossier: open questions in the verification amber, dashed, never an error red. */
   .dossier .verify { background: var(--verify-soft); border: var(--border-verify); border-radius: var(--r-1); padding: 0 var(--s-3);
     margin-top: var(--s-2); }
   .dossier .verify li { border-bottom: var(--border-verify); }
   .dossier .verify li:last-child { border-bottom: 0; }
 
-  /* --- Investigation: an analytical finding attached to a site or the network -------------- */
-  .investigation { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--surface); }
-  .inv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-  .inv-head h3 { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
-  .inv-tag { font-size: var(--fs-label); color: var(--faint); }
-  .inv-questions { list-style: none; margin: 8px 0 0; padding: 0; }
+  /* --- Investigation: a finding that explains a record and never changes it ------------------ */
+  .investigation { border: 0; border-left: 2px solid var(--ink-2); padding: 0 0 0 var(--s-4); background: none; }
+  .inv-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; }
+  .inv-head h3 { font-size: var(--fs-lead); line-height: var(--lh-title); font-weight: 600; }
+  .inv-tag { font-family: var(--mono); font-size: var(--fs-label); color: var(--muted); }
+  .inv-questions { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
   .inv-questions li { font-size: var(--fs-body); color: var(--ink); padding: 1px 0; }
-  .inv-intro { font-size: var(--fs-meta); color: var(--muted); margin: 6px 0 10px; }
-  .inv-intro.off { color: var(--faint); margin-bottom: 0; }
-  .inv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  button.inv-action { font-size: var(--fs-body); font-weight: 500; padding: 6px 13px; border-radius: 7px; cursor: pointer;
-    border: 1px solid var(--ink); background: var(--ink); color: #fff; transition: opacity 0.15s; }
-  button.inv-action:hover { opacity: 0.86; }
-  button.inv-action.quiet { background: var(--surface); color: var(--accent); border-color: var(--line); padding: 2px 9px; font-size: var(--fs-meta);
-    letter-spacing: 0; text-transform: none; }
-  button.inv-action.quiet:hover { border-color: var(--accent); opacity: 1; }
+  .inv-questions li::before { content: "? "; color: var(--muted); font-family: var(--mono); }
+  .inv-intro { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); margin: var(--s-2) 0 var(--s-3); }
+  .inv-intro.off { color: var(--muted); margin-bottom: 0; }
+  .inv-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  button.inv-action { font-size: var(--fs-body); font-weight: 500; padding: 0 var(--s-4); min-height: 36px; border-radius: var(--r-1); cursor: pointer;
+    border: 1px solid var(--ink); background: var(--ink); color: #fff; transition: background var(--dur-fast), color var(--dur-fast); }
+  button.inv-action::after { content: " \2192"; }
+  button.inv-action:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
+  button.inv-action.quiet { background: none; color: var(--ink); border-color: var(--line); padding: 0 var(--s-2); min-height: 28px; font-size: var(--fs-meta); }
+  button.inv-action.quiet::after { content: ""; }
+  button.inv-action.quiet:hover:not(:disabled) { border-color: var(--ink); background: var(--surface-2); }
   button.inv-action:disabled { opacity: 0.45; cursor: default; }
-  .inv-line { margin: 10px 0 0; font-size: var(--fs-body); color: var(--muted); }
+  .inv-line { margin: var(--s-3) 0 0; font-size: var(--fs-body); color: var(--muted); }
   .inv-line:empty, .inv-result:empty { display: none; }
-  .inv-result { margin-top: 14px; border-top: 1px solid var(--line-2); padding-top: 14px; }
-  .inv-title { font-size: var(--fs-title); font-weight: 600; letter-spacing: -0.01em; }
+  .inv-result { margin-top: var(--s-4); border-top: var(--border-row); padding-top: var(--s-4); }
+  .inv-title { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 600; letter-spacing: -0.005em; }
   .inv-title:focus { outline: none; }
   .inv-verdict { font-size: var(--fs-meta); color: var(--muted); margin: 3px 0 0; }
-  .inv-verdict.warn { color: var(--warn); font-size: var(--fs-body); font-weight: 600; }
-  .inv-block { margin-top: 16px; }
-  .inv-block h5, .inv-fallback h5 { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--muted); margin: 0 0 6px; }
-  .inv-fallback h5 { margin-top: 14px; }
-  .inv-block.finding .stmt-line p { font-size: var(--fs-title); color: var(--ink); line-height: 1.5; }
+  .inv-verdict.warn { color: var(--verify); font-size: var(--fs-body); font-weight: 500; }
+  .inv-block { margin-top: var(--s-5); }
+  .inv-block h5, .inv-fallback h5 { font-size: var(--fs-meta); font-weight: 600; color: var(--ink); margin: 0 0 6px; }
+  .inv-fallback h5 { margin-top: var(--s-4); }
+  .inv-block.finding .stmt-line p { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--ink); }
   .stmts { list-style: none; margin: 0; padding: 0; }
-  .stmt { padding: 7px 0; border-top: 1px solid var(--line-2); }
+  .stmt { padding: 8px 0; border-top: var(--border-row); }
   .stmt:first-child { border-top: 0; padding-top: 0; }
   .inv-block.next .stmts { counter-reset: nc; }
-  .inv-block.next .stmt { display: grid; grid-template-columns: 28px minmax(0, 1fr); counter-increment: nc; }
-  .inv-block.next .stmt::before { content: counter(nc, decimal-leading-zero); font-size: var(--fs-meta); font-weight: 600; color: var(--muted); }
-  .stmt-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .inv-block.next .stmt { display: grid; grid-template-columns: 30px minmax(0, 1fr); counter-increment: nc; }
+  .inv-block.next .stmt::before { content: counter(nc, decimal-leading-zero); font-family: var(--mono); font-size: var(--fs-meta); color: var(--muted); }
+  .stmt-line { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); }
   .stmt-line p { font-size: var(--fs-body); color: var(--ink-2); }
-  .stmt-meta { display: flex; align-items: flex-start; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+  .stmt-meta { display: flex; align-items: flex-start; gap: var(--s-3); margin-top: 4px; flex-wrap: wrap; }
   .inv-block.unknown .stmt { border-top-color: var(--verify-line); }
-  blockquote { margin: 6px 0 0; padding: 2px 10px; border-left: 2px solid var(--line); font-size: var(--fs-meta); color: var(--muted); }
+  blockquote { margin: 6px 0 0; padding: 2px var(--s-3); border-left: 2px solid var(--line); font-size: var(--fs-meta); color: var(--muted); }
   .cites { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
   details.cite { font-size: var(--fs-meta); }
   details.cite summary { cursor: pointer; color: var(--muted); overflow-wrap: anywhere; }
-  details.cite dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 6px 0 4px 14px; padding-left: 10px;
+  details.cite dl { display: grid; grid-template-columns: auto 1fr; gap: 3px var(--s-3); margin: 6px 0 4px 14px; padding-left: var(--s-3);
     border-left: 1px solid var(--line); }
-  details dt { color: var(--faint); } details dd { margin: 0; overflow-wrap: anywhere; }
+  details dt { color: var(--muted); } details dd { margin: 0; overflow-wrap: anywhere; }
   .inv-group { font-size: var(--fs-body); margin: 4px 0; }
   .inv-group summary { cursor: pointer; font-weight: 500; }
-  .inv-group .count { color: var(--faint); font-weight: 400; }
+  .inv-group .count { color: var(--muted); font-weight: 400; }
   .recs { list-style: none; margin: 4px 0 8px; padding: 0; }
-  .recs li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line-2); }
-  .recs .v { text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-  .inv-message { font-size: var(--fs-body); color: var(--muted); margin: 8px 0 0; }
-  details.trace { margin-top: 16px; font-size: var(--fs-body); border-top: 1px solid var(--line-2); padding-top: 10px; }
+  .recs li { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); padding: 4px 0; border-bottom: var(--border-row); }
+  .recs .v { text-align: right; overflow-wrap: anywhere; }
+  .inv-message { font-size: var(--fs-body); color: var(--muted); margin: var(--s-2) 0 0; }
+  details.trace { margin-top: var(--s-4); font-size: var(--fs-body); border-top: var(--border-row); padding-top: var(--s-3); }
   details.trace summary { cursor: pointer; color: var(--muted); }
-  .steps, .checks { margin: 8px 0 0; padding-left: 20px; }
+  .steps, .checks { margin: var(--s-2) 0 0; padding-left: 20px; }
   .steps li, .checks li { margin: 3px 0; }
   .checks { list-style: none; padding-left: 0; }
-  .checks li.pass .step { color: var(--accent-strong); } .checks li.fail .step { color: var(--warn); }
-  .step { margin-right: 8px; } .args { color: var(--muted); overflow-wrap: anywhere; }
+  .checks li.pass .step { color: var(--ink); } .checks li.fail .step { color: var(--warn); }
+  .step { margin-right: var(--s-2); } .args { color: var(--muted); overflow-wrap: anywhere; }
 
-  /* --- Workflow line under the workbench ---------------------------------------------------- */
-  .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 14px 0 0; padding: 0; }
-  .flow li { padding: 2px 16px; border-left: 1px solid var(--line); font-size: var(--fs-body); color: var(--muted); }
-  .flow li:first-child { border-left: 0; padding-left: 4px; }
-  .flow .n { font-size: var(--fs-label); font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 6px; }
-  .flow b { font-weight: 600; color: var(--ink-2); margin-right: 6px; }
-
-  /* --- Document sections: an analytical report under the workbench ------------------------- */
-  .doc { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 28px; padding: 36px 4px; border-top: 1px solid var(--line); }
-  .flow + .doc { margin-top: 30px; }
-  .dochead h2 { font-size: var(--fs-site); font-weight: 600; letter-spacing: 0; margin-top: 6px; line-height: 1.3; }
-  .dochead p { font-size: var(--fs-body); color: var(--muted); margin-top: 6px; }
+  /* --- The report under the workspace: numbered sections, set like an analyst's write-up ---------- */
+  .frame { font-size: var(--fs-title); line-height: var(--lh-title); color: var(--ink-2); max-width: 66ch; text-wrap: pretty; }
+  .doc { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--s-6); padding: var(--s-7) 0 var(--s-5); border-top: var(--border-zone); }
+  .frame + .doc { margin-top: var(--s-6); }
+  .dochead .kicker { margin-bottom: var(--s-2); }
+  .dochead h2 { font-size: var(--fs-site); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-site); text-wrap: balance; }
+  .dochead p:not(.kicker) { font-size: var(--fs-body); color: var(--muted); margin-top: var(--s-3); max-width: 38ch; }
   .docbody { min-width: 0; }
-  .sub2 { font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 26px 0 10px; }
+  .sub2 { font-size: var(--fs-body); font-weight: 600; color: var(--ink); margin: var(--s-6) 0 var(--s-2); }
 
   table.cmp { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
-  .cmp th { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: right;
-    padding: 0 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  .cmp th:first-child, .cmp td:first-child { text-align: left; padding-left: 12px; }
-  .cmp td { padding: 12px 10px; border-bottom: 1px solid var(--line-2); text-align: right; vertical-align: middle;
-    font-variant-numeric: tabular-nums; }
-  .cmp tbody tr { cursor: pointer; transition: background 0.12s; }
+  .cmp th { font-size: var(--fs-meta); font-weight: 400; color: var(--muted); text-align: right; padding: 0 var(--s-3) var(--s-2);
+    border-bottom: 1px solid var(--ink-2); white-space: nowrap; }
+  .cmp th:first-child, .cmp td:first-child { text-align: left; padding-left: var(--s-3); }
+  .cmp td { padding: var(--s-4) var(--s-3); border-bottom: var(--border-row); text-align: right; vertical-align: middle; }
+  .cmp tbody tr { cursor: pointer; transition: background var(--dur-fast) var(--ease); }
   .cmp tbody tr:hover { background: var(--surface-2); }
   .cmp tbody tr.current { background: var(--surface); box-shadow: inset 3px 0 0 var(--greedy); }
   .cmp tbody tr.current.mclp { box-shadow: inset 3px 0 0 var(--mclp); }
   .cmp tbody tr.current.top30 { box-shadow: inset 3px 0 0 var(--top30); }
   .cmp .sname { display: flex; align-items: center; gap: 11px; background: none; border: 0; padding: 0; cursor: pointer;
-    font-weight: 600; text-align: left; }
+    font-weight: 600; text-align: left; min-height: 24px; }
   .cmp .srole { display: block; font-size: var(--fs-meta); color: var(--muted); font-weight: 400; margin: 2px 0 0 21px; text-align: left; }
-  .cmp .barcell { display: grid; grid-template-columns: 46px 88px; gap: 10px; align-items: center; justify-content: end; }
+  .cmp .barcell { display: grid; grid-template-columns: 46px 96px; gap: var(--s-3); align-items: center; justify-content: end; }
   .cmp .barcell b { font-weight: 600; }
   .cmp tr.mclp .fill { background: var(--mclp); } .cmp tr.greedy .fill { background: var(--greedy); }
   .cmp tr.top30 .fill { background: var(--top30); }
@@ -482,89 +534,85 @@
   .cmp td.dist span { white-space: nowrap; }
   .cmp td.dist b { color: var(--ink-2); font-weight: 600; }
   .cmp th.dist { text-align: left; }
-  .observation { margin-top: 22px; border-left: 2px solid var(--ink-2); padding: 2px 0 2px 16px; max-width: 760px; }
-  .observation .obs { font-size: var(--fs-title); font-weight: 600; color: var(--ink); margin-top: 4px; }
-  .observation p { font-size: var(--fs-body); color: var(--ink-2); margin-top: 6px; }
+  .observation { margin-top: var(--s-6); border-left: 2px solid var(--ink); padding: 2px 0 2px var(--s-5); max-width: 68ch; }
+  .observation .obs { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 600; color: var(--ink); margin-top: var(--s-1); text-wrap: balance; }
+  .observation p:not(.obs):not(.kicker) { font-size: var(--fs-body); color: var(--ink-2); margin-top: var(--s-2); }
   .observation .solver { font-size: var(--fs-meta); color: var(--muted); }
-  .netinv { margin-top: 26px; max-width: 860px; }
+  .netinv { margin-top: var(--s-6); max-width: 720px; }
 
   .metrics { display: grid; grid-template-columns: 1.3fr 1fr 1fr; }
-  .mgroup { padding: 0 22px; border-left: 1px solid var(--line); min-width: 0; }
+  .mgroup { padding: 0 var(--s-5); border-left: var(--border-zone); min-width: 0; }
   .mgroup:first-child { padding-left: 0; border-left: 0; }
-  .mgroup h3 { font-size: var(--fs-body); font-weight: 600; margin-bottom: 10px; }
-  .mrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-  .metric b { display: block; font-size: var(--fs-site); font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .mgroup h3 { font-size: var(--fs-body); font-weight: 600; margin-bottom: var(--s-3); }
+  .mrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin-bottom: var(--s-3); }
+  .metric b { display: block; font-size: var(--fs-site); font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
   .metric span { display: block; font-size: var(--fs-meta); color: var(--muted); line-height: 1.35; margin-top: 2px; }
-  .caveat { font-size: var(--fs-body); color: var(--ink-2); border-left: 2px solid var(--verify); padding: 2px 0 2px 10px; }
-  .mgroup .foot { font-size: var(--fs-meta); color: var(--muted); margin-top: 8px; }
-  .mgroup a { display: inline-block; margin-top: 10px; font-size: var(--fs-meta); }
+  .caveat { font-size: var(--fs-body); color: var(--ink-2); border-left: 2px solid var(--verify); padding: 2px 0 2px var(--s-3); }
+  .mgroup .foot { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--s-2); }
+  .mgroup a { display: inline-flex; align-items: center; min-height: 28px; margin-top: var(--s-2); font-size: var(--fs-meta); font-weight: 500; }
 
-  .pipeline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
-  .pipeline li { display: grid; grid-template-columns: 30px minmax(0, 1fr); padding: 10px 0; border-bottom: 1px solid var(--line-2); }
-  .pipeline .n { font-size: var(--fs-meta); font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; padding-top: 1px; }
+  .pipeline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s-6); }
+  .pipeline li { display: grid; grid-template-columns: 30px minmax(0, 1fr); padding: var(--s-3) 0; border-bottom: var(--border-row); }
+  .pipeline .n { font-family: var(--mono); font-size: var(--fs-meta); color: var(--muted); padding-top: 1px; }
   .pipeline b { font-size: var(--fs-body); font-weight: 600; }
-  .pipeline .role { font-size: var(--fs-label); font-weight: 600; margin-left: 8px; color: var(--accent); }
+  .pipeline .role { font-size: var(--fs-meta); font-weight: 500; margin-left: var(--s-2); color: var(--ink); }
   .pipeline .role.explains { color: var(--muted); }
   .pipeline span.t { display: block; font-size: var(--fs-body); color: var(--muted); margin-top: 1px; }
-  .principle { font-size: var(--fs-body); color: var(--ink-2); margin-top: 16px; }
-  .twocol { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; }
+  .principle { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--ink); margin-top: var(--s-5); max-width: 62ch; }
+  .twocol { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--s-6); }
   .provlist { list-style: none; margin: 0; padding: 0; }
-  .provlist li { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-2);
+  .provlist li { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: var(--s-3); padding: 8px 0; border-bottom: var(--border-row);
     font-size: var(--fs-body); color: var(--ink-2); align-items: baseline; }
   table.plain { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
-  .plain th { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left;
-    padding: 0 10px 6px 0; border-bottom: 1px solid var(--line); }
-  .plain td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-2); vertical-align: top; }
-  .plain td.r, .plain th.r { text-align: right; font-variant-numeric: tabular-nums; }
-  .plain td.muted { color: var(--muted); font-size: var(--fs-body); }
-  .kv { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 18px 0 0; }
-  .kv div { padding: 0 16px; border-left: 1px solid var(--line); }
+  .plain th { font-size: var(--fs-meta); font-weight: 400; color: var(--muted); text-align: left; padding: 0 var(--s-3) 6px 0; border-bottom: 1px solid var(--ink-2); }
+  .plain td { padding: 9px var(--s-3) 9px 0; border-bottom: var(--border-row); vertical-align: top; }
+  .plain td.r, .plain th.r { text-align: right; white-space: nowrap; }
+  .plain td.muted { color: var(--muted); }
+  .kv { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: var(--s-5) 0 0; }
+  .kv div { padding: 0 var(--s-4); border-left: var(--border-zone); }
   .kv div:first-child { padding-left: 0; border-left: 0; }
   .kv dt { font-size: var(--fs-meta); color: var(--muted); }
-  .kv dd { margin: 2px 0 0; font-size: var(--fs-title); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .srcnote { font-size: var(--fs-meta); color: var(--muted); margin-top: 14px; }
+  .kv dd { margin: 2px 0 0; font-size: var(--fs-title); font-weight: 600; }
+  .srcnote { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--s-4); }
 
   /* Open items to verify, not a list of failures: one quiet marker each, not a repeated tag. */
-  .limits li { justify-content: flex-start; align-items: flex-start; gap: var(--s-2); padding: 10px 2px; }
-  .limits li .mark { width: 7px; height: 7px; margin-top: 7px; flex: none; border: 1.5px dashed var(--verify); border-radius: 50%; }
+  .limits li { justify-content: flex-start; align-items: flex-start; gap: var(--s-2); padding: var(--s-3) 2px; }
+  .limits li .mark { width: 8px; height: 8px; margin-top: 7px; flex: none; border: 1.5px dashed var(--verify); border-radius: 50%; }
   .limits li b { font-size: var(--fs-body); font-weight: 600; }
   .verify-cue { margin-top: var(--s-4); padding: var(--s-2) var(--s-3); background: var(--verify-soft);
-    border: var(--border-verify); border-radius: var(--r-1); font-size: var(--fs-label); font-weight: 600;
-    letter-spacing: 0.06em; text-transform: uppercase; color: var(--verify); }
-  .operator { margin-top: 30px; }
-  .opgrid { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 2fr); gap: 12px; align-items: stretch; }
-  .opbox { border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; background: var(--surface); }
-  .opbox b { display: block; font-size: var(--fs-body); font-weight: 600; }
-  .opbox span { font-size: var(--fs-meta); color: var(--muted); }
-  .plus { display: flex; align-items: center; justify-content: center; color: var(--faint); }
-  .future { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .future div { border: 1px dashed #cfcac0; border-radius: 8px; padding: 8px 11px; font-size: var(--fs-body); color: var(--ink-2); }
-  .future small { display: block; font-size: var(--fs-label); color: var(--faint); }
-  .down { text-align: center; color: var(--faint); margin: 6px 0; }
-  .opresult { border: 1px dashed #b9c1c9; border-radius: 8px; padding: 10px 14px; text-align: center; font-weight: 600; font-size: var(--fs-body);
-    color: var(--ink-2); }
-  .conceptual { font-size: var(--fs-meta); color: var(--muted); margin-top: 10px; }
+    border: var(--border-verify); border-radius: var(--r-1); font-size: var(--fs-meta); font-weight: 500; color: var(--verify); }
+  .operator { margin-top: var(--s-7); }
+  .opgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: var(--s-6); border-top: var(--border-zone); padding-top: var(--s-4); }
+  .opcol b { display: block; font-size: var(--fs-body); font-weight: 600; }
+  .opcol > span { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
+  .future { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s-5); }
+  .future li { display: flex; justify-content: space-between; gap: var(--s-2); padding: 7px 0; border-bottom: var(--border-row); font-size: var(--fs-body); color: var(--ink-2); }
+  .future small { font-size: var(--fs-meta); color: var(--muted); }
+  .conceptual { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--s-4); max-width: 70ch; }
 
-  footer { font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line); padding: 18px 4px 0; }
-  footer p { margin: 0 0 6px; }
+  footer { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); border-top: var(--border-zone); padding: var(--s-5) 0 0; margin-top: var(--s-5); }
+  footer p { margin: 0 0 6px; max-width: 110ch; }
 
-  /* --- Responsive --------------------------------------------------------------------------- */
-  @media (min-width: 1400px) {
-    .workbench { grid-template-columns: 320px minmax(0, 1fr) 400px; }
-  }
+  /* --- Responsive ------------------------------------------------------------------------------ */
   @media (min-width: 1200px) {
     .dnav .back { display: none; } /* the list stays in view beside the dossier */
     .dnav { justify-content: flex-end; }
   }
   @media (max-width: 1199px) {
     /* Map and one side column; the dossier takes the list's place while a site is open. */
-    .workbench { grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "map side"; }
+    .workbench { grid-template-columns: minmax(0, 1fr) clamp(340px, 36vw, 400px); grid-template-areas: "map side"; }
     .queue, .dcol { grid-area: side; border-right: 0; border-left: var(--border-zone); }
     .workbench[data-view="list"] .dcol, .workbench[data-view="site"] .queue { display: none; }
+    .compare button { min-width: 0; padding: var(--s-2) var(--s-3) 10px; }
+    .compare .t-how { display: none; }
+    .compare .t-name { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--s-2); align-items: center; }
+    .compare .t-name::before { margin-right: 0; grid-row: 1 / span 2; }
+    .compare .t-name > span:first-child, .compare .t-fig { grid-column: 2; }
+    .oc-how { display: block; }
   }
   @media (max-width: 1279px) {
-    .doc { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    .dochead p { max-width: 720px; }
+    .doc { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
+    .dochead p:not(.kicker) { max-width: 62ch; }
   }
   @media (max-width: 899px) {
     /* The section links move behind the menu button. */
@@ -575,71 +623,113 @@
     .nav { height: 44px; padding: 0 var(--s-5); }
     .nav[aria-current="true"]::after { left: 0; right: auto; top: 10px; bottom: 10px; width: 2px; height: auto; }
     .tabsep { width: auto; height: 1px; margin: var(--s-1) var(--s-5); }
+    .outcome { grid-template-columns: minmax(0, 1fr); padding-bottom: 0; }
+    .compare { justify-self: stretch; }
+    .compare button { flex: 1; min-width: 0; }
   }
   @media (max-width: 1023px) {
-    /* Stacked: map, then the list or the open dossier, in the page's own scroll. */
+    /* Stacked: map, then the list or the open dossier, in the page's own scroll. The bar that
+       names the open site stays under the top bar, so the place and its map are never far. */
+    html { scroll-padding-top: 108px; }
     .deck { height: auto; min-height: 0; }
     .workbench { grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "side"; }
     .queue, .dcol { border-left: 0; overflow: visible; }
     .mapcol { border-bottom: var(--border-zone); }
-    .mapwrap { flex: none; aspect-ratio: 1.12; }
+    .mapwrap { flex: none; aspect-ratio: 1.12; max-height: 78vh; }
     .qhead { position: static; }
-    .metrics { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .dnav { position: sticky; top: 48px; z-index: 5; background: var(--surface); border-bottom: var(--border-row); padding-bottom: 0; }
+    .tomap { display: inline-flex; align-items: center; }
+    .metrics { grid-template-columns: minmax(0, 1fr); gap: var(--s-5); }
     .mgroup { padding: 0; border-left: 0; }
-    .mgroup + .mgroup { border-top: 1px solid var(--line-2); padding-top: 16px; }
+    .mgroup + .mgroup { border-top: var(--border-row); padding-top: var(--s-4); }
     .twocol { grid-template-columns: minmax(0, 1fr); }
-    .kv { grid-template-columns: 1fr 1fr; row-gap: 14px; }
+    .kv { grid-template-columns: 1fr 1fr; row-gap: var(--s-4); }
     .kv div:nth-child(3) { padding-left: 0; border-left: 0; }
-    .opgrid { grid-template-columns: minmax(0, 1fr); }
+    .opgrid { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
     .cmp td.dist, .cmp th.dist { display: none; }
   }
   @media (max-width: 700px) {
+    :root { --fs-body: 14px; --lh-body: 21px; --fs-meta: 12.5px; --fs-outcome: 40px; --lh-outcome: 42px; }
     .topbar { padding: 0 var(--s-4); gap: var(--s-3); }
     .through { display: none; }
-    .menu { margin-left: auto; }
+    .menu { margin-left: auto; width: 44px; height: 44px; }
     .banner { padding: var(--s-2) var(--s-4); }
-    .report { padding: var(--s-3) var(--s-4) 32px; }
+    .writeup { padding: var(--s-6) var(--s-4) 32px; }
     .nav { padding: 0 var(--s-4); }
     .tabsep { margin: var(--s-1) var(--s-4); }
-    /* The outcome stacks: question, figure, reach, then the switch at full width. */
-    .outcome { grid-template-columns: minmax(0, 1fr); padding: var(--s-4); }
+    /* The masthead stacks: question, figure, reach, then the three networks as a list. */
+    .outcome { padding: var(--s-4) var(--s-4) 0; gap: var(--s-3); }
     .oc-figure { flex-direction: column; align-items: flex-start; gap: var(--s-1); }
-    .seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .seg button { height: 44px; padding: 0 var(--s-2); white-space: normal; line-height: var(--lh-meta); }
-    .mapwrap { flex-direction: column; aspect-ratio: auto; }
+    .compare { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0 calc(-1 * var(--s-4)); border-top: var(--border-row); }
+    .compare button { padding: var(--s-3) var(--s-3) var(--s-3); min-height: 64px; }
+    .compare .t-name { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+    .compare .t-name::before { display: none; }
+    .compare .t-name > span:first-child, .compare .t-fig { grid-column: 1; }
+    .compare .t-name > span:first-child { font-size: var(--fs-meta); line-height: 1.25; }
+    .compare .t-fig { font-size: var(--fs-lead); }
+    .oc-how { grid-column: 1; padding: var(--s-2) 0 var(--s-3); }
+    .mapwrap { flex-direction: column; aspect-ratio: auto; max-height: none; }
     #map { aspect-ratio: 1.12; height: auto; }
-    .legend { position: static; border: 0; border-top: var(--border-row); border-radius: 0; box-shadow: none;
-      grid-template-columns: 1fr 1fr; background: var(--surface); gap: var(--s-2) var(--s-3); padding: var(--s-3) var(--s-4); }
+    .legend { position: static; border: 0; border-top: var(--border-row); border-radius: 0; grid-template-columns: 1fr 1fr;
+      background: var(--surface); gap: var(--s-2) var(--s-3); padding: var(--s-3) var(--s-4); }
     .legend span { white-space: normal; }
-    .flow { grid-template-columns: 1fr 1fr; row-gap: 8px; }
-    .flow li:nth-child(3) { border-left: 0; padding-left: 4px; }
-    .doc { padding: 28px 2px; }
+    .doc { padding: var(--s-6) 0 var(--s-4); }
     .cmp thead { display: none; }
     .cmp, .cmp tbody, .cmp tr, .cmp td { display: block; }
-    .cmp tbody tr { display: grid; grid-template-columns: 1fr 1fr; padding: 10px 0 10px 12px; border-bottom: 1px solid var(--line-2); }
-    .cmp td { border: 0; padding: 3px 12px 3px 0; text-align: left; }
+    .cmp tbody tr { display: grid; grid-template-columns: 1fr 1fr; padding: var(--s-3) 0 var(--s-3) var(--s-3); border-bottom: var(--border-row); }
+    .cmp td { border: 0; padding: 3px var(--s-3) 3px 0; text-align: left; }
     .cmp td:first-child { grid-column: 1 / -1; padding-left: 0; margin-bottom: 4px; }
-    .cmp td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em;
-      text-transform: uppercase; color: var(--muted); }
+    .cmp td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-meta); color: var(--muted); }
     .cmp .barcell { justify-content: start; grid-template-columns: 46px 70px; }
+    #source-list, #source-list tbody, #source-list tr, #source-list td { display: block; }
+    #source-list thead { display: none; }
+    #source-list tr { padding: var(--s-3) 0; border-bottom: var(--border-row); }
+    #source-list td { border: 0; padding: 0; }
+    #source-list td.r { text-align: left; color: var(--muted); margin-top: 2px; }
     .pipeline { grid-template-columns: minmax(0, 1fr); }
     .kv { grid-template-columns: minmax(0, 1fr); }
     .kv div { padding-left: 0; border-left: 0; }
-    .future { grid-template-columns: 1fr 1fr; }
+    .future { grid-template-columns: minmax(0, 1fr); }
     .provlist li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
     .block, .dhead, .qhead, .dnav, .dempty { padding-left: var(--s-4); padding-right: var(--s-4); }
+    .dfig { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dfig div { padding-right: var(--s-2); }
+    .dfig div + div { padding-left: var(--s-3); }
+    .evkey { grid-template-columns: minmax(0, 1fr); }
     /* Touch targets of at least 44 px. */
-    .menu { width: 44px; height: 44px; }
     .dnav { padding-top: 0; }
     .back, .step-btn { min-height: 44px; padding: 0 var(--s-2); }
     .back { padding-left: 0; }
+    .tomap, button.inv-action, .cmp .sname, .brieflink, .mgroup a { min-height: 44px; }
+    button.inv-action.quiet { min-height: 40px; }
+    .mapctl button { width: 44px; height: 44px; }
+    .qlist button { padding-top: 13px; padding-bottom: 13px; }
+  }
+  @media (pointer: coarse) { .mapctl button { width: 44px; height: 44px; } }
+
+  /* --- Print: the open dossier, or the report, as a plain document ------------------------------ */
+  @media print {
+    body { background: #fff; }
+    .skip, .topbar, .banner, .compare, .oc-how, .queue, .mapcol, .dnav, .tomap, .menu, .inv-actions, .inv-line, button.inv-action,
+    .dempty { display: none !important; }
+    .outcome { padding: 0 0 var(--s-3); border: 0; }
+    .deck, .workbench, .dcol { display: block; height: auto; min-height: 0; overflow: visible; border: 0; }
+    .workbench[data-view="list"] { display: none; }
+    .block, .doc, .observation, .metric { break-inside: avoid; }
+    .writeup { padding: var(--s-4) 0; }
+    details.allev > table, details.allev[open] > table { display: table; }
+    a { text-decoration: none; }
   }
 </style>
 </head>
 <body>
+<a class="skip" href="#workspace">Skip to the workspace</a>
 <div class="app">
   <header class="topbar" id="topbar">
-    <span class="brand">SiteScout</span>
+    <span class="brand">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5"/><circle cx="10" cy="10" r="3.6" fill="currentColor"/></svg>
+      SiteScout
+    </span>
     <nav class="tabs" id="nav" aria-label="Sections">
       <button class="nav" type="button" data-nav="network">Network</button>
       <span class="tabsep" aria-hidden="true"></span>
@@ -648,7 +738,7 @@
       <button class="nav" type="button" data-nav="method">Methodology</button>
       <button class="nav" type="button" data-nav="limitations">Limitations</button>
     </nav>
-    <span class="through" id="through"></span>
+    <span class="through mono" id="through"></span>
     <button class="menu" id="menu" type="button" aria-label="Open navigation" aria-controls="nav" aria-expanded="false">
       <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
     </button>
@@ -657,58 +747,66 @@
 
   <div class="main">
     <main class="content" id="content">
-    <!-- The decision deck: the outcome over one workspace (opportunities | map | site dossier). -->
+    <!-- The decision deck: the masthead over one workspace (opportunities | map | site dossier). -->
     <div class="deck">
-      <!-- The network outcome: the one large figure, for the network selected by the switch. -->
       <section class="outcome" id="overview" aria-label="Network outcome">
-        <p class="oc-kicker"><span class="label">Network outcome</span><span id="question"></span></p>
-        <div class="oc-figure" id="ns-figure" aria-live="polite">
-          <span class="sr-only" id="ns-name"></span>
-          <b class="oc-big fade" id="ns-coverage"></b>
-          <p class="oc-text"><span id="ns-caption"></span><span class="oc-facts fade" id="ns-facts"></span></p>
+        <div class="oc-lead">
+          <p class="oc-question" id="question"></p>
+          <div class="oc-figure" id="ns-figure" aria-live="polite">
+            <span class="sr-only" id="ns-name"></span>
+            <b class="oc-big fade" id="ns-coverage"></b>
+            <p class="oc-text"><span id="ns-caption"></span><span class="oc-facts fade" id="ns-facts"></span></p>
+          </div>
         </div>
-        <div class="seg" role="group" aria-label="Network" id="toggle"></div>
+        <div class="compare" role="group" aria-label="Compare the three networks" id="toggle"></div>
+        <p class="oc-how" id="ns-how" aria-live="polite"></p>
         <p id="lede" hidden></p>
       </section>
       <section class="workbench" id="workspace" data-section="network" data-view="list" aria-label="Network workspace">
         <aside class="queue" id="panel" aria-label="Opportunities">
           <div id="opps-view">
             <div class="qhead">
-              <p class="label">Opportunities</p>
-              <h2><i class="node" id="q-node"></i><span id="opps-title"></span></h2>
-              <p id="opps-sub"></p>
-              <p class="hint" id="opps-hint">Select a location to open its evidence.</p>
-              <p class="qcols" aria-hidden="true"><span>Location</span><span id="opps-cols"></span></p>
+              <h2>Opportunities</h2>
+              <p class="sub"><i class="node" id="q-node" aria-hidden="true"></i><span id="opps-sub"></span></p>
+              <p class="hint" id="opps-hint">Select a location to open its dossier.</p>
             </div>
             <ol class="qlist" id="list"></ol>
             <p class="qnote" id="opps-note"></p>
           </div>
         </aside>
         <div class="mapcol">
-          <div class="mapwrap" id="mapwrap">
-            <svg id="map" role="img" aria-label="Rwanda districts with candidate and selected sites"
+          <div class="mapwrap" id="mapwrap" tabindex="0" role="group"
+            aria-label="Map of Rwanda. Arrow keys pan, plus and minus zoom, zero shows the whole country. Tab moves between network sites.">
+            <svg id="map" aria-label="Rwanda districts with candidate and selected sites" focusable="false"
               preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="mapctl" role="group" aria-label="Map view">
+              <button type="button" id="z-in" aria-label="Zoom in" title="Zoom in"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M8 3v10"/></svg></button>
+              <button type="button" id="z-out" aria-label="Zoom out" title="Zoom out"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10"/></svg></button>
+              <button type="button" id="z-site" aria-label="Zoom to the selected site" title="Zoom to the selected site" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3"/></svg></button>
+              <button type="button" id="z-all" aria-label="Show the whole country" title="Show the whole country" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
+            </div>
             <div class="legend" id="legend" aria-label="Map legend"></div>
             <div class="maptip" id="maptip" aria-hidden="true"></div>
           </div>
         </div>
         <aside class="dcol" id="dossier" aria-label="Site dossier">
           <div class="dempty" id="dossier-empty">
-            <p class="label">Site dossier</p>
-            <p>Select a location in the list or on the map to see its network role, why it scores as it does,
-              the evidence behind it, what is not yet known and the next checks.</p>
+            <p class="kicker">Site dossier</p>
+            <h2>Choose a place</h2>
+            <p>Select a location in the list or on the map. Its dossier opens here: why it matters, the evidence behind
+              it, what remains uncertain and what to do next.</p>
           </div>
           <div id="site" hidden></div>
         </aside>
       </section>
     </div>
 
-    <div class="report">
-      <ol class="flow" id="flow" aria-label="Where SiteScout sits in the expansion process"></ol>
+    <div class="writeup">
+      <p class="frame" id="frame"></p>
 
       <section class="doc" id="network" data-section="network" aria-labelledby="network-title">
         <div class="dochead">
-          <p class="label">Network</p>
+          <p class="kicker">01 · Network</p>
           <h2 id="network-title">Three ways to choose the same number of sites</h2>
           <p id="network-sub"></p>
         </div>
@@ -721,7 +819,7 @@
 
       <section class="doc" id="evaluation" data-section="evaluation" aria-labelledby="evaluation-title">
         <div class="dochead">
-          <p class="label">Evaluation</p>
+          <p class="kicker">02 · Evaluation</p>
           <h2 id="evaluation-title">How much should you trust this?</h2>
           <p id="eval-sub"></p>
         </div>
@@ -730,7 +828,7 @@
 
       <section class="doc" id="sources" data-section="sources" aria-labelledby="sources-title">
         <div class="dochead">
-          <p class="label">Data sources</p>
+          <p class="kicker">03 · Data sources</p>
           <h2 id="sources-title">Open public data</h2>
           <p>The analysis uses open public data only. It has no access to any operator's internal network, usage or commercial data.</p>
         </div>
@@ -743,7 +841,7 @@
 
       <section class="doc" id="method" data-section="method" aria-labelledby="method-title">
         <div class="dochead">
-          <p class="label">Methodology</p>
+          <p class="kicker">04 · Methodology</p>
           <h2 id="method-title">How a location reaches the shortlist</h2>
           <p>Every number is computed by deterministic code. Investigation explains results; it never chooses sites.</p>
         </div>
@@ -759,7 +857,7 @@
 
       <section class="doc" id="limitations" data-section="limitations" aria-labelledby="limits-title">
         <div class="dochead">
-          <p class="label">Limitations</p>
+          <p class="kicker">05 · Limitations</p>
           <h2 id="limits-title">What still needs verification</h2>
           <p id="limits-sub"></p>
         </div>
@@ -770,20 +868,19 @@
           <div class="operator" aria-labelledby="operator-title">
             <p class="sub2" id="operator-title">If connected to operator data</p>
             <div class="opgrid">
-              <div class="opbox"><b>Public evidence</b><span>Population, roads, hosts, known charging sites and mapped grid, as used today.</span></div>
-              <div class="plus" aria-hidden="true">+</div>
-              <div class="future">
-                <div>Network utilization<small>Not connected</small></div>
-                <div>Charger uptime<small>Not connected</small></div>
-                <div>Session demand<small>Not connected</small></div>
-                <div>Site economics<small>Not connected</small></div>
-                <div>Power / utility data<small>Not connected</small></div>
-                <div>Land / host data<small>Not connected</small></div>
+              <div class="opcol"><b>Public evidence, as used today</b><span>Population, roads, hosts, known charging sites and mapped grid.</span></div>
+              <div class="opcol"><b>What operator data would add</b>
+                <ul class="future">
+                  <li>Network utilization <small>Not connected</small></li>
+                  <li>Charger uptime <small>Not connected</small></li>
+                  <li>Session demand <small>Not connected</small></li>
+                  <li>Site economics <small>Not connected</small></li>
+                  <li>Power / utility data <small>Not connected</small></li>
+                  <li>Land / host data <small>Not connected</small></li>
+                </ul>
               </div>
             </div>
-            <p class="down" aria-hidden="true">↓</p>
-            <div class="opresult">Operator-specific expansion intelligence</div>
-            <p class="conceptual">Conceptual operator-data extension — not connected in this demo. No operator data is used or shown anywhere in SiteScout.</p>
+            <p class="conceptual">Conceptual operator-data extension, not connected in this demo. No operator data is used or shown anywhere in SiteScout.</p>
           </div>
         </div>
       </section>
@@ -840,6 +937,11 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const formatDate = (iso) => { const [y, m, d] = iso.slice(0, 10).split("-"); return `${Number(d)} ${MONTHS[Number(m) - 1]} ${y}`; };
 const cap = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 const pad2 = (n) => String(n).padStart(2, "0");
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+// Coordinates as a reader meets them on a map: degrees with a hemisphere letter. Formatting only.
+const degrees = (value, plus, minus) => `${Math.abs(value).toFixed(4)}° ${value < 0 ? minus : plus}`;
+const coordinates = (site) => `${degrees(site.lat, "N", "S")}  ${degrees(site.lon, "E", "W")}`;
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let mode = "mclp";
 let activeId = null;
 let lastId = null; // the location last opened, marked in the queue
@@ -877,23 +979,19 @@ function enter(node) {
   node.classList.remove("enter");
 }
 
-// --- Header and the workflow line ----------------------------------------------------------------
+// --- Header and the framing line -------------------------------------------------------------------
 $("through").append("Rwanda · Data through ", formatDate(D.meta.data_date));
 if (D.meta.data_status !== "pipeline") {
   $("banner").hidden = false;
   $("banner").textContent = "This export was not produced by the pipeline.";
 }
 $("question").textContent = H.question;
-const FLOW = [
-  ["01", "Discover", `${H.candidates} candidate locations`],
-  ["02", "Compare", `${H.selections.length} network strategies`],
-  ["03", "Investigate", "Evidence and trade-offs"],
-  ["04", "Verify", "Grid, land, permits and host, outside SiteScout"],
-];
-$("flow").append(...FLOW.map(([n, title, text]) =>
-  el("li", {}, el("span", { class: "n" }, n), el("b", {}, title), text)));
+$("frame").textContent =
+  `SiteScout narrows ${H.candidates} candidate locations to a shortlist of where to spend site-development effort. ` +
+  "It covers discovery, comparison and investigation. Grid connection, land, permits and the host are verified " +
+  "outside SiteScout, and nothing here replaces that work.";
 
-// --- Network outcome: the selected network's coverage and its reach -----------------------------
+// --- Masthead: the selected network's coverage and its reach --------------------------------------
 // Coverage is the only large figure; the mean site score belongs to the comparison, not here.
 const figure = $("ns-figure");
 function renderStatus() {
@@ -901,7 +999,8 @@ function renderStatus() {
   figure.dataset.mode = mode;
   $("ns-name").textContent = `${s.label}:`;
   $("ns-coverage").textContent = s.population_display;
-  $("ns-caption").textContent = `of modelled population within ${H.service_radius}`;
+  $("ns-caption").textContent = `of modelled population within ${H.service_radius} of a site`;
+  $("ns-how").textContent = HOW[mode] || "";
   const sep = () => el("span", { class: "sep", "aria-hidden": "true" }, "·");
   $("ns-facts").replaceChildren(
     el("b", {}, H.n_sites), " sites", sep(), el("b", {}, s.districts_display), " districts", sep(),
@@ -916,7 +1015,9 @@ const K = WIDTH / ((M.max_lon - M.min_lon) * M.lon_scale);
 const HEIGHT = (M.max_lat - M.min_lat) * K;
 const PAD = Math.ceil(M.ring_radius_deg * K) + 4; // room for a border site's service ring
 const map = $("map");
-map.setAttribute("viewBox", `${-PAD} ${-PAD} ${WIDTH + 2 * PAD} ${HEIGHT + 2 * PAD}`);
+const FULL = { x: -PAD, y: -PAD, w: WIDTH + 2 * PAD, h: HEIGHT + 2 * PAD };
+const MAX_ZOOM = 8;
+let view = { ...FULL };
 const X = (lon) => (lon - M.min_lon) * M.lon_scale * K;
 const Y = (lat) => (M.max_lat - lat) * K;
 function pathOf(geometry) {
@@ -924,14 +1025,13 @@ function pathOf(geometry) {
   return polygons.map((rings) => rings.map((ring) =>
     "M" + ring.map(([lon, lat]) => `${X(lon).toFixed(1)},${Y(lat).toFixed(1)}`).join("L") + "Z").join("")).join("");
 }
-const VB_W = WIDTH + 2 * PAD; const VB_H = HEIGHT + 2 * PAD;
 // Geographic frame: a graticule in map units; its labels and the instruments are drawn at screen size.
 const STEP = 0.5; // graticule spacing in degrees
 const LONS = []; const LATS = [];
 for (let lon = Math.ceil(M.min_lon / STEP) * STEP; lon <= M.max_lon; lon += STEP) LONS.push(lon);
 for (let lat = Math.ceil(M.min_lat / STEP) * STEP; lat <= M.max_lat; lat += STEP) LATS.push(lat);
-for (const lon of LONS) map.append(svg("line", { class: "graticule", x1: X(lon), x2: X(lon), y1: -PAD, y2: HEIGHT + PAD }));
-for (const lat of LATS) map.append(svg("line", { class: "graticule", x1: -PAD, x2: WIDTH + PAD, y1: Y(lat), y2: Y(lat) }));
+for (const lon of LONS) map.append(svg("line", { class: "graticule", x1: X(lon), x2: X(lon), y1: FULL.y, y2: FULL.y + FULL.h }));
+for (const lat of LATS) map.append(svg("line", { class: "graticule", x1: FULL.x, x2: FULL.x + FULL.w, y1: Y(lat), y2: Y(lat) }));
 // The country outline: the provinces' outer edge, drawn wide under the land so only the outside half shows.
 for (const f of D.provinces.features) map.append(svg("path", { class: "country", d: pathOf(f.geometry) }));
 for (const f of D.districts.features) {
@@ -941,48 +1041,155 @@ for (const f of D.districts.features) {
 }
 for (const f of D.provinces.features) map.append(svg("path", { class: "province", d: pathOf(f.geometry) }));
 for (const f of D.provinces.features) {
-  const t = svg("text", { class: "plabel", x: X(f.properties.label_lon), y: Y(f.properties.label_lat), "text-anchor": "middle" });
+  const t = svg("text", { class: "plabel", x: X(f.properties.label_lon), y: Y(f.properties.label_lat) });
   t.textContent = f.properties.province;
+  map.append(t);
+}
+// District names appear once the map is zoomed in far enough to give each one room.
+for (const f of D.districts.features) {
+  const t = svg("text", { class: "dlabel", x: X(f.properties.label_lon), y: Y(f.properties.label_lat) });
+  t.textContent = f.properties.district;
   map.append(t);
 }
 const furniture = svg("g");
 map.append(furniture);
 // Graticule labels, the scale bar (the service radius, to the map's own scale) and north, placed in
-// screen pixels (u = map units per pixel) so they stay legible and in the corners at every width.
+// screen pixels (u = map units per pixel) at the corners of what is in view, so they stay legible.
 function drawFurniture(u, compact) {
   const text = (cls, attrs, content) => Object.assign(svg("text", { class: cls, ...attrs }), { textContent: content });
   const nodes = [];
+  const right = view.x + view.w; const bottom = view.y + view.h;
   // On a small map the graticule labels would sit under the markers: they are left out, not shrunk.
-  if (!compact) for (const lon of LONS) nodes.push(text("gratlabel", { x: X(lon) + 4 * u, y: -PAD + 14 * u }, `${lon.toFixed(1)}°E`));
-  if (!compact) for (const lat of LATS) nodes.push(text("gratlabel", { x: -PAD + 4 * u, y: Y(lat) - 4 * u }, `${Math.abs(lat).toFixed(1)}°S`));
+  if (!compact) {
+    for (const lon of LONS) {
+      const x = X(lon);
+      if (x > view.x + 40 * u && x < right - 40 * u) nodes.push(text("gratlabel", { x: x + 4 * u, y: view.y + 14 * u }, `${lon.toFixed(1)}°E`));
+    }
+    for (const lat of LATS) {
+      const y = Y(lat);
+      if (y > view.y + 30 * u && y < bottom - 30 * u) nodes.push(text("gratlabel", { x: view.x + 4 * u, y: y - 4 * u }, `${Math.abs(lat).toFixed(1)}°S`));
+    }
+  }
   const len = M.ring_radius_deg * K;
-  const x0 = -PAD + 16 * u; const y0 = HEIGHT + PAD - 16 * u; const tick = 6 * u;
+  const x0 = view.x + 16 * u; const y0 = bottom - 16 * u; const tick = 6 * u;
   nodes.push(svg("path", { class: "scalebar", d: `M${x0},${y0 - tick}V${y0}H${x0 + len}V${y0 - tick}` }),
     text("maptext", { x: x0 + len + 6 * u, y: y0 }, H.service_radius));
-  const nx = WIDTH + PAD - 20 * u; const ny = -PAD + 14 * u;
+  const nx = view.x + 34 * u; const ny = view.y + 30 * u;
   nodes.push(svg("path", { class: "scalebar", d: `M${nx},${ny + 22 * u}V${ny}M${nx - 5 * u},${ny + 7 * u}L${nx},${ny}L${nx + 5 * u},${ny + 7 * u}` }),
     text("maptext", { x: nx, y: ny + 36 * u, "text-anchor": "middle" }, "N"));
   furniture.replaceChildren(...nodes);
 }
-let unitsPerPx = 0;
-function setMapScale() {
-  const box = map.getBoundingClientRect();
-  if (!box.width || !box.height) return;
-  const u = 1 / Math.min(box.width / VB_W, box.height / VB_H);
-  if (Math.abs(u - unitsPerPx) < 0.001) return;
-  unitsPerPx = u;
-  const compact = box.width < 560;
-  map.style.setProperty("--u", u.toFixed(4));
-  map.classList.toggle("compact", compact);
-  drawFurniture(u, compact);
-}
-setMapScale();
-if ("ResizeObserver" in window) new ResizeObserver(setMapScale).observe(map);
-else window.addEventListener("resize", setMapScale);
-if (!unitsPerPx) drawFurniture(1.4, false); // not laid out yet; redrawn once it is
 const ringLayer = svg("g"); const candLayer = svg("g"); const chargerLayer = svg("g");
 const siteLayer = svg("g"); const focusLayer = svg("g");
 map.append(ringLayer, candLayer, chargerLayer, siteLayer, focusLayer);
+
+// The view: the whole country, or a closer look. u (map units per pixel) follows the view, so every
+// symbol keeps its screen size while the ground scales under it.
+let unitsPerPx = 1.4; let compactMap = false;
+const zoomLevel = () => FULL.w / view.w;
+function measureMap() {
+  const box = map.getBoundingClientRect();
+  if (!box.width || !box.height) return false;
+  unitsPerPx = 1 / Math.min(box.width / view.w, box.height / view.h);
+  compactMap = box.width < 560;
+  map.style.setProperty("--u", unitsPerPx.toFixed(4));
+  map.classList.toggle("compact", compactMap);
+  return true;
+}
+function applyView() {
+  map.setAttribute("viewBox", `${view.x.toFixed(2)} ${view.y.toFixed(2)} ${view.w.toFixed(2)} ${view.h.toFixed(2)}`);
+  measureMap();
+  map.dataset.zoom = zoomLevel() >= 2.2 ? "in" : "out";
+  map.classList.toggle("zoomed", zoomLevel() > 1.001);
+  drawFurniture(unitsPerPx, compactMap);
+  drawFocus();
+  $("z-in").disabled = zoomLevel() >= MAX_ZOOM - 0.001;
+  $("z-out").disabled = zoomLevel() <= 1.001;
+  $("z-all").disabled = zoomLevel() <= 1.001 && Math.abs(view.x - FULL.x) < 0.5 && Math.abs(view.y - FULL.y) < 0.5;
+  $("z-site").disabled = !activeId;
+}
+const fitView = (v) => {
+  const w = clamp(v.w, FULL.w / MAX_ZOOM, FULL.w); const h = w * (FULL.h / FULL.w);
+  return { x: clamp(v.x, FULL.x, FULL.x + FULL.w - w), y: clamp(v.y, FULL.y, FULL.y + FULL.h - h), w, h };
+};
+let tween = 0;
+// Move the view, easing there unless the reader asked for less motion or a new move interrupts it.
+function goTo(target) {
+  cancelAnimationFrame(tween);
+  const to = fitView(target);
+  if (reducedMotion()) { view = to; applyView(); return; }
+  const from = { ...view }; const t0 = performance.now(); const span = 260;
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / span); const e = 1 - Math.pow(1 - t, 3);
+    view = { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e,
+      w: from.w + (to.w - from.w) * e, h: from.h + (to.h - from.h) * e };
+    applyView();
+    if (t < 1) tween = requestAnimationFrame(step); else { view = to; applyView(); }
+  };
+  tween = requestAnimationFrame(step);
+}
+function zoomBy(factor, cx = view.x + view.w / 2, cy = view.y + view.h / 2) {
+  const w = clamp(view.w / factor, FULL.w / MAX_ZOOM, FULL.w); const h = w * (FULL.h / FULL.w);
+  goTo({ x: cx - (cx - view.x) * (w / view.w), y: cy - (cy - view.y) * (h / view.h), w, h });
+}
+function centreOn(site, zoom) {
+  const w = FULL.w / zoom; const h = w * (FULL.h / FULL.w);
+  goTo({ x: X(site.lon) - w / 2, y: Y(site.lat) - h / 2, w, h });
+}
+function revealSite(site) { // keep the open place in view when the map is zoomed in
+  if (zoomLevel() <= 1.001) return;
+  const x = X(site.lon); const y = Y(site.lat); const m = 48 * unitsPerPx;
+  if (x < view.x + m || x > view.x + view.w - m || y < view.y + m || y > view.y + view.h - m) centreOn(site, zoomLevel());
+}
+const siteById = (id) => D.sites.find((s) => s.candidate_id === id);
+$("z-in").addEventListener("click", () => zoomBy(1.6));
+$("z-out").addEventListener("click", () => zoomBy(1 / 1.6));
+$("z-all").addEventListener("click", () => goTo(FULL));
+$("z-site").addEventListener("click", () => { const s = siteById(activeId); if (s) centreOn(s, Math.max(zoomLevel(), 4)); });
+
+// Dragging pans a zoomed map; the arrow keys do the same without a pointer. Ctrl or ⌘ with the wheel
+// zooms, so the page still scrolls under an ordinary wheel.
+let drag = null; let justDragged = false;
+map.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || zoomLevel() <= 1.001) return;
+  drag = { x: e.clientX, y: e.clientY, view: { ...view }, moved: false, id: e.pointerId };
+});
+map.addEventListener("pointermove", (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
+  if (!drag.moved && Math.hypot(dx, dy) < 5) return;
+  if (!drag.moved) { drag.moved = true; map.setPointerCapture(e.pointerId); map.classList.add("panning"); hideTip(); }
+  cancelAnimationFrame(tween);
+  view = fitView({ ...drag.view, x: drag.view.x - dx * unitsPerPx, y: drag.view.y - dy * unitsPerPx });
+  applyView();
+});
+const endDrag = (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (drag.moved) { justDragged = true; setTimeout(() => { justDragged = false; }, 0); }
+  map.classList.remove("panning");
+  drag = null;
+};
+map.addEventListener("pointerup", endDrag);
+map.addEventListener("pointercancel", endDrag);
+map.addEventListener("wheel", (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  const box = map.getBoundingClientRect();
+  const cx = view.x + ((e.clientX - box.left - (box.width - view.w / unitsPerPx) / 2) * unitsPerPx);
+  const cy = view.y + ((e.clientY - box.top - (box.height - view.h / unitsPerPx) / 2) * unitsPerPx);
+  zoomBy(e.deltaY < 0 ? 1.25 : 0.8, cx, cy);
+}, { passive: false });
+$("mapwrap").addEventListener("keydown", (e) => {
+  if (e.target !== $("mapwrap") || e.altKey || e.ctrlKey || e.metaKey) return;
+  const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (pan) { e.preventDefault(); goTo({ ...view, x: view.x + pan[0] * view.w * 0.2, y: view.y + pan[1] * view.h * 0.2 }); }
+  else if (e.key === "+" || e.key === "=") { e.preventDefault(); zoomBy(1.6); }
+  else if (e.key === "-" || e.key === "_") { e.preventDefault(); zoomBy(1 / 1.6); }
+  else if (e.key === "0") { e.preventDefault(); goTo(FULL); }
+});
+applyView();
+if ("ResizeObserver" in window) new ResizeObserver(applyView).observe(map);
+else window.addEventListener("resize", applyView);
 
 const mapwrap = $("mapwrap");
 const tip = $("maptip");
@@ -998,13 +1205,22 @@ function showTip(node, site) {
 }
 const hideTip = () => tip.classList.remove("show");
 
+// One place in two views: pointing at a row lights its marker, and pointing at a marker lights its row.
+function highlight(id) {
+  for (const g of siteLayer.children) g.classList.toggle("hl", g.dataset.id === id);
+  for (const b of $("list").querySelectorAll("button")) b.classList.toggle("hl", b.dataset.id === id);
+}
+const unhighlight = () => highlight(null);
+
 function activate(node, handler, site) {
-  node.addEventListener("click", handler);
+  node.addEventListener("click", () => { if (!justDragged) handler(); });
   node.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handler(); } });
-  node.addEventListener("mouseenter", () => showTip(node, site));
-  node.addEventListener("mouseleave", hideTip);
-  node.addEventListener("focus", () => showTip(node, site));
-  node.addEventListener("blur", hideTip);
+  const on = () => { showTip(node, site); if (node.dataset.id) highlight(site.candidate_id); };
+  const off = () => { hideTip(); unhighlight(); };
+  node.addEventListener("mouseenter", on);
+  node.addEventListener("mouseleave", off);
+  node.addEventListener("focus", on);
+  node.addEventListener("blur", off);
 }
 for (const s of D.sites) {
   const c = svg("circle", { class: "cand", cx: X(s.lon), cy: Y(s.lat), tabindex: -1 });
@@ -1019,27 +1235,41 @@ for (const k of D.existing_chargers) {
 
 const inMode = (site, key) => site[`selected_${key}`] === true;
 const selected = () => D.sites.filter((s) => inMode(s, mode)).sort((a, b) => a.rank - b.rank);
+// The open place: its ring and mark, and its name written on the map beside it.
+function drawFocus() {
+  focusLayer.replaceChildren();
+  const active = siteById(activeId);
+  map.classList.toggle("focused", Boolean(active));
+  if (!active) return;
+  const R = M.ring_radius_deg * K;
+  const member = inMode(active, mode);
+  const x = X(active.lon); const y = Y(active.lat);
+  if (member) focusLayer.append(svg("circle", { class: `ring-focus ${mode}`, cx: x, cy: y, r: R }));
+  const g = svg("g", { class: `focus ${member ? mode : "off"}`, transform: `translate(${x} ${y})` });
+  g.append(svg("circle", { class: "halo" }), svg("circle", { class: "focusdot" }));
+  focusLayer.append(g);
+  if (compactMap) return; // the dossier names it; a small map has no room for a label
+  const flip = x > view.x + view.w * 0.6; const u = unitsPerPx;
+  const label = svg("text", { class: "flabel", x: x + (flip ? -16 : 16) * u, y: y - 4 * u, "text-anchor": flip ? "end" : "start" });
+  label.append(Object.assign(svg("tspan"), { textContent: active.label }),
+    Object.assign(svg("tspan", { class: "sub", x: x + (flip ? -16 : 16) * u, dy: "1.35em" }),
+      { textContent: `${active.district} · score ${active.score}` }));
+  focusLayer.append(label);
+}
 function drawSelection() {
-  ringLayer.replaceChildren(); siteLayer.replaceChildren(); focusLayer.replaceChildren();
+  ringLayer.replaceChildren(); siteLayer.replaceChildren();
   const R = M.ring_radius_deg * K;
   const at = (s) => `translate(${X(s.lon)} ${Y(s.lat)})`;
   for (const s of selected()) {
     ringLayer.append(svg("circle", { class: `ring ${mode}`, cx: X(s.lon), cy: Y(s.lat), r: R }));
-    const g = svg("g", { class: `site ${mode}`, transform: at(s), tabindex: 0, role: "button",
+    const g = svg("g", { class: `site ${mode}`, transform: at(s), tabindex: 0, role: "button", "data-id": s.candidate_id,
       "aria-label": `${s.label}, score rank ${s.rank} of ${H.candidates}, score ${s.score}` });
     g.append(svg("circle", { class: "hit" }), svg("circle", { class: "dot" }));
     activate(g, () => showSite(s.candidate_id, true), s);
     siteLayer.append(g);
   }
-  const active = D.sites.find((s) => s.candidate_id === activeId);
-  map.classList.toggle("focused", Boolean(active));
-  if (active) {
-    const member = inMode(active, mode);
-    if (member) focusLayer.append(svg("circle", { class: `ring-focus ${mode}`, cx: X(active.lon), cy: Y(active.lat), r: R }));
-    const g = svg("g", { class: `focus ${member ? mode : "off"}`, transform: at(active) });
-    g.append(svg("circle", { class: "halo" }), svg("circle", { class: "focusdot" }));
-    focusLayer.append(g);
-  }
+  drawFocus();
+  $("z-site").disabled = !activeId;
   $("legend").replaceChildren(
     el("span", {}, el("i", { class: `node ${mode}` }), `${byKey[mode].label} site`),
     el("span", {}, el("i", { class: "sel" }), "Selected site"),
@@ -1062,9 +1292,7 @@ function renderList() {
   const contributes = mode === "mclp"; // unique coverage is measured in the optimized network only
   const items = selected();
   $("q-node").className = `node ${mode}`;
-  $("opps-title").textContent = s.label;
-  $("opps-sub").textContent = `${H.n_sites} locations, ranked by score`;
-  $("opps-cols").textContent = (contributes ? "Score · unique coverage" : "Score") + " · score rank";
+  $("opps-sub").textContent = `${s.label}, in score order`;
   // The leading number and "Score rank" are two different things: position in this network's list
   // (1..N) versus rank by score among all candidates (of 300). Spell out both, so neither is guessed.
   $("opps-note").textContent =
@@ -1076,18 +1304,26 @@ function renderList() {
   list.replaceChildren();
   list.dataset.mode = mode;
   items.forEach((site, i) => {
+    // Why it matters: the demand only this site reaches, in the optimized network; else its strongest component.
+    const strongest = [...site.components].sort((a, b) => b.value - a.value)[0];
+    const why = contributes && site.unique_coverage
+      ? el("span", { class: "why" }, el("b", {}, site.unique_coverage), " of demand only this site reaches")
+      : el("span", { class: "why" }, "Strongest: ", el("b", {}, strongest.label.toLowerCase()), ` (${strongest.display})`);
     const b = el("button", { type: "button", "data-id": site.candidate_id, "aria-current": String(site.candidate_id === marked) },
       el("span", { class: "rank" }, el("b", {}, pad2(i + 1)), el("small", {}, `/${items.length}`)),
       el("span", { class: "row" },
         el("span", { class: "l1" }, el("span", { class: "name" }, site.label), el("b", {}, site.score)),
-        el("span", { class: "l2" }, el("span", {}, `${site.province.replace(" Province", "")} · ${site.profile}`),
-          contributes && site.unique_coverage ? el("span", { class: "contrib" }, site.unique_coverage) : null),
-        el("span", { class: "l2b" }, `Score rank #${site.rank} / ${H.candidates}`),
-        el("span", { class: "l3" }, `${site.confidence} confidence`,
+        el("span", { class: "where" }, `${site.district} · ${site.province.replace(" Province", "")} · ${site.profile}`),
+        why,
+        el("span", { class: "l3" }, `Score rank #${site.rank} / ${H.candidates}`, el("span", {}, `${site.confidence} confidence`),
           site.grid_evidence_status === "UNKNOWN"
             ? el("span", { class: "verify-tag", title: "No mapped substation or power line nearby; to be verified" }, "Grid not mapped")
             : null)));
     b.addEventListener("click", () => showSite(site.candidate_id, true));
+    b.addEventListener("mouseenter", () => highlight(site.candidate_id));
+    b.addEventListener("focus", () => highlight(site.candidate_id));
+    b.addEventListener("mouseleave", unhighlight);
+    b.addEventListener("blur", unhighlight);
     list.append(el("li", {}, b));
   });
 }
@@ -1103,7 +1339,7 @@ function markRow(id) {
   const head = panel.querySelector(".qhead").offsetHeight;
   const top = row.offsetTop; const bottom = top + row.offsetHeight;
   if (top < panel.scrollTop + head || bottom > panel.scrollTop + panel.clientHeight) {
-    panel.scrollTo({ top: Math.max(0, top - head - (panel.clientHeight - head - row.offsetHeight) / 2), behavior: "smooth" });
+    panel.scrollTo({ top: Math.max(0, top - head - (panel.clientHeight - head - row.offsetHeight) / 2), behavior: reducedMotion() ? "auto" : "smooth" });
   }
 }
 
@@ -1140,7 +1376,7 @@ const ACTION_TITLES = [
 const actionTitle = (text) => (ACTION_TITLES.find(([re]) => re.test(text)) || [null, "Follow-up"])[1];
 
 function block(title, extra, ...children) {
-  return el("section", { class: "block" }, el("div", { class: "bh" }, el("h3", { class: "label" }, title), extra || null), ...children);
+  return el("section", { class: "block" }, el("div", { class: "bh" }, el("h3", {}, title), extra || null), ...children);
 }
 
 function componentTable(site) {
@@ -1176,15 +1412,21 @@ function members(site) {
 const SITE_RECORDS = ["host", "host_osm_id", "coordinates"];
 const REPORTED_RECORDS = ["dist_town", "dist_kigali"]; // reported only, never scored (SPEC section 5)
 
+// How to read the marks: four ways a value can be known, each set differently.
+const evidenceKey = () => el("ul", { class: "evkey" }, [
+  ["RETRIEVED_FACT", "found in a source"], ["CALCULATED", "derived by SiteScout"],
+  ["INFERRED", "an interpretation"], ["UNKNOWN", "not established"],
+].map(([type, text]) => el("li", {}, provenance(type), text)));
+
 function evidenceRows(site, records) {
   return el("ul", { class: "evrows" }, EVIDENCE_GROUPS.map(([key, group, , lead]) => {
     const r = records[lead];
     const status = records.grid_status;
     if (key === "grid_evidence" && status && status.type === "UNKNOWN") {
-      return el("li", {}, el("span", { class: "g" }, group),
+      return el("li", { class: "open" }, el("span", { class: "g" }, group),
         el("div", {}, el("b", {}, "Not mapped"),
           el("span", { class: "c" }, `No mapped substation or power line within ${ctx.grid_radius.display}`),
-          el("span", { class: "f" }, provenance(status.type), status.evidence.source, verifyTag())));
+          el("span", { class: "f" }, provenance(status.type), el("span", { class: "src" }, status.evidence.source), verifyTag())));
     }
     if (!r) return null;
     // The charging gap is measured only against the charging sites public data knows about.
@@ -1192,7 +1434,7 @@ function evidenceRows(site, records) {
       ? el("span", { class: "c" }, `Measured against the ${ctx.known_sites.display} known charging sites in public data`) : null;
     return el("li", {}, el("span", { class: "g" }, group),
       el("div", {}, el("b", {}, r.display), el("span", { class: "c" }, r.claim), context,
-        el("span", { class: "f" }, provenance(r.type), r.evidence.source)));
+        el("span", { class: "f" }, provenance(r.type), el("span", { class: "src" }, r.evidence.source))));
   }));
 }
 
@@ -1221,7 +1463,7 @@ function evidenceTable(site, records, inv) {
     }
   }
   plain("Reported, not scored", REPORTED_RECORDS);
-  return el("details", { class: "allev" }, el("summary", {}, "View all evidence"),
+  return el("details", { class: "allev" }, el("summary", {}, "Every evidence record"),
     el("table", { class: "ev" }, el("tbody", {}, rows)));
 }
 
@@ -1233,8 +1475,8 @@ function roleBlock(site) {
     el("i", { class: `node ${inActive ? mode : "off"}`, "aria-hidden": "true" }),
     `${inActive ? "In" : "Not in"} the ${active.label}`);
   // Network contribution: the one figure that matters most about a network member, so it carries
-  // slightly more visual weight than a generic score/rank/confidence tile, and always in the
-  // optimized network's own colour, whichever network is the active one.
+  // the most visual weight on the page, and always in the optimized network's own colour, whichever
+  // network is the active one.
   const contribution = site.selected_mclp && site.unique_coverage
     ? el("div", { class: "contrib-wrap" },
         el("p", { class: "label" }, "Network contribution"),
@@ -1245,7 +1487,7 @@ function roleBlock(site) {
             : el("p", { class: "caption" }, `Measured in the ${optimized} only; SiteScout exports no contribution for the ${active.label}.`)))
     : el("p", { class: "role-line" }, `Not selected for the ${optimized}, so SiteScout exports no network contribution for this candidate.`);
   return el("section", { class: "block", id: "site-role" },
-    el("div", { class: "bh" }, el("h3", { class: "label" }, "Network role")), status, contribution, members(site));
+    el("div", { class: "bh" }, el("h3", {}, "Network role")), status, contribution, members(site));
 }
 
 function queueNav(site) {
@@ -1271,37 +1513,47 @@ function queueNav(site) {
 }
 
 function showSite(id, fromUser) {
-  const site = D.sites.find((s) => s.candidate_id === id);
+  const site = siteById(id);
   if (!site) return;
   activeId = id;
   lastId = id;
   drawSelection();
+  revealSite(site);
   const inNetwork = site.selected_mclp;
 
   const inv = investigationSection({
-    title: "Site investigation",
+    title: "Investigation",
     questions: ["What supports this location?", "What does the public evidence not establish?"],
     intro: "Explains this location from SiteScout's records and project documents. It never changes the decision.",
     primary: { label: "Investigate this site", request: { kind: "site_investigation", candidate_id: id } },
   });
   const verify = investigationAction("What would we need to verify?", { kind: "unknowns", candidate_id: id }, inv);
 
-  // Identity: what and where, then score (the prominent figure), rank and confidence.
+  // Identity: what and where, then the score (the prominent figure), rank and confidence.
+  const position = selected().findIndex((s) => s.candidate_id === id);
+  const toMap = el("button", { class: "tomap", type: "button" }, "Show on the map");
+  toMap.addEventListener("click", () => {
+    mapwrap.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" });
+    revealSite(site);
+  });
   const head = el("header", { class: "dhead" },
-    el("p", { class: "label" }, "Site"),
+    el("p", { class: "kicker" }, position >= 0
+      ? `Site ${pad2(position + 1)} of ${H.n_sites} · ${byKey[mode].label}` : `Candidate · not in the ${byKey[mode].label}`),
     el("h2", {}, site.label),
     el("p", { class: "sub" }, `${site.district} · ${site.province} · ${cap(site.profile)} profile`),
-    el("p", { class: "cid mono" }, site.candidate_id),
+    el("p", { class: "coords mono" }, coordinates(site)),
+    el("p", { class: "coords mono" }, site.candidate_id),
+    toMap,
     el("div", { class: "dfig" },
       el("div", { class: "lead" }, el("b", {}, site.score), el("span", {}, "Score, 0–100")),
       el("div", {}, el("b", {}, `#${site.rank}`, el("small", {}, ` / ${H.candidates}`)), el("span", {}, "Score rank")),
       el("div", {}, el("b", {}, site.confidence), el("span", {}, "Confidence"))));
 
-  const confidence = block("Confidence", null,
-    el("p", { class: "conf" }, el("b", {}, site.confidence), ` — ${site.confidence_reasons}.`),
-    el("p", { class: "caption" }, "A level set only by factors that differ between sites: missing grid evidence, sparse " +
-      "public mapping, no identified host or a remote location. It is separate from the score and from the evidence labels."));
-  const openNote = el("p", { class: "caption" },
+  const confidence = block("What is known", null,
+    el("p", { class: "lead" }, el("b", {}, site.confidence), ` confidence: ${site.confidence_reasons}.`),
+    el("p", { class: "caption first" }, "Confidence is a level set only by factors that differ between sites: missing grid evidence, " +
+      "sparse public mapping, no identified host or a remote location. It is separate from the score and from the evidence marks."));
+  const openNote = el("p", { class: "caption first" },
     "Not established by the public evidence. These are open questions to verify, not findings that the answer is no.");
 
   const parts = [queueNav(site), head, roleBlock(site)];
@@ -1310,27 +1562,26 @@ function showSite(id, fromUser) {
     const b = site.brief;
     const records = Object.fromEntries(site.evidence.map((r) => [r.id, r]));
     parts.push(
-      block("Why this location", null, componentTable(site), scoreNote(site), el("p", { class: "brief" }, b.opportunity)),
-      el("section", { class: "block", id: "site-evidence" }, el("div", { class: "bh" }, el("h3", { class: "label" }, "Evidence")),
-        el("p", { class: "caption keyline" }, "Each label says how SiteScout knows the value: retrieved from a source, " +
-          "calculated, inferred or unknown. It is not a confidence rating."),
-        evidenceRows(site, records), evidenceTable(site, records, inv), el("p", { class: "disclaimer" }, gridDisclaimer)),
+      block("Why this site matters", null, el("p", { class: "lead" }, b.opportunity), componentTable(site), scoreNote(site)),
+      el("section", { class: "block", id: "site-evidence" }, el("div", { class: "bh" }, el("h3", {}, "Evidence")),
+        el("p", { class: "caption first" }, "Each value says how SiteScout knows it, and from which source. The mark is not a confidence rating."),
+        evidenceKey(), evidenceRows(site, records), evidenceTable(site, records, inv), el("p", { class: "disclaimer" }, gridDisclaimer)),
       confidence,
-      block("What we don't know yet", verify, openNote,
+      block("What remains uncertain", verify, openNote,
         el("ul", { class: "verify" }, b.unknowns.map((u) => verifyRow(u))),
         b.risks.length ? el("p", { class: "subh" }, "Known risks") : null,
         el("ul", { class: "risks" }, b.risks.map((r) => el("li", {}, r)))),
-      block("Next checks", null,
+      el("section", { class: "block", id: "site-investigation" }, inv || ""),
+      block("Next actions", null,
         el("ol", { class: "checks-next" }, b.actions.map((a) => el("li", {}, el("div", {}, el("b", {}, actionTitle(a)), el("span", {}, a))))),
-        briefLink(b)),
-      el("section", { class: "block", id: "site-investigation" }, inv || ""));
+        briefLink(b)));
   } else {
     parts.push(
-      block("Score", null, componentTable(site), scoreNote(site), el("p", { class: "disclaimer" }, gridDisclaimer)),
+      block("How it scores", null, componentTable(site), scoreNote(site), el("p", { class: "disclaimer" }, gridDisclaimer)),
       confidence,
-      block("What we don't know yet", verify, openNote,
+      block("What remains uncertain", verify, openNote,
         el("ul", { class: "verify" }, unknowns.map((u) => verifyRow(cap(u)))),
-        el("p", { class: "note" }, "Detailed evidence and next checks are prepared for the network's sites.")),
+        el("p", { class: "note" }, "Detailed evidence and next actions are prepared for the network's sites.")),
       el("section", { class: "block", id: "site-investigation" }, inv || ""));
   }
   const dossier = el("article", { class: "dossier", "aria-label": `Site: ${site.label}` }, parts);
@@ -1341,11 +1592,11 @@ function showSite(id, fromUser) {
   dossierCol.scrollTop = 0;
   markRow(id);
   enter(dossier);
-  if (fromUser && !scrolls(dossierCol)) dossierCol.scrollIntoView({ block: "start", behavior: "smooth" });
+  if (fromUser && !scrolls(dossierCol)) dossierCol.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" });
   if (location.hash.slice(1) !== id) history.replaceState(null, "", `#${id}`);
 }
 
-// --- Strategy switching: header, map, queue, comparison and dossier move together ---------------
+// --- Strategy switching: masthead, map, queue, comparison and dossier move together -------------
 const toggle = $("toggle");
 function setMode(key) {
   mode = key;
@@ -1355,7 +1606,7 @@ function setMode(key) {
   if (activeId) {
     renderList();
     drawSelection();
-    const site = D.sites.find((s) => s.candidate_id === activeId);
+    const site = siteById(activeId);
     const role = $("site-role");
     if (role && site) role.replaceWith(roleBlock(site)); // membership and contribution for the new network
     const nav = sitePane.querySelector(".dnav");
@@ -1364,9 +1615,12 @@ function setMode(key) {
     showList();
   }
 }
+// How each network is chosen, in the words the tabs and the comparison use.
+const HOW = { mclp: "Chosen jointly, by exact optimization", greedy: "Adds the best next site, one at a time", top30: "The highest-scoring eligible sites" };
 for (const s of H.selections) {
   const button = el("button", { type: "button", class: s.key, "data-mode": s.key, "aria-pressed": String(s.key === mode) },
-    el("span", {}, s.label));
+    el("span", { class: "t-name" }, el("span", {}, s.label), el("span", { class: "t-fig" }, s.population_display)),
+    el("span", { class: "t-how" }, HOW[s.key] || ""));
   button.addEventListener("click", () => {
     if (location.hash && !activeId) history.replaceState(null, "", location.pathname + location.search);
     setMode(s.key);
@@ -1397,7 +1651,7 @@ $("strategies").append(
         [i ? " · " : "", el("span", {}, `${province.replace(" Province", "")} `, el("b", {}, count))])));
     row.addEventListener("click", () => {
       setMode(s.key);
-      $("overview").scrollIntoView({ block: "start", behavior: "smooth" }); // the outcome, then the map
+      $("overview").scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); // the masthead, then the map
     });
     return row;
   })));
@@ -1408,7 +1662,7 @@ if (optimized && scoreOnly && parseFloat(scoreOnly.mean_score_display) > parseFl
     && scoreOnly.population_share < optimized.population_share) {
   $("insight").hidden = false;
   $("insight").append(
-    el("p", { class: "label" }, "Observation"),
+    el("p", { class: "kicker" }, "Observation"),
     el("p", { class: "obs" }, "Highest individual scores do not necessarily produce the strongest network."),
     el("p", {}, `The ${scoreOnly.label} has the highest mean site score (${scoreOnly.mean_score_display}) but covers ` +
       `${scoreOnly.population_display} of the modelled population, across ${scoreOnly.districts_display} districts. The ` +
@@ -1522,9 +1776,10 @@ menu.addEventListener("click", () => setMenu(!topbar.classList.contains("open"))
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
 document.addEventListener("click", (e) => { if (!topbar.contains(e.target)) setMenu(false); });
 
-const toSection = (id) => $(id).scrollIntoView({ block: "start", behavior: "smooth" });
+const scrollBehavior = () => (reducedMotion() ? "auto" : "smooth");
+const toSection = (id) => $(id).scrollIntoView({ block: "start", behavior: scrollBehavior() });
 const NAV = {
-  network: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+  network: () => window.scrollTo({ top: 0, behavior: scrollBehavior() }),
   evaluation: () => toSection("evaluation"),
   sources: () => toSection("sources"),
   method: () => toSection("method"),

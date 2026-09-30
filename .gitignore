@@ -41,6 +41,7 @@ dist/
 
 # Local editor, agent and OS files
 .claude/settings.local.json
+.claude/skills/
 .vscode/
 .idea/
 desktop.ini

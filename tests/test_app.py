@@ -180,15 +180,21 @@ def test_the_workspace_reads_outcome_list_map_then_dossier():
 def test_the_network_site_dossier_keeps_the_approved_order():
     start = PAGE.index("  if (inNetwork) {")
     branch = PAGE[start : PAGE.index("  } else {", start)]
+    # D-067: why it matters, the evidence, what is known and what remains uncertain, the
+    # investigation, then what to do next.
     sections = (
-        '"Why this location"',
+        '"Why this site matters"',
         '"Evidence"',
-        '"What we don\'t know yet"',
-        '"Next checks"',
+        "confidence,",
+        '"What remains uncertain"',
         '"site-investigation"',
+        '"Next actions"',
     )
     positions = [branch.index(s) for s in sections]
     assert positions == sorted(positions)
+    assert (
+        'block("What is known"' in PAGE
+    )  # the confidence block, named for what it tells the reader
 
 
 # --- Map (visual redesign, Phase 4) --------------------------------------------------------------
@@ -274,3 +280,79 @@ def test_network_contribution_is_never_presented_as_a_greedy_or_top30_contributi
     label_at = role.index('"Network contribution"')
     no_contribution_at = role.index("exports no network contribution for this candidate")
     assert label_at < no_contribution_at
+
+
+# --- The redesign (D-067): access, motion, and what must not come back --------------------------
+
+
+def test_the_page_has_a_skip_link_landmarks_and_a_named_map_control_set():
+    assert '<a class="skip" href="#workspace">' in PAGE
+    assert '<header class="topbar"' in PAGE and '<main class="content" id="content">' in PAGE
+    for name in ("Zoom in", "Zoom out", "Zoom to the selected site", "Show the whole country"):
+        assert f'aria-label="{name}"' in PAGE  # icon-only controls carry a name
+
+
+def test_the_map_can_be_operated_without_a_pointer():
+    assert 'id="mapwrap" tabindex="0" role="group"' in PAGE
+    for key in ("ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"):
+        assert key in PAGE  # panning has a keyboard alternative to dragging
+    assert "e.ctrlKey || e.metaKey" in PAGE  # an ordinary wheel keeps scrolling the page
+
+
+def test_motion_is_off_when_the_reader_asks_for_less():
+    assert (
+        "@media (prefers-reduced-motion: reduce)" in PAGE and "transition: none !important" in PAGE
+    )
+    assert 'matchMedia("(prefers-reduced-motion: reduce)")' in PAGE
+    smooth = [line for line in PAGE.splitlines() if '"smooth"' in line]
+    assert smooth and all(
+        "reducedMotion()" in line for line in smooth
+    )  # no scripted scroll ignores it
+
+
+def test_uncertainty_is_amber_and_never_an_error_colour():
+    # --warn (rust) is only for a failed validation step in the trace; unknowns, verification and
+    # the investigation's fallback line use the verification amber.
+    assert (
+        PAGE.count("var(--warn)") == 1 and ".checks li.fail .step { color: var(--warn); }" in PAGE
+    )
+    assert ".inv-verdict.warn { color: var(--verify);" in PAGE
+    assert ".p-UNKNOWN { color: var(--verify); }" in PAGE
+
+
+def test_the_page_wrapper_does_not_reuse_the_investigation_result_class():
+    # investigation.js draws each result as <article class="report">; a page rule of that name once
+    # gave every result stray padding and a maximum width.
+    assert 'class: "report"' in CLIENT
+    assert 'class="report"' not in PAGE and not re.search(r"^\s*\.report\s*\{", PAGE, re.M)
+
+
+def test_the_page_prints_as_a_plain_document():
+    assert "@media print" in PAGE
+
+
+def test_the_queue_says_why_a_location_matters_without_inventing_a_contribution():
+    render_list = PAGE[PAGE.index("function renderList()") : PAGE.index("function markRow(id)")]
+    assert "contributes && site.unique_coverage" in render_list  # the optimized network only
+    assert "of demand only this site reaches" in render_list and "Strongest: " in render_list
+
+
+def test_the_dossier_and_masthead_use_analyst_wording():
+    phrases = (
+        "Why this site matters",
+        "What is known",
+        "What remains uncertain",
+        "Next actions",
+        "Choose a place",
+        "Compare the three networks",
+    )
+    for phrase in phrases:
+        assert phrase in PAGE
+    for retired in (
+        "What we don't know yet",
+        "Next checks",
+        "Confidence score",
+        "Unlock",
+        "Next-generation",
+    ):
+        assert retired not in PAGE

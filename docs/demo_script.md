@@ -14,7 +14,7 @@ Show the diagram in the README.
 
 ## 01:30–03:00 · Map and the optimized network
 
-On the network workspace, with *Optimized network* selected in the network switch above the map.
+On the network workspace, with *Optimized network* selected in the network tabs above the map.
 
 - "Each dot is one of the 300 candidates; the dark blue points are the 30 selected sites, with their 10 km service radius shaded."
 - "They were selected together as a maximum coverage problem: the 30 sites that bring the most modelled population within 10 km, at least 2 km apart, among sites in the top half by score that have a host. CBC solves it exactly and reports the solution optimal."
@@ -34,7 +34,7 @@ Open the rank-2 site, Fuel station, Musanze (`#cand-3a8fa00f876a`).
 
 - "Score, rank of 300 and a confidence level, never a percentage. Under *Network role*, its place in each of the three selections, and how much coverage the network would lose without it."
 - "*Evidence* shows one key value per group; *View all evidence* opens the full table. Every value says how SiteScout knows it: retrieved fact, calculated, inferred or unknown. Grid evidence means mapped infrastructure nearby, not a connection decision."
-- Scroll to *What we don't know yet* (each item marked VERIFY) and *Next checks*: "Grid capacity, land, landowner willingness and permits are unknown for every site. SiteScout says so rather than guessing, and turns them into next steps."
+- Scroll to *What remains uncertain* (each item marked VERIFY) and, after the investigation, *Next actions*: "Grid capacity, land, landowner willingness and permits are unknown for every site. SiteScout says so rather than guessing, and turns them into next steps."
 
 ## 05:00–06:00 · AI-assisted investigation
 
