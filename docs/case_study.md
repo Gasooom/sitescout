@@ -22,11 +22,11 @@ Public data -> Ingestion -> Features -> Candidates -> Scoring -> Optimization ->
 2. **Candidates:** 300, generated in code from real host locations (fuel stations, malls, supermarkets, hotels, logistics and industrial sites) and road-corridor points; none placed by hand.
 3. **Scoring:** demand, access, host activity, charging gap and grid evidence as percentile points, weighted by an urban or a corridor profile; missing data never raises a score.
 4. **Optimization:** the exact MCLP, with a greedy solution and the Top-30 by score always reported next to it.
-5. **Evidence:** every value is a record typed RETRIEVED_FACT, CALCULATED, INFERRED or UNKNOWN, with its source; 30 site briefs are filled from templates.
+5. **Evidence:** every value is a record typed RETRIEVED_FACT, CALCULATED, INFERRED or UNKNOWN, with its source; briefs with evidence, unknowns and next actions are filled from templates for the 30 selected sites; the other 270 candidates have scores and a confidence level only.
 6. **Evaluation:** a retrospective plausibility test, weight stability, the network comparison, data-quality checks and a grounding check.
 7. **AI investigation:** added last, as a read-only layer over the tools above.
 
-The rule behind the last step: **AI explains the decision; it does not make the decision.** Deterministic Python computes every score, selection and number; the page renders the export and computes nothing.
+The rule behind the last step: **AI explains the decision; it does not make the decision.** Deterministic Python computes every score and the network selection (the parameters are documented design choices in [decisions.md](decisions.md)); the page renders the export and computes nothing.
 
 ## Key result
 
@@ -67,7 +67,7 @@ For every site: grid connection capacity, transformer capacity, land availabilit
 
 ## Limitations
 
-- **The evaluation is weak by necessity.** Only 5 known charging sites exist in the public data. In a backtest with them removed from every feature, SiteScout's top 30 holds 4 of the 5 candidates near them (Precision@30 0.133, against 0.067 for population alone and 0.017 for random), but the 95% interval of the difference with population alone, [0.000, 0.167], includes 0. This is a retrospective plausibility test, not proof that the ranking is right.
+- **The evaluation is weak by necessity.** The public OpenStreetMap data used maps only 5 charging sites, so the backtest cannot distinguish SiteScout from population alone (the 95% interval of the difference includes zero). With those sites removed from every feature, SiteScout's top 30 holds 4 of the 5 candidates near them (Precision@30 0.133, against 0.067 for population alone and 0.017 for random; the interval of the difference is [0.000, 0.167]). This is a retrospective plausibility test, not proof that the ranking is right.
 - **The ranking is stable** under ±20% changes to each weight (mean Top-30 overlap 0.98, minimum 0.87, target 0.70), which says the result is not an artifact of one weight, not that the weights are right.
 - **Public data has gaps.** Mapping density varies by district (the grid-mapping proxy ranges from 0.12 to 6.62 times the national median), and the 128 road-corridor candidates have no host.
 - **Modelled assumptions.** Demand is modelled population (WorldPop) within 10 km; traffic, vehicle ownership and trip patterns are not modelled. Changing the radius to 5 or 15 km changes coverage to 26.3% or 68.9%.

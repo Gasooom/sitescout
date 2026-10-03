@@ -48,7 +48,7 @@ Back to the *Network* section. Under *Network investigation*, click **Investigat
 
 - "Every number in the 30 briefs is checked against structured data: 2262 of 2262."
 - "A debugging story: the network investigation used to fail validation. The model wrote 'one another', which the validator counts as a number word, and quoted a document without its Markdown. I didn't loosen the validator; I made its feedback precise: which rule, which quotation, and the exact text it should have quoted. After the fix it validated 3 of 3 live runs."
-- "The honest limit: only 5 known charging sites exist in public data. In a backtest SiteScout's top 30 finds 4 of the 5 candidates near them, but the interval against population alone includes zero. It's a retrospective plausibility test, not proof. The ranking is stable under ±20% weight changes."
+- "The honest limit: the public OpenStreetMap data I used maps only 5 charging sites, so the backtest cannot distinguish SiteScout from population alone; the 95% interval of the difference includes zero. In that backtest SiteScout's top 30 finds 4 of the 5 candidates near them. It's a retrospective plausibility test, not proof. The ranking is stable under ±20% weight changes."
 
 ## If the provider is unavailable
 

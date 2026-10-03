@@ -775,7 +775,7 @@ These need a decision before or during the milestone named. None has a default.
 ### Milestone 6
 
 - Resolved in Milestone 6 (D-046): hostless points are not eligible; eligibility is across all candidates; sⱼ = score / 100; demand is renormalised after the down-weighting; a time-limited result is reported with CBC's status and not called exact.
-- Changing the existing-charger factor (0.25 to 0.75) leaves the network unchanged on the real data: only 5 charging sites exist, all in or near Kigali. It will matter once `data/manual/chargers.csv` is filled.
+- Changing the existing-charger factor (0.25 to 0.75) leaves the network unchanged on the real data: only 5 charging sites are mapped in the OpenStreetMap extract, all in or near Kigali. It will matter once `data/manual/chargers.csv` is filled.
 
 ### Milestone 7
 

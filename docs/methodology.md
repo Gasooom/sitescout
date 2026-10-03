@@ -22,7 +22,7 @@ A level, High, Medium or Low, never a percentage, built only from factors that d
 
 ## 5. Retrospective plausibility test
 
-The ranking is checked in backtest mode, with every existing charger removed from every feature, against random (1,000 seeds) and population-only baselines with bootstrap intervals, and for stability under ±20% changes to each weight ([reports/evaluation.md](../reports/evaluation.md)). With 5 known charging sites the test is weak, and the report says so.
+The ranking is checked in backtest mode, with every existing charger removed from every feature, against random (1,000 seeds) and population-only baselines with bootstrap intervals, and for stability under ±20% changes to each weight ([reports/evaluation.md](../reports/evaluation.md)). With only 5 charging sites mapped in the OpenStreetMap data, the test is weak, and the report says so.
 
 ## 6. The network: an exact maximum coverage problem
 
@@ -30,11 +30,11 @@ Scoring sites one by one favours a cluster of similar sites. SiteScout instead s
 
 ## 7. Evidence and briefs
 
-Every value a brief shows is an evidence record typed RETRIEVED_FACT, CALCULATED, INFERRED or UNKNOWN, with its source. The 30 briefs are filled from templates, and an automated check confirms every number in them traces to structured data.
+Every value a brief shows is an evidence record typed RETRIEVED_FACT, CALCULATED, INFERRED or UNKNOWN, with its source. The 30 briefs are filled from templates, and an automated check confirms every number in them traces to structured data. Briefs with evidence, unknowns and next actions exist for the 30 selected sites; the other 270 candidates have scores and a confidence level only.
 
 ## 8. The investigation layer
 
-The decision above is made by deterministic Python. On top of it sits an agent that can question it, never change it:
+Scores and network selection are computed by deterministic Python; the parameters (weights, radius, candidate rules) are documented design choices in [decisions.md](decisions.md). On top of it sits an agent that can question the results, never change them:
 
 - **Tools, not free generation.** It can call eight read-only deterministic tools (site records, score explanations, comparisons, network contribution and summary, nearby sites, briefs) and search a small, allow-listed index of the project documents (BM25, no embeddings). The index never holds site data.
 - **Grounding.** Every statement must cite records the run fetched. Numbers must be copied from those records, knowledge claims must quote the cited document verbatim, candidate ids must come from fetched records, and UNKNOWN never becomes a fact. One retry is allowed, with a note that explains each rule broken and names each quotation that was not found verbatim (D-064); otherwise the answer is replaced by the evidence the run gathered, with no generated text.

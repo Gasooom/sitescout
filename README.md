@@ -9,7 +9,7 @@ SiteScout answers one question: **where should an EV charging company expand nex
 **What makes it technically interesting**
 
 - **A network problem, solved exactly.** The 30 sites are a Maximum Coverage Location Problem solved with PuLP and CBC, always compared with a greedy heuristic and the naive Top-30 by score.
-- **Deterministic decisions, typed evidence.** Every score, selection and number is computed by Python from public data; every displayed value is an evidence record typed RETRIEVED_FACT, CALCULATED, INFERRED or UNKNOWN.
+- **Deterministic computation, typed evidence.** Scores and network selection are computed deterministically; the parameters (weights, radius, candidate rules) are documented design choices in [docs/decisions.md](docs/decisions.md). Every displayed value is an evidence record typed RETRIEVED_FACT, CALCULATED, INFERRED or UNKNOWN. The AI layer explains results and never changes them.
 - **Evaluated, with its limits stated.** A retrospective plausibility test against random and population-only baselines, weight stability, data-quality checks, and a grounding check on every number in the site briefs.
 - **AI explains the decision; it does not make it.** An agent investigates the result with SiteScout's own read-only tools and documents, and a deterministic validator checks every statement it writes before anything is shown.
 
@@ -24,7 +24,7 @@ Start with the [case study](docs/case_study.md), then the [demo script](docs/dem
 | Districts with a site | 22 | 23 | 8 |
 | Mean site score | 64.6 | 65.3 | 73.8 |
 
-Coverage is modelled population within the service radius under the stated assumptions, not charger use. The exact solution is optimal and greedy comes within 0.64% of its objective. The ranking is stable under ±20% changes to each weight (mean Top-30 overlap 0.98). With only 5 known charging sites in public data, the backtest cannot tell SiteScout apart from population alone; [reports/evaluation.md](reports/evaluation.md) reports this. All 2262 numbers in the 30 site briefs trace to structured evidence.
+Coverage is modelled population within the service radius under the stated assumptions, not charger use. The Top-30 baseline takes the 30 highest-scoring of the 108 eligible sites with no spacing rule, so it clusters (23 of 30 in the City of Kigali), and greedy reaches 49.2%. The 10 km radius is an assumption: re-solved at 5 km and 15 km, the optimized network covers 26.3% and 68.9%. The exact solution is optimal and greedy comes within 0.64% of its objective. The ranking is stable under ±20% changes to each weight (mean Top-30 overlap 0.98). The public OpenStreetMap data used maps only 5 charging sites, so the backtest cannot distinguish SiteScout from population alone (the 95% interval of the difference includes zero). [reports/evaluation.md](reports/evaluation.md) reports this. All 2262 numbers in the 30 site briefs trace to structured evidence.
 
 ## Architecture
 
@@ -44,7 +44,7 @@ flowchart LR
   I -.explains.-> P
 ```
 
-Python in `src/sitescout/` makes every numerical and selection decision. The page in `app/` renders the export and computes nothing. The investigation layer calls the same deterministic tools; it never produces a number, changes a score or selects a site.
+Python in `src/sitescout/` computes every score and the network selection; the parameters are documented design choices ([docs/decisions.md](docs/decisions.md)). The page in `app/` renders the export and computes nothing. The investigation layer calls the same deterministic tools; it never produces a number, changes a score or selects a site.
 
 ## Run the demo
 
@@ -72,7 +72,7 @@ Then open http://127.0.0.1:8765/. On the overview, **Investigate network differe
 
 SiteScout never claims grid approval, transformer capacity, land availability, permit approval, owner willingness, revenue or business viability, and its ranking is not ground truth. It reports **grid evidence** from public maps, never a grid connection decision.
 
-Every site brief carries these two statements:
+Briefs with evidence, unknowns and next actions exist for the 30 selected sites; the other 270 candidates have scores and a confidence level only. Every site brief carries these two statements:
 
 > Actual grid connection feasibility requires utility confirmation.
 
