@@ -297,6 +297,13 @@ def network_section(summary: dict[str, Any] | None) -> str:
     return render_network_section(summary)
 
 
+def radius_section(result: dict[str, Any] | None) -> str:
+    """Section F: the radius robustness analysis (D-068), when radius_robustness.json exists."""
+    from sitescout.radius_robustness import render_radius_section  # it imports this module
+
+    return render_radius_section(result)
+
+
 def grounding_section(summary: dict[str, Any] | None) -> str:
     """Section E: the Milestone 7 grounding check, when grounding.json exists."""
     if summary is None:
@@ -397,6 +404,7 @@ def render_report(results: dict[str, Any], config: Config) -> str:
         "grid_rows": grid_rows,
         "network_section": network_section(results.get("network")),
         "grounding_section": grounding_section(results.get("grounding")),
+        "radius_section": radius_section(results.get("radius_robustness")),
     }
     return TEMPLATE.read_text(encoding="utf-8").format(**values)
 
@@ -418,6 +426,9 @@ def run_evaluation(
         else None,
         "grounding": read_json(grounding)
         if (grounding := processed_dir / "grounding.json").is_file()
+        else None,
+        "radius_robustness": read_json(radius)
+        if (radius := processed_dir / "radius_robustness.json").is_file()
         else None,
     }
     a = results["backtest"]

@@ -51,3 +51,7 @@ Grid-layer completeness by district (a proxy for how much of the grid is mapped;
 ## E. Grounding
 
 {grounding_section}
+
+## F. Radius robustness and a stronger baseline
+
+{radius_section}

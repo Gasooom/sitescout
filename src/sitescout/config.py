@@ -591,6 +591,15 @@ class SensitivitySettings(_Model):
     ]
 
 
+class RadiusRobustnessSettings(_Model):
+    """D-068: an additional analysis, never a change to the shipped network. The coverage radii
+    to compare the selection methods at, and the minimum distances (metres) of the spaced
+    Top-by-score baseline."""
+
+    radii_m: IncreasingMetres
+    spacing_m: IncreasingMetres
+
+
 class OptimizationSettings(_Model):
     demand_h3_resolution: Annotated[int, Strict(), Field(ge=0, le=15)]
     service_radius_m: Metres
@@ -602,6 +611,7 @@ class OptimizationSettings(_Model):
     time_limit_s: Count
     require_host: Flag
     sensitivity: SensitivitySettings
+    radius_robustness: RadiusRobustnessSettings
 
 
 class ExportSettings(_Model):

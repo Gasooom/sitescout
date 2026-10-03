@@ -332,6 +332,12 @@ optimization:
     lambda: [0, 0.01, 0.05]
     service_radius_m: [5000, 10000, 15000]
     existing_charger_demand_factor: [0.25, 0.5, 0.75]
+  # D-068: reports/evaluation.md section F. Methods are compared at each coverage radius, and
+  # the stronger Top-by-score baseline keeps its sites at least each spacing apart. Analysis
+  # only: none of these values changes the network above.
+  radius_robustness:
+    radii_m: [5000, 7500, 10000, 12500, 15000]
+    spacing_m: [5000, 10000]
 
 # SPEC §10
 export:

@@ -4,7 +4,7 @@
 
 SiteScout answers one question: **where should an EV charging company expand next in Rwanda?** It proposes a network of 30 charging sites, selected together rather than as isolated points, explains why each site was selected, states what is still unknown, and says what should be investigated next.
 
-**Key result.** Choosing the 30 sites together covers **49.8%** of Rwanda's modelled population within 10 km, against **24.0%** for the 30 best-scoring sites taken one by one ([reports/evaluation.md](reports/evaluation.md), section C).
+**Key result.** Choosing 30 sites jointly covers **49.8%** of Rwanda's modelled population within 10 km, against **40.9%** for the top-scoring sites kept at least 5 km apart and **24.0%** for the 30 top-scoring sites taken as-is ([reports/evaluation.md](reports/evaluation.md), sections C and F). Most of the gain comes from spreading sites out; exact optimization adds about 9 points and removes the need to hand-tune a spacing distance (a 10 km spacing reaches 46.6% but places only 27 sites).
 
 **What makes it technically interesting**
 
@@ -24,7 +24,7 @@ Start with the [case study](docs/case_study.md), then the [demo script](docs/dem
 | Districts with a site | 22 | 23 | 8 |
 | Mean site score | 64.6 | 65.3 | 73.8 |
 
-Coverage is modelled population within the service radius under the stated assumptions, not charger use. The Top-30 baseline takes the 30 highest-scoring of the 108 eligible sites with no spacing rule, so it clusters (23 of 30 in the City of Kigali), and greedy reaches 49.2%. The 10 km radius is an assumption: re-solved at 5 km and 15 km, the optimized network covers 26.3% and 68.9%. The exact solution is optimal and greedy comes within 0.64% of its objective. The ranking is stable under ±20% changes to each weight (mean Top-30 overlap 0.98). The public OpenStreetMap data used maps only 5 charging sites, so the backtest cannot distinguish SiteScout from population alone (the 95% interval of the difference includes zero). [reports/evaluation.md](reports/evaluation.md) reports this. All 2262 numbers in the 30 site briefs trace to structured evidence.
+Coverage is modelled population within the service radius under the stated assumptions, not charger use. The Top-30 baseline takes the 30 highest-scoring of the 108 eligible sites with no spacing rule, so it clusters (23 of 30 in the City of Kigali), and greedy reaches 49.2%. The 10 km radius is an assumption: re-solved at 5 km and 15 km, the optimized network covers 26.3% and 68.9%. [Section F of reports/evaluation.md](reports/evaluation.md) repeats the comparison at 5 to 15 km against a stronger baseline that takes the highest scores but keeps sites 5 or 10 km apart: Optimized stays ahead at every radius, but by 2.0 to 4.8 points over the strongest baseline (3.2 at 10 km, where that baseline places only 27 of 30 sites), not by the 25.8 points it leads the naive Top-30. The exact solution is optimal and greedy comes within 0.64% of its objective. The ranking is stable under ±20% changes to each weight (mean Top-30 overlap 0.98). The public OpenStreetMap data used maps only 5 charging sites, so the backtest cannot distinguish SiteScout from population alone (the 95% interval of the difference includes zero). [reports/evaluation.md](reports/evaluation.md) reports this. All 2262 numbers in the 30 site briefs trace to structured evidence.
 
 ## Architecture
 

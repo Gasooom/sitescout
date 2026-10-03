@@ -315,6 +315,9 @@ EXPECTED_M6_SETTINGS = {
     "optimization.sensitivity.lambda": [0.0, 0.01, 0.05],
     "optimization.sensitivity.service_radius_m": [5000, 10000, 15000],
     "optimization.sensitivity.existing_charger_demand_factor": [0.25, 0.5, 0.75],
+    # D-068: an additional analysis; it changes no value above.
+    "optimization.radius_robustness.radii_m": [5000, 7500, 10000, 12500, 15000],
+    "optimization.radius_robustness.spacing_m": [5000, 10000],
 }
 
 
@@ -1180,3 +1183,21 @@ def test_overrides_cannot_fill_or_create_pending_parameters(
     settings_data["evaluation"]["random_seed"] = dict(SYNTHETIC_PENDING)
     with pytest.raises(ConfigError, match="pending parameter"):
         build_config(settings_data, weights_data, overrides={key: value})
+
+
+@pytest.mark.parametrize(
+    ("dotted", "value", "message"),
+    [
+        ("optimization.radius_robustness.radii_m", [10000, 5000], "strictly increasing"),
+        ("optimization.radius_robustness.radii_m", [5000, 5000], "strictly increasing"),
+        ("optimization.radius_robustness.radii_m", [], "at least 1 item"),
+        ("optimization.radius_robustness.spacing_m", [0], "greater than 0"),
+        ("optimization.radius_robustness.spacing_m", ["5000"], "valid integer"),
+    ],
+)
+def test_the_radius_robustness_settings_are_checked(
+    settings_data, weights_data, dotted, value, message
+):
+    set_path(settings_data, dotted, value)
+    with pytest.raises(ConfigError, match=message):
+        build_config(settings_data, weights_data)

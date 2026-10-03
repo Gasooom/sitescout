@@ -124,3 +124,35 @@ Grid-layer completeness by district (a proxy for how much of the grid is mapped;
 ## E. Grounding
 
 30 Site Evidence Briefs ([reports/briefs](briefs/README.md)), one per network site, plus their index. Every number in them was checked against the structured evidence in `data/processed/evidence.json`: **2262 of 2262** grounded (100.0%; target 100%).
+
+## F. Radius robustness and a stronger baseline
+
+All methods choose from the same 108 eligible sites with site scores fixed and only the coverage radius changing; the spaced baselines take the highest scores while keeping every pair of sites at least their spacing apart. At 10 km Optimized covers 49.8% of modelled population; the strongest baseline, top by score, at least 10 km apart, covers 46.6% but reaches only 27 of 30 sites, a gap of 3.2 percentage points, while the strongest baseline with all 30 sites, top by score, at least 5 km apart, covers 40.9% (8.9 points behind); the unspaced Top-30 covers 24.0%. Across 5 km to 15 km the gap to the strongest baseline runs from 2.0 points at 15 km to 4.8 points at 7.5 km (against the best baseline that reaches all 30 sites: 2.7 to 11.9 points), and Optimized covers more than every baseline at every radius. Letting the zone around the 5 known chargers, where demand is down-weighted, follow the radius instead of staying at 10 km, as the sensitivity table in section C does, changes the selected sites at 5 km (4 of 30), 7.5 km (3 of 30), 15 km (1 of 30) and moves Optimized's coverage by at most 0.4 points (26.3% against 25.9% at 5 km), which is why the two tables differ slightly. At 10 km the three shipped selections are reproduced exactly (checked against network.json).
+
+| Method | Radius | Population within radius | Versus Optimized (points) | Sites | Provinces | Districts | Sites in Kigali | Mean site score |
+|---|---|---|---|---|---|---|---|---|
+| Optimized (exact MCLP) | 5 km | 25.9% | — | 30 | 5 | 21 | 4 | 65.6 |
+| Greedy coverage | 5 km | 25.5% | -0.4 | 30 | 5 | 21 | 5 | 66.0 |
+| Top-30 by score, no spacing | 5 km | 14.3% | -11.6 | 30 | 4 | 8 | 23 | 73.8 |
+| Top by score, at least 5 km apart | 5 km | 23.2% | -2.7 | 30 | 5 | 15 | 6 | 67.6 |
+| Top by score, at least 10 km apart | 5 km | 19.0% | -6.9 | 27 of 30 | 5 | 22 | 2 | 64.2 |
+| Optimized (exact MCLP) | 7.5 km | 38.2% | — | 30 | 5 | 22 | 4 | 64.0 |
+| Greedy coverage | 7.5 km | 36.5% | -1.7 | 30 | 5 | 21 | 3 | 64.9 |
+| Top-30 by score, no spacing | 7.5 km | 19.4% | -18.8 | 30 | 4 | 8 | 23 | 73.8 |
+| Top by score, at least 5 km apart | 7.5 km | 32.3% | -5.9 | 30 | 5 | 15 | 6 | 67.6 |
+| Top by score, at least 10 km apart | 7.5 km | 33.4% | -4.8 | 27 of 30 | 5 | 22 | 2 | 64.2 |
+| Optimized (exact MCLP) | 10 km | 49.8% | — | 30 | 5 | 22 | 3 | 64.6 |
+| Greedy coverage | 10 km | 49.2% | -0.6 | 30 | 5 | 23 | 4 | 65.3 |
+| Top-30 by score, no spacing | 10 km | 24.0% | -25.8 | 30 | 4 | 8 | 23 | 73.8 |
+| Top by score, at least 5 km apart | 10 km | 40.9% | -8.9 | 30 | 5 | 15 | 6 | 67.6 |
+| Top by score, at least 10 km apart | 10 km | 46.6% | -3.2 | 27 of 30 | 5 | 22 | 2 | 64.2 |
+| Optimized (exact MCLP) | 12.5 km | 60.4% | — | 30 | 5 | 22 | 2 | 64.8 |
+| Greedy coverage | 12.5 km | 60.3% | -0.1 | 30 | 5 | 22 | 3 | 64.5 |
+| Top-30 by score, no spacing | 12.5 km | 28.6% | -31.8 | 30 | 4 | 8 | 23 | 73.8 |
+| Top by score, at least 5 km apart | 12.5 km | 49.0% | -11.4 | 30 | 5 | 15 | 6 | 67.6 |
+| Top by score, at least 10 km apart | 12.5 km | 57.8% | -2.6 | 27 of 30 | 5 | 22 | 2 | 64.2 |
+| Optimized (exact MCLP) | 15 km | 68.9% | — | 30 | 5 | 22 | 3 | 65.0 |
+| Greedy coverage | 15 km | 68.9% | 0.0 | 30 | 5 | 22 | 3 | 64.5 |
+| Top-30 by score, no spacing | 15 km | 33.5% | -35.4 | 30 | 4 | 8 | 23 | 73.8 |
+| Top by score, at least 5 km apart | 15 km | 57.0% | -11.9 | 30 | 5 | 15 | 6 | 67.6 |
+| Top by score, at least 10 km apart | 15 km | 66.9% | -2.0 | 27 of 30 | 5 | 22 | 2 | 64.2 |
