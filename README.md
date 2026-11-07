@@ -8,7 +8,7 @@
 
 **Live demo: [sitescout-investigation.onrender.com](https://sitescout-investigation.onrender.com)**: the decision page with the AI investigation. It runs on free hosting, so the first load can take about a minute while the server wakes. The [GitHub Pages copy](https://gasooom.github.io/sitescout/app/) loads instantly and sends investigations to the same server.
 
-![The decision page: switching between the Optimized, Greedy and Top-30 networks, then opening a site's dossier](docs/assets/sitescout-demo.gif)
+![The decision page: the optimized network compared on the map with the Top-30 by score, which clusters in the City of Kigali, then a site's dossier](docs/assets/sitescout-demo.gif)
 
 SiteScout answers one question: **where should an EV charging company expand next in Rwanda?** It proposes a network of 30 charging sites, selected together rather than as isolated points, explains why each site was selected, states what is still unknown, and says what should be investigated next.
 

@@ -343,7 +343,7 @@ def test_the_dossier_and_masthead_use_analyst_wording():
         "What is known",
         "What remains uncertain",
         "Next actions",
-        "Choose a place",
+        "Network brief",  # Milestone 12.5: the empty dossier became the selected network in brief
         "Compare the three networks",
     )
     for phrase in phrases:
@@ -356,3 +356,87 @@ def test_the_dossier_and_masthead_use_analyst_wording():
         "Next-generation",
     ):
         assert retired not in PAGE
+
+
+# --- Milestone 12.5: network brief, compare, label placement, contrast ---------------------------
+
+
+def _between(start: str, end: str) -> str:
+    begin = PAGE.index(start)
+    return PAGE[begin : PAGE.index(end, begin)]
+
+
+def test_the_network_brief_shows_only_export_figures():
+    brief = _between("function renderBrief()", "\n}\n")
+    for value in (
+        "s.population_display",
+        "s.districts_display",
+        "s.provinces_display",
+        "s.by_province",
+        "H.n_sites",
+        "o.population_display",
+    ):
+        assert value in brief
+    # No figure is derived or rounded in the page; the mean score stays in the comparison table.
+    for derived in ("toFixed", "mean_score", "unique_coverage", "Math."):
+        assert derived not in brief
+    # The one division sizes a bar from export counts and is never printed.
+    assert brief.count("/ Number(H.n_sites)") == 1 and "style: `width:" in brief
+
+
+def test_compare_marks_come_from_membership_flags_only():
+    compare = _between("let comparing = false;", "function placeLabels()")
+    assert "inMode(c, other) && !inMode(c, mode)" in compare  # only the other network picks it
+    assert "inMode(s, other)" in compare  # both networks pick it
+    for counted in (".length", "population_share", "population_display", "reduce("):
+        assert counted not in compare  # marks only: nothing is counted or summed
+
+
+def test_province_labels_move_for_legibility_only():
+    place = _between("function placeLabels()", "\n}\n")
+    assert "getBBox()" in place and "covered(bb)" in place and "inView(bb)" in place
+    assert "textContent" not in place  # a name moves; nothing is written
+    assert "if (mapReady) placeLabels();" in PAGE  # re-placed when the zoom changes label size
+    assert "document.fonts.ready.then" in PAGE  # and once the typefaces have loaded
+    assert _between("function drawSelection()", "\n}\n").rstrip().endswith("placeLabels();")
+
+
+def _hex(token: str) -> str:
+    match = re.search(rf"--{re.escape(token)}:\s*(#[0-9a-fA-F]{{6}})", PAGE)
+    assert match, f"--{token} must be a six-digit hex colour"
+    return match.group(1)
+
+
+def _contrast(a: str, b: str) -> float:
+    def luminance(colour: str) -> float:
+        channels = [int(colour[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+        linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    high, low = sorted((luminance(a), luminance(b)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+TEXT_COLOURS = ("ink", "ink-2", "muted", "verify", "net-optimized", "net-greedy", "net-top30")
+BACKGROUNDS = ("bg", "surface", "surface-2", "land", "sel", "verify-soft")
+
+
+@pytest.mark.parametrize("text", TEXT_COLOURS)
+def test_every_text_colour_meets_wcag_aa_on_every_background(text):
+    for background in BACKGROUNDS:
+        ratio = _contrast(_hex(text), _hex(background))
+        assert ratio >= 4.5, f"--{text} on --{background}: {ratio:.2f}"
+
+
+def test_the_faint_token_is_never_a_text_colour():
+    # --faint is for candidate dots and disabled controls (contrast 3.07 on --surface); WCAG
+    # exempts inactive controls, so a :disabled rule is the only place it may colour anything.
+    rules = [
+        line for line in PAGE.splitlines() if re.search(r"(?<![-\w])color:\s*var\(--faint\)", line)
+    ]
+    assert rules and all(":disabled" in line for line in rules)
+
+
+def test_the_map_key_folds_away_on_a_phone():
+    assert '<details class="legend" id="legend"' in PAGE and "<summary>Map key</summary>" in PAGE
+    assert 'matchMedia("(max-width: 700px)")' in PAGE and "legendBox.open = !phone.matches" in PAGE
