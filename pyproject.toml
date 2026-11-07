@@ -27,6 +27,10 @@ analyst = [
     "anthropic>=1.8.0",
     "openai>=3.19.2",
 ]
+# D-071: SiteScout's read-only tools and its answer validator over the Model Context Protocol.
+mcp = [
+    "mcp>=2.3,<3",
+]
 
 [dependency-groups]
 dev = [

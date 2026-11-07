@@ -662,7 +662,8 @@ def test_no_new_sdk_dependency_was_added():
 
     project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     extras = project["project"]["optional-dependencies"]
-    assert list(extras) == ["analyst"]
+    assert list(extras) == ["analyst", "mcp"]  # D-071 added the MCP extra, and only it
+    assert extras["mcp"] == ["mcp>=2.3,<3"]
     assert [d.split(">")[0] for d in extras["analyst"]] == ["anthropic", "openai"]
 
 

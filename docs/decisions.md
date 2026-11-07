@@ -770,6 +770,20 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** printing how many sites the networks share or differ by (a count the export does not hold; it would be computed in the page); a Phase B basemap with Lake Kivu, neighbouring countries and roads, a marginal coverage curve and irreplaceability (each needs new export fields, so they move to the milestone that changes the export, where the pipeline is rerun on the machine holding the data); a map library with label collision built in (a new dependency and an external resource the page has never needed).
 - **Reason:** The project's central result is that the 30 best-scoring sites are not the best 30-site network. The page stated that in numbers but never showed it; with Compare on, the Top-30's cluster in the City of Kigali and the optimized network's spread are visible at once.
 
+## D-071: SiteScout's tools and its validator as a Model Context Protocol server
+
+- **Date:** 2026-11-07 (Milestone 16; requested by Gasim)
+- **Problem:** the deterministic tools and the validator were reachable only through SiteScout's own agent loop. Any other agent could not use SiteScout's facts, and nothing held its answers to SiteScout's grounding rules.
+- **Decision:**
+  - `src/sitescout/mcp_server.py` serves the agent registry (D-058: the six analyst tools, `network_summary`, `nearby_sites` and `search_knowledge`) plus one tool, `validate_answer`, over MCP; `scripts/mcp_serve.py` only parses arguments and starts it.
+  - **One definition per tool.** Each tool's input schema is its argument model's own JSON schema and its description is the registry's, so the MCP list cannot drift from what the agent uses; a test pins both. The low-level SDK server is used for that reason: its decorator API would derive a second schema from a Python signature.
+  - **The validator as a tool, with the agent's rule.** `validate_answer` takes the agent's answer schema and runs `validate_agent_answer` against a ledger of every evidence record and comparison field this session's tool results contained. A record that exists in the data but was not fetched in the session is not evidence, as in the loop (`session_from_observations`). It reports `passed` and every issue; it never edits the answer.
+  - **Errors as in the loop.** Bad arguments, an unknown site and the other tool errors the loop treats as recoverable come back as a result marked as an error, so a client can correct itself; an unknown tool name is a protocol error; any other failure stops the call, as it stops the agent.
+  - **stdio only.** One process serves one client, so a process is a session and the ledger ends with it. No network port is opened, nothing is written and no model is called; the public deployment (D-066) is unchanged.
+  - **Optional.** `mcp>=2.3,<3` is the `mcp` extra, not a core dependency (it brings a web stack the pipeline does not need). CI installs it, so the tests run against the real SDK, including an in-memory client session.
+- **Alternatives:** an HTTP transport on the public deployment (a second public endpoint, with authentication and abuse limits to design, for no demo need); the SDK's decorator-based server (a second, hand-maintained schema per tool); validating against every record in the data rather than the session's (it would accept a number the client never saw, which is what grounding forbids); a stateless validator that receives the records with the answer (the client could then supply its own records).
+- **Reason:** MCP is how agents now reach tools. Serving the validator next to the tools makes SiteScout's main property portable: whichever agent writes the answer, a number it states must come from a record it fetched.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.

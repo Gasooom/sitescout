@@ -29,8 +29,8 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install dependencies (locked, with the optional provider SDKs)
-        run: uv sync --frozen --extra analyst
+      - name: Install dependencies (locked, with the optional provider SDKs and MCP)
+        run: uv sync --frozen --extra analyst --extra mcp
 
       - name: Lint
         run: uv run ruff check .

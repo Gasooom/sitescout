@@ -78,6 +78,21 @@ uv run --env-file .env python scripts/serve.py
 
 Then open http://127.0.0.1:8765/. On the overview, **Investigate network difference** asks why the optimized network differs from the Top-30 by score; on a site you can investigate the site, have an evidence group explained, or ask what would need to be verified. The page sends a fixed investigation type, never free text. Each answer shows the records and document passages it cites and the steps the agent took. If no answer passes validation after one retry, the page shows the retrieved evidence instead of generated text. Run this way, the server listens on 127.0.0.1 only (the public deployment behind the GitHub Pages copy is [D-066](docs/decisions.md)), the key never reaches the browser, and nothing an investigation returns is saved ([D-062](docs/decisions.md), [D-064](docs/decisions.md)).
 
+## Use SiteScout from any MCP client
+
+SiteScout's read-only tools are also a [Model Context Protocol](https://modelcontextprotocol.io) server, so any MCP client can investigate the network with the same nine capabilities the built-in agent uses: the eight deterministic tools and the project-knowledge search. A tenth tool, `validate_answer`, holds the client to SiteScout's own rules: it checks a draft answer with the agent's validator against the records **that client fetched in its own session**, and returns every issue it finds ([D-071](docs/decisions.md)).
+
+```bash
+uv sync --extra mcp
+uv run python scripts/mcp_serve.py
+```
+
+It runs on the committed processed outputs, so a fresh clone needs no pipeline run, no API key and no network. It speaks stdio only, opens no port and writes nothing. A client starts it with the usual `mcpServers` entry:
+
+```json
+{ "mcpServers": { "sitescout": { "command": "uv", "args": ["run", "--directory", "/path/to/sitescout", "python", "scripts/mcp_serve.py"] } } }
+```
+
 ## What it answers
 
 1. Which locations deserve investigation?
