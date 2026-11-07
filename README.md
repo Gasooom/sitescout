@@ -1,6 +1,14 @@
 # SiteScout
 
+[![CI](https://github.com/Gasooom/sitescout/actions/workflows/ci.yml/badge.svg)](https://github.com/Gasooom/sitescout/actions/workflows/ci.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-3b5a78)](pyproject.toml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-58606a)](LICENSE)
+
 **EV charging network intelligence for Rwanda.** An independent project built on public data.
+
+**Live demo: [sitescout-investigation.onrender.com](https://sitescout-investigation.onrender.com)**: the decision page with the AI investigation. It runs on free hosting, so the first load can take about a minute while the server wakes. The [GitHub Pages copy](https://gasooom.github.io/sitescout/app/) loads instantly and sends investigations to the same server.
+
+![The decision page: switching between the Optimized, Greedy and Top-30 networks, then opening a site's dossier](docs/assets/sitescout-demo.gif)
 
 SiteScout answers one question: **where should an EV charging company expand next in Rwanda?** It proposes a network of 30 charging sites, selected together rather than as isolated points, explains why each site was selected, states what is still unknown, and says what should be investigated next.
 
@@ -14,6 +22,16 @@ SiteScout answers one question: **where should an EV charging company expand nex
 - **AI explains the decision; it does not make it.** An agent investigates the result with SiteScout's own read-only tools and documents, and a deterministic validator checks every statement it writes before anything is shown.
 
 Start with the [case study](docs/case_study.md), then the [demo script](docs/demo_script.md).
+
+## For reviewers: the 5-minute path
+
+1. **[The case study](docs/case_study.md)** (3 minutes): the problem, why ranking alone fails, the result, and a real failure of the AI layer traced to three causes and fixed without relaxing a rule.
+2. **[`src/sitescout/optimize.py`](src/sitescout/optimize.py)**: the network as a Maximum Coverage Location Problem in PuLP (`solve_mclp`), the greedy baseline (`solve_greedy`) and each site's unique contribution (`marginal_coverage`).
+3. **[`src/sitescout/agent/validate.py`](src/sitescout/agent/validate.py)**: the deterministic gate in front of every AI answer. A number must be copied from a record the statement cites, a documentation claim must quote its source verbatim, and UNKNOWN stays unknown.
+4. **[`reports/evaluation.md`](reports/evaluation.md)**: random and population-only baselines with bootstrap intervals, weight stability, a stronger spaced baseline across radii, and the result that does not beat population alone, stated as such.
+5. **[`reports/agent_eval.md`](reports/agent_eval.md)**: 73 scripted agent cases run offline, with the validator's known false accepts and false rejects pinned as documented limits, not hidden.
+
+**Engineering signals:** 1768 tests run in [CI](.github/workflows/ci.yml) on every push (count at Milestone 12) · 2262 of 2262 numbers in the site briefs traced to structured evidence · the exact network solved to optimality by CBC · no score, coverage figure or site selection produced by a language model.
 
 ## Key results
 

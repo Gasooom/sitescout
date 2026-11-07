@@ -747,6 +747,17 @@ Each decision records its ID, date, decision, the alternatives considered and th
 - **Alternatives:** changing the shipped baseline (it is the published headline, and a reader should see both); sampling random spacings (the greedy walk is the natural strong heuristic and deterministic); varying the down-weighting zone together with the coverage radius (it also changes the demand weights, which the question did not ask for); hard-coding the radii and spacings in the module (configuration comes from YAML).
 - **Reason:** A result is only as good as the strongest alternative it was compared with. Reporting the 3.2 point gap next to the 25.8 point one, with the site counts that qualify it, is the honest statement of what joint optimization adds.
 
+## D-069: Continuous integration for lint, format and the test suite
+
+- **Date:** 2026-11-07 (Milestone 12; requested by Gasim)
+- **Decision:**
+  - `.github/workflows/ci.yml` runs on every push to any branch, on every pull request and on demand. One job on `ubuntu-latest`: `uv sync --frozen --extra analyst`, then `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q`, the standard validation commands in `CLAUDE.md` with the formatter in check mode so CI never rewrites code.
+  - **Offline by construction.** No secret is configured and no data is downloaded. Tests that need the pipeline outputs in `data/processed/` already skip themselves with the stated reason "real processed outputs are not present"; on a clean checkout that is 11 skips. `--extra analyst` installs the two provider SDKs so their adapter tests run against fakes instead of skipping; no request reaches a provider.
+  - `--frozen` installs exactly `uv.lock` and fails if it is out of date. Permissions are `contents: read`; a newer push to the same ref cancels the older run.
+  - Measured on a clean checkout before the workflow was added: ruff clean, 226 files formatted, 1766 passed and 13 skipped (11 for missing processed outputs, 2 for the provider SDKs); with `--extra analyst`, as in CI, 1768 passed and 11 skipped.
+- **Alternatives:** a Windows job as well (the development machine runs Windows, D-003; deferred until the suite is known to pass there in CI, rather than added red); running the pipeline in CI (it downloads large public sources, and the OSM source is a rolling extract, D-016, so a CI run would not reproduce the committed outputs); marking data-dependent tests with a new pytest marker (they already skip with a reason, so a marker would add a second mechanism for the same thing).
+- **Reason:** The project claims its rules are enforced by tests. A green check on every push shows that to a reader without asking them to install anything, and catches a broken rule before it reaches `main`.
+
 ## Open questions
 
 These need a decision before or during the milestone named. None has a default.
