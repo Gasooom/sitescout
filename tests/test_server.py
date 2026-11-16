@@ -280,8 +280,8 @@ def test_the_root_redirects_to_the_page(context, config):
     ("path", "content_type"),
     [
         ("/app/index.html", "text/html; charset=utf-8"),
-        ("/app/fonts/IBMPlexSans-Regular.woff2", "font/woff2"),
-        ("/app/fonts/IBMPlexMono-Regular.woff2", "font/woff2"),
+        ("/app/fonts/Geist-Regular.woff2", "font/woff2"),
+        ("/app/fonts/GeistMono-Regular.woff2", "font/woff2"),
         ("/data/export/sitescout.js", "text/javascript; charset=utf-8"),
         ("/data/export/sitescout.json", "application/json"),
         ("/reports/evaluation.md", "text/plain; charset=utf-8"),

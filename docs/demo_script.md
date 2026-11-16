@@ -16,7 +16,7 @@ Show the diagram in the README.
 
 On the network workspace, with *Optimized network* selected in the network tabs above the map.
 
-- "Each dot is one of the 300 candidates; the dark blue points are the 30 selected sites, with their 10 km service radius shaded."
+- "Each dot is one of the 300 candidates; the dark green points are the 30 selected sites, with their 10 km service radius shaded."
 - "They were selected together as a maximum coverage problem: the 30 sites that bring the most modelled population within 10 km, at least 2 km apart, among sites in the top half by score that have a host. CBC solves it exactly and reports the solution optimal."
 - Point at 49.8%: "That is modelled population within 10 km under these assumptions, not people who will charge there."
 

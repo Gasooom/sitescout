@@ -132,7 +132,7 @@ def test_the_client_shows_only_what_the_server_returns():
     assert "reason" not in CLIENT  # the server never sends a fallback's reason
 
 
-# --- Typefaces (D-065) -------------------------------------------------------------------------
+# --- Typefaces (D-065; Geist since D-072) ------------------------------------------------------
 
 
 def test_the_page_typefaces_are_shipped_licensed_and_served():
@@ -147,8 +147,8 @@ def test_the_page_typefaces_are_shipped_licensed_and_served():
     licence = (PROJECT_ROOT / "app" / "fonts" / "LICENSE.txt").read_text(encoding="utf-8")
     assert "SIL Open Font License, Version 1.1" in licence
     # A system stack follows each face, so the page still reads if a file cannot load.
-    assert '--sans: "IBM Plex Sans", ui-sans-serif' in PAGE
-    assert '--mono: "IBM Plex Mono", ui-monospace' in PAGE
+    assert '--sans: "Geist", ui-sans-serif' in PAGE
+    assert '--mono: "Geist Mono", ui-monospace' in PAGE
 
 
 # --- Network outcome and navigation (visual redesign, Phase 2) ----------------------------------
@@ -440,3 +440,45 @@ def test_the_faint_token_is_never_a_text_colour():
 def test_the_map_key_folds_away_on_a_phone():
     assert '<details class="legend" id="legend"' in PAGE and "<summary>Map key</summary>" in PAGE
     assert 'matchMedia("(max-width: 700px)")' in PAGE and "legendBox.open = !phone.matches" in PAGE
+
+
+# --- Redesign (D-072): map layers, list keys, and a way back to the network brief ----------------
+
+
+def test_the_map_key_switches_layers_off_for_display_only():
+    # Three layers can step back: the service radius, the candidates and the known charging sites.
+    # Switching one sets a class on the map and nothing else: no list, figure or selection changes.
+    layer = _between("function layerRow(", "\n}\n")
+    assert "map.classList.toggle(`no-${name}`, !box.checked)" in layer
+    for touched in (
+        "D.sites",
+        "selected(",
+        "renderList",
+        "drawSelection",
+        "showSite",
+        "textContent",
+    ):
+        assert touched not in layer
+    for name, mark in (("rings", ".ring"), ("candidates", ".cand"), ("chargers", ".charger")):
+        assert f'layerRow("{name}"' in PAGE and f"#map.no-{name} {mark}" in PAGE
+    # The network's own sites and the selected site are never a layer to hide.
+    assert "#map.no-sites" not in PAGE and 'layerRow("sites"' not in PAGE
+
+
+def test_the_opportunity_list_can_be_walked_with_the_arrow_keys():
+    keys = _between('$("list").addEventListener("keydown"', "\n});\n")
+    assert '"ArrowDown"' in keys and '"ArrowUp"' in keys and "next.focus()" in keys
+    assert "showSite" not in keys  # moving focus marks the map; only Enter or a click opens a site
+
+
+def test_the_dossier_can_be_closed_onto_the_network_brief_at_every_width():
+    # From 1200 px the list stays beside the dossier, and the same control returns to the brief.
+    nav = _between("function queueNav(site)", "\n}\n")
+    assert '"← Opportunities"' in nav and '"← Network brief"' in nav and "showList();" in nav
+    assert ".dnav .back { display: none; }" not in PAGE
+
+
+def test_graticule_labels_and_province_names_share_the_floating_control_boxes():
+    assert PAGE.count("function floatingBlocks(edge)") == 1
+    assert "floatingBlocks(edge)" in _between("function placeLabels()", "\n}\n")
+    assert "floatingBlocks(" in _between("function drawFurniture(u, compact)", "\n}\n")
